@@ -4,7 +4,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    /* Premium marketplace theme - deep violet primary, warm amber accent */
     --background: oklch(0.98 0.005 285);
     --foreground: oklch(0.13 0.02 285);
     --card: oklch(1 0 0);
@@ -17,7 +16,7 @@
     --secondary-foreground: oklch(0.25 0.04 285);
     --muted: oklch(0.95 0.01 285);
     --muted-foreground: oklch(0.50 0.02 285);
-    --accent: oklch(0.75 0.15 75);
+    --accent: oklch(0.92 0.04 303.47);
     --accent-foreground: oklch(0.25 0.05 75);
     --destructive: oklch(0.55 0.22 25);
     --destructive-foreground: oklch(0.98 0 0);
@@ -25,7 +24,7 @@
     --input: oklch(0.91 0.01 285);
     --ring: oklch(0.45 0.18 285);
     --chart-1: oklch(0.45 0.18 285);
-    --chart-2: oklch(0.75 0.15 75);
+    --chart-2: oklch(0.92 0.04 303.47);
     --chart-3: oklch(0.60 0.12 160);
     --chart-4: oklch(0.65 0.15 320);
     --chart-5: oklch(0.70 0.14 45);
@@ -53,7 +52,7 @@
     --secondary-foreground: oklch(0.96 0.01 285);
     --muted: oklch(0.22 0.03 285);
     --muted-foreground: oklch(0.65 0.02 285);
-    --accent: oklch(0.75 0.15 75);
+    --accent: oklch(0.92 0.04 303.47);
     --accent-foreground: oklch(0.13 0.02 285);
     --destructive: oklch(0.45 0.18 25);
     --destructive-foreground: oklch(0.96 0.01 285);
@@ -61,7 +60,7 @@
     --input: oklch(0.25 0.03 285);
     --ring: oklch(0.65 0.18 285);
     --chart-1: oklch(0.65 0.18 285);
-    --chart-2: oklch(0.75 0.15 75);
+    --chart-2: oklch(0.92 0.04 303.47);
     --chart-3: oklch(0.60 0.12 160);
     --chart-4: oklch(0.65 0.15 320);
     --chart-5: oklch(0.70 0.14 45);

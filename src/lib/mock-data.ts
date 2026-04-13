@@ -85,7 +85,7 @@ export const allCreators: Creator[] = [
         name: "Story Sage",
         handle: "storysage",
         avatar: "/avatars/story-sage-avatar.jpg",
-        coverImage: "/portfolio/story-sage-cover.jpg",
+        coverImage: "/portfolio/pixel-dreams-cover.jpg",
         rating: 4.9,
         reviewCount: 203,
         startingPrice: 60,
