@@ -8,6 +8,7 @@ type SectionHeaderProps = {
   title: string
   description?: string
   className?: string
+  align?: "left" | "center" 
   action?: ReactNode
 }
 
@@ -16,6 +17,7 @@ function SectionHeader({
   title,
   description,
   className,
+  align = "left",
   action,
 }: SectionHeaderProps) {
   return (
@@ -25,7 +27,7 @@ function SectionHeader({
         className
       )}
     >
-      <div className="space-y-2">
+      <div className={cn("space-y-2 flex flex-col", align === "center" ? "items-center" : "items-start")}>
         <h2
           id={titleId}
           className="text-3xl font-bold tracking-tight sm:text-4xl"
@@ -33,7 +35,7 @@ function SectionHeader({
           {title}
         </h2>
         {description ? (
-          <p className="max-w-2xl text-pretty text-muted-foreground sm:text-lg">
+          <p className="max-w-2xl text-pretty text-muted-foreground sm:text-lg ">
             {description}
           </p>
         ) : null}
