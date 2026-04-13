@@ -1,6 +1,6 @@
 import React from 'react'
 
-const HeroBackground = () => {
+const GridBackground = () => {
     return (
         <div>
             <div
@@ -19,4 +19,4 @@ const HeroBackground = () => {
     )
 }
 
-export default HeroBackground
+export default GridBackground

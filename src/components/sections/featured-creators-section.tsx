@@ -1,10 +1,10 @@
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
 
-import { CreatorCard } from "@/components/cards/creator-card"
 import { Container, SectionHeader } from "@/components/elements"
 import { buttonVariants } from "@/components/ui/button"
-import { featuredCreators } from "@/lib/mock-data"
+import { CreatorProfileCard } from "@/features/creator-marketplace/components/creator-profile-card"
+import { featuredCreators } from "@/features/creator-marketplace"
 import { cn } from "@/lib/utils"
 
 const SECTION_TITLE_ID = "featured-creators-heading"
@@ -40,7 +40,7 @@ export function FeaturedCreatorsSection() {
         <ul className="mt-10 grid list-none gap-6 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8">
           {featuredCreators.map((creator) => (
             <li key={creator.id}>
-              <CreatorCard creator={creator} featured />
+              <CreatorProfileCard creator={creator} featured />
             </li>
           ))}
         </ul>

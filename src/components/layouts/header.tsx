@@ -9,10 +9,8 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const navLinks = [
-  { href: "/marketplace", label: "Marketplace" },
-  { href: "/how-it-works", label: "How it works" },
-  { href: "/for-creators", label: "For creators" },
-  { href: "/faq", label: "FAQ" },
+  { href: "/creators", label: "Creators" },
+
 ] as const
 
 export function Header() {

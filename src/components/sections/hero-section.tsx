@@ -4,7 +4,7 @@ import { ArrowRight, Shield, Star, Zap } from "lucide-react"
 import { Container, TrustChip } from "@/components/elements"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import HeroBackground from "../elements/hero-background"
+import GridBackground from "../elements/grid-background"
 
 const HERO_TITLE_ID = "hero-heading"
 
@@ -32,7 +32,7 @@ export function HeroSection() {
             className="relative overflow-hidden bg-gradient-to-b from-primary/[0.07] via-background to-background"
             aria-labelledby={HERO_TITLE_ID}
         >
-            <HeroBackground />
+            <GridBackground />
 
             <Container className="relative" paddingY="lg" size="xl">
                 <div className="mx-auto max-w-3xl text-center">

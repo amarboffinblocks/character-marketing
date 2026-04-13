@@ -1,9 +1,9 @@
 "use client"
 
-import type { MarketplaceCategory } from "@/components/marketplace/marketplace-types"
+import type { CreatorMarketplaceCategory } from "@/features/creator-marketplace/model/creator-marketplace-types"
 
-type MarketplaceFilterSidebarProps = {
-  categories: MarketplaceCategory[]
+type CreatorMarketplaceFilterSidebarProps = {
+  categories: CreatorMarketplaceCategory[]
   maxPrice: number
   selectedCategoryIds: string[]
   verifiedOnly: boolean
@@ -15,7 +15,7 @@ type MarketplaceFilterSidebarProps = {
   onClearFilters: () => void
 }
 
-export function MarketplaceFilterSidebar({
+export function CreatorMarketplaceFilterSidebar({
   categories,
   maxPrice,
   selectedCategoryIds,
@@ -26,7 +26,7 @@ export function MarketplaceFilterSidebar({
   onVerifiedOnlyChange,
   onAvailableOnlyChange,
   onClearFilters,
-}: MarketplaceFilterSidebarProps) {
+}: CreatorMarketplaceFilterSidebarProps) {
   return (
     <aside className="rounded-xl border border-border/70 bg-card p-5">
       <div className="flex items-center justify-between">
@@ -42,7 +42,7 @@ export function MarketplaceFilterSidebar({
 
       <div className="mt-6 space-y-7">
         <section>
-          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Category</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</h3>
           <ul className="mt-3 space-y-2.5">
             {categories.map((category) => {
               const checked = selectedCategoryIds.includes(category.id)
@@ -68,7 +68,7 @@ export function MarketplaceFilterSidebar({
         </section>
 
         <section>
-          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Price range</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Price range</h3>
           <div className="mt-4">
             <input
               type="range"
@@ -88,7 +88,7 @@ export function MarketplaceFilterSidebar({
         </section>
 
         <section>
-          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Quick filters</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</h3>
           <div className="mt-3 space-y-2.5">
             <label className="flex cursor-pointer items-center gap-2 text-sm">
               <input

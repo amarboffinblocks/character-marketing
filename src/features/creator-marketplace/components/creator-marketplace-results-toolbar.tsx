@@ -10,25 +10,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { MarketplaceSortOption } from "@/components/marketplace/marketplace-types"
+import type { CreatorMarketplaceSortOption } from "@/features/creator-marketplace/model/creator-marketplace-types"
 
-type MarketplaceResultsToolbarProps = {
+type CreatorMarketplaceResultsToolbarProps = {
   query: string
   sort: string
   resultCount: number
-  sortOptions: MarketplaceSortOption[]
+  sortOptions: CreatorMarketplaceSortOption[]
   onQueryChange: (query: string) => void
   onSortChange: (sort: string) => void
 }
 
-export function MarketplaceResultsToolbar({
+export function CreatorMarketplaceResultsToolbar({
   query,
   sort,
   resultCount,
   sortOptions,
   onQueryChange,
   onSortChange,
-}: MarketplaceResultsToolbarProps) {
+}: CreatorMarketplaceResultsToolbarProps) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 md:grid-cols-[1fr_220px]">
