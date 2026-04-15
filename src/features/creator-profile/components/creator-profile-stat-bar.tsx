@@ -17,7 +17,7 @@ export function CreatorProfileStatBar({ profile, className }: CreatorProfileStat
   return (
     <div
       className={cn(
-        "grid grid-cols-1 gap-4 rounded-xl border border-border/60 bg-card px-4 py-4 shadow-sm sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border/60 lg:py-3",
+        "grid grid-cols-1 gap-4 rounded-xl  px-4 py-4 sm:grid-cols-2 lg:grid-cols-4 lg:divide-x lg:divide-border/60 lg:py-3",
         className
       )}
     >
