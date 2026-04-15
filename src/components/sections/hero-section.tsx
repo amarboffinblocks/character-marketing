@@ -29,7 +29,7 @@ const trustSignals = [
 export function HeroSection() {
     return (
         <section
-            className="relative overflow-hidden bg-gradient-to-b from-primary/[0.07] via-background to-background"
+            className="relative overflow-hidden bg-linear-to-b from-primary/[0.07] via-background to-background"
             aria-labelledby={HERO_TITLE_ID}
         >
             <GridBackground />
@@ -41,7 +41,7 @@ export function HeroSection() {
                         id={HERO_TITLE_ID}
                     >
                         Commission custom AI characters from{" "}
-                        <span className="bg-gradient-to-r from-primary to-primary/75 bg-clip-text text-transparent">
+                        <span className="bg-linear-to-r from-primary to-primary/75 bg-clip-text text-transparent">
                             expert creators
                         </span>
                     </h1>
@@ -63,7 +63,7 @@ export function HeroSection() {
                             <ArrowRight className="h-4 w-4 shrink-0" aria-hidden />
                         </Link>
                         <Link
-                            href="/for-creators"
+                            href="/sign-up"
                             className={cn(
                                 buttonVariants({ variant: "outline", size: "lg" }),
                                 "h-12 px-8 text-base"

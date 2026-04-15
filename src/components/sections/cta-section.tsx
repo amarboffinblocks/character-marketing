@@ -47,7 +47,7 @@ export function CTASection() {
               <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
             </Link>
             <Link
-              href="/for-creators"
+              href="/sign-up"
               className={cn(
                 buttonVariants({ size: "lg", variant: "outline" }),
                 "h-12 border-primary-foreground/35 bg-transparent px-8 text-base text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"

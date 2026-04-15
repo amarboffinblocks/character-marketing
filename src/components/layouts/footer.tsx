@@ -5,7 +5,7 @@ import { Container } from "@/components/elements"
 
 const platformLinks = [
   { href: "/marketplace", label: "Marketplace" },
-  { href: "/for-creators", label: "For creators" },
+  { href: "/sign-up", label: "Join as Creator" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/faq", label: "FAQ" },
 ] as const

@@ -82,7 +82,7 @@ export function CreatorBenefitsSection() {
 
             <div className="mt-10">
               <Link
-                href="/for-creators"
+                href="/sign-up"
                 className={cn(
                   buttonVariants({ size: "lg", variant: "secondary" }),
                   "group"

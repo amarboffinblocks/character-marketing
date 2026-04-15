@@ -47,7 +47,7 @@ export function Header() {
 
           <div className="flex items-center gap-2">
             <Link
-              href="/login"
+              href="/sign-in"
               className={cn(
                 buttonVariants({ variant: "ghost", size: "lg" }),
                 "hidden md:inline-flex"
@@ -55,7 +55,7 @@ export function Header() {
             >
               Sign in
             </Link>
-            <Link href="/for-creators" className={cn(buttonVariants({ size: "lg" }), "hidden sm:inline-flex")}>
+            <Link href="/sign-up" className={cn(buttonVariants({ size: "lg" }), "hidden sm:inline-flex")}>
               Join as Creator
             </Link>
             <button
@@ -96,14 +96,14 @@ export function Header() {
 
           <div className="mt-4 flex flex-col gap-2 border-t border-border/60 pt-4">
             <Link
-              href="/login"
+              href="/sign-in"
               className={cn(buttonVariants({ variant: "outline" }), "h-10 w-full")}
               onClick={closeMenu}
             >
               Sign in
             </Link>
             <Link
-              href="/for-creators"
+              href="/sign-up"
               className={cn(buttonVariants({ size: "default" }), "h-10 w-full")}
               onClick={closeMenu}
             >
