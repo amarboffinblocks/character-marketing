@@ -22,7 +22,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 })
 
 export function CreatorProfileCard({ creator, featured = false }: CreatorProfileCardProps) {
-  const profileHref = `/creator/${creator.id}`
+  const profileHref = `/creators/${creator.id}`
   const ratingLabel = `${creator.rating.toFixed(1)} out of 5 stars, ${creator.reviewCount} reviews`
 
   return (

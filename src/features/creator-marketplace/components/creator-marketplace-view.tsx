@@ -121,8 +121,8 @@ export function CreatorMarketplaceView({
   }
 
   return (
-    <main className="border-t border-border/40 bg-linear-to-b from-background to-muted/20">
-      <Container size="xl" paddingY="sm">
+    <main className=" to-muted/20 ">
+      <Container size="xl" paddingY="sm" className="mt-20" >
         <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
           <div className="sticky top-20">
             <CreatorMarketplaceFilterSidebar
@@ -149,7 +149,7 @@ export function CreatorMarketplaceView({
               onSortChange={handleSortChange}
             />
 
-            <ul className="grid list-none gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid list-none gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-3">
               {paginatedCreators.map((creator) => (
                 <li key={creator.id}>
                   <CreatorProfileCard

@@ -1,0 +1,35 @@
+import type { Metadata } from "next"
+import { notFound } from "next/navigation"
+
+import { CreatorProfileView, getCreatorProfileById } from "@/features/creator-profile"
+import { allCreators } from "@/features/creator-marketplace"
+
+type CreatorProfilePageProps = {
+  params: Promise<{ creatorId: string }>
+}
+
+export function generateStaticParams() {
+  return allCreators.map((creator) => ({ creatorId: creator.id }))
+}
+
+export async function generateMetadata({ params }: CreatorProfilePageProps): Promise<Metadata> {
+  const { creatorId } = await params
+  const profile = getCreatorProfileById(creatorId)
+  if (!profile) {
+    return { title: "Creator not found" }
+  }
+  return {
+    title: `${profile.name} (@${profile.handle})`,
+    description: `View ${profile.name}'s creator profile, specialties, and pricing on Character Market.`,
+  }
+}
+
+export default async function CreatorProfilePage({ params }: CreatorProfilePageProps) {
+  const { creatorId } = await params
+  const profile = getCreatorProfileById(creatorId)
+  if (!profile) {
+    notFound()
+  }
+
+  return <CreatorProfileView profile={profile} />
+}

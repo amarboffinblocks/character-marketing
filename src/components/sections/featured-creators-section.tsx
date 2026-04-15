@@ -22,7 +22,7 @@ export function FeaturedCreatorsSection() {
           description="Top-rated specialists ready to bring your characters to life—cards, personas, lore, and more."
           action={
             <Link
-              href="/marketplace"
+              href="/creators"
               className={cn(
                 buttonVariants({ variant: "ghost" }),
                 "group -mx-2 h-auto gap-0 px-2 py-2 text-muted-foreground hover:text-foreground"

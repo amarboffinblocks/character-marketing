@@ -37,13 +37,13 @@ export function CTASection() {
 
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
             <Link
-              href="/marketplace"
+              href="/creators"
               className={cn(
                 buttonVariants({ size: "lg", variant: "secondary" }),
                 "h-12 px-8 text-base"
               )}
             >
-              Browse marketplace
+              Browse creators
               <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
             </Link>
             <Link

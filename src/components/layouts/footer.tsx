@@ -4,7 +4,7 @@ import { Mail, ShieldCheck } from "lucide-react"
 import { Container } from "@/components/elements"
 
 const platformLinks = [
-  { href: "/marketplace", label: "Marketplace" },
+  { href: "/creators", label: "Creators" },
   { href: "/sign-up", label: "Join as Creator" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/faq", label: "FAQ" },

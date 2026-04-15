@@ -53,7 +53,7 @@ export function HeroSection() {
 
                     <div className="mt-10 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center sm:gap-4">
                         <Link
-                            href="/marketplace"
+                            href="/creators"
                             className={cn(
                                 buttonVariants({ size: "lg" }),
                                 "h-12 gap-2 px-8 text-base"

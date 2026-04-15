@@ -51,7 +51,7 @@ export function HowItWorksSection() {
 
         <div className="mt-14 text-center sm:mt-20">
           <Link
-            href="/marketplace"
+            href="/creators"
             className={cn(
               buttonVariants({ size: "lg" }),
               "mx-auto h-12 rounded-xl px-8 text-sm font-semibold shadow-lg shadow-primary/20 transition-all hover:shadow-xl hover:shadow-primary/30"

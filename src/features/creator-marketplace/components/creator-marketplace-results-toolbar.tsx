@@ -57,7 +57,7 @@ export function CreatorMarketplaceResultsToolbar({
         </Select>
       </div>
 
-      <p className="text-sm text-muted-foreground">Showing {resultCount} creators</p>
+      {/* <p className="text-sm text-muted-foreground pb-4">Showing {resultCount} creators</p> */}
     </div>
   )
 }

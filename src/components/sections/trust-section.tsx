@@ -96,7 +96,7 @@ export function TrustSection() {
                 Learn about our policies
                 <ArrowRight className="ml-2 h-4 w-4" aria-hidden />
               </Link>
-              <Link href="/marketplace" className={cn(buttonVariants({ variant: "default" }), "h-10")}>
+              <Link href="/creators" className={cn(buttonVariants({ variant: "default" }), "h-10")}>
                 Browse verified creators
               </Link>
             </div>

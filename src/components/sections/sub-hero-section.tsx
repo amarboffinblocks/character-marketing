@@ -32,7 +32,7 @@ export function SubHeroSection({
     <section className="relative overflow-hidden border-b border-border/50 bg-background">
       <GridBackground />
 
-      <Container size="lg" paddingY="md" className="relative">
+      <Container size="lg" paddingY="md" className="relative mt-20">
 
 
         <p className="text-center text-sm font-semibold uppercase tracking-[0.18em] text-primary">

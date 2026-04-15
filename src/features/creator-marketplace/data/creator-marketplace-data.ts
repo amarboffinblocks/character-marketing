@@ -251,3 +251,7 @@ export const sortOptions: CreatorMarketplaceSortOption[] = [
   { id: "newest", label: "Newest" },
   { id: "fastest", label: "Fastest Delivery" },
 ]
+
+export function getCreatorById(id: string): Creator | undefined {
+  return allCreators.find((c) => c.id === id)
+}

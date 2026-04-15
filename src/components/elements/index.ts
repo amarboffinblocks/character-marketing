@@ -1,4 +1,5 @@
 export { Container, containerVariants } from "./container"
+export { ProfileAvatar } from "./profile-avatar"
 export { SectionHeader } from "./section-header"
 export type { SectionHeaderProps } from "./section-header"
 export { TrustChip } from "./trust-chip"
