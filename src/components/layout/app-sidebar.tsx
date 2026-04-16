@@ -29,6 +29,7 @@ import {
     SidebarMenuItem,
     SidebarRail,
     SidebarSeparator,
+    SidebarTrigger,
 } from "@/components/ui/sidebar"
 
 export type AppSidebarItem = {
@@ -78,26 +79,19 @@ export function AppSidebar({
     const pathname = usePathname()
 
     return (
-        <Sidebar collapsible="icon" variant="inset" >
-            <SidebarHeader >
-                <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/60 group-data-[collapsible=icon]:border-none  p-2 group-data-[collapsible=icon]:p-0">
-                    <div className="flex items-center gap-3">
-                        <span className="inline-flex size-10 items-center justify-center rounded-xl bg-sidebar-primary/12 text-sidebar-primary ring-1 ring-sidebar-primary/20 group-data-[collapsible=icon]:ring-0">
-                            <Sparkles className="size-4" aria-hidden />
-                        </span>
-                        <div className="min-w-0 group-data-[collapsible=icon]:hidden">
-                            <p className="truncate text-sm font-semibold text-sidebar-foreground">
-                                {workspaceName}
-                            </p>
-                            <p className="truncate text-xs text-sidebar-foreground/70">
-                                {workspaceSubtitle}
-                            </p>
-                        </div>
-                    </div>
+        <Sidebar collapsible="icon" variant="inset" className="bg-accent" >
+            <SidebarHeader className="bg-accent" >
+                <div className="flex gap-2 group-data-[collapsible=icon]:flex-col justify-between items-center">
+                    <span className="inline-flex size-10 items-center justify-center rounded-xl bg-sidebar-primary/12 text-sidebar-primary ring-1 ring-sidebar-primary/20 group-data-[collapsible=icon]:ring-0  ">
+                        <Sparkles className="size-4" aria-hidden />
+                    </span>
+                    <SidebarTrigger className="group-data-[collapsible=icon]:order-1 " />
+
                 </div>
+
             </SidebarHeader>
 
-            <SidebarContent>
+            <SidebarContent className="bg-accent">
                 {groups?.map((group) => (
                     <SidebarGroup key={group.label}>
                         <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
@@ -112,6 +106,7 @@ export function AppSidebar({
                                                 render={<Link href={item.href} />}
                                                 isActive={isRouteActive(pathname, item.href)}
                                                 tooltip={item.title}
+                                                className="hover:bg-sidebar-accent/50"
                                             >
                                                 <Icon />
                                                 <span>{item.title}</span>
@@ -128,7 +123,7 @@ export function AppSidebar({
 
             <SidebarSeparator />
 
-            <SidebarFooter>
+            <SidebarFooter className="bg-accent">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton tooltip="Notifications">
