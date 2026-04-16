@@ -1,6 +1,12 @@
 import { Container } from "@/components/elements"
 import { CreatorProfileHeader } from "@/features/creator-profile/components/creator-profile-header"
 import { CreatorProfileStatBar } from "@/features/creator-profile/components/creator-profile-stat-bar"
+import {
+  CUSTOM_PACKAGE_FEATURES,
+  getCustomPackages,
+  getFeatureCount,
+  isFeatureIncluded,
+} from "@/features/creator-profile/lib/custom-package-utils"
 import type { CreatorProfile } from "@/features/creator-profile/model/creator-profile-types"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -51,50 +57,6 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 0,
 })
-
-const CUSTOM_PACKAGE_FEATURES = [
-  { label: "Persona", keywords: ["persona"] },
-  { label: "Lorebook", keywords: ["lorebook", "lore"] },
-  { label: "Background", keywords: ["background"] },
-  { label: "Avatar", keywords: ["avatar"] },
-  { label: "Character", keywords: ["character"] },
-] as const
-
-const DUMMY_CUSTOM_PACKAGES = [
-  {
-    id: "dummy-custom-starter",
-    title: "Custom Story Starter",
-    price: 79,
-    description: "Great for quick character deployment with core story and visual setup.",
-    tokensLabel: "Up to 4K context tokens",
-    includedItems: [
-      "Persona setup and tone calibration",
-      "Lorebook essentials with key world rules",
-      "Styled background prompt direction",
-      "Avatar style and expression guidance",
-      "Character voice and behavior framework",
-    ],
-  },
-  {
-    id: "dummy-custom-pro",
-    title: "Custom Worldbuilder Pro",
-    price: 149,
-    description: "Best for creators who need deeper lore, consistency, and premium polish.",
-    tokensLabel: "Up to 12K context tokens",
-    includedItems: [
-      "Advanced persona with relationship logic",
-      "Expanded lorebook with factions and timeline",
-      "Cinematic background concept pack",
-      "Premium avatar art direction notes",
-      "Character archetype and progression layers",
-    ],
-  },
-] as const
-
-function isFeatureIncluded(items: readonly string[], keywords: readonly string[]) {
-  const normalizedItems = items.map((item) => item.toLowerCase())
-  return keywords.some((keyword) => normalizedItems.some((item) => item.includes(keyword)))
-}
 /**
  * Full creator profile layout: hero header, stats, tabbed main column, and packages sidebar.
  */
@@ -105,7 +67,7 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
   )}`
   const preselectPackage = profile.packages[0]
   const customPackages = profile.packages.slice(1)
-  const displayedCustomPackages = customPackages.length > 0 ? customPackages : DUMMY_CUSTOM_PACKAGES
+  const displayedCustomPackages = getCustomPackages(profile.packages)
 
   return (
     <main className="bg-linear-to-b from-background via-background to-muted/15">
@@ -338,8 +300,8 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
                     </h3>
                     <div className="grid gap-4 md:grid-cols-3">
                       {displayedCustomPackages.map((pkg, index) => {
-                        const purchaseCustomHref = `mailto:support@character.market?subject=${encodeURIComponent(
-                          `Purchase ${pkg.title} from ${profile.name}`
+                        const purchaseCustomHref = `/creators/${profile.id}/custom-package?packageId=${encodeURIComponent(
+                          pkg.id
                         )}`
                         return (
                           <Card
@@ -374,6 +336,7 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
                                 </div>
                                 {CUSTOM_PACKAGE_FEATURES.map((feature) => {
                                   const included = isFeatureIncluded(pkg.includedItems, feature.keywords)
+                                  const count = getFeatureCount(pkg.includedItems, feature.keywords)
                                   return (
                                     <div key={feature.label} className="grid grid-cols-2 gap-3 px-3 py-2.5 text-sm">
                                       <dt className="font-medium text-foreground">{feature.label}</dt>
@@ -383,7 +346,11 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
                                         ) : (
                                           <Circle className="size-4" aria-hidden />
                                         )}
-                                        <span>{included ? "Included" : "Available on request"}</span>
+                                        <span>
+                                          {included
+                                            ? `${count} item${count === 1 ? "" : "s"} included`
+                                            : "Available on request"}
+                                        </span>
                                       </dd>
                                     </div>
                                   )

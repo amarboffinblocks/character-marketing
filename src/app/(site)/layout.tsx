@@ -1,14 +1,7 @@
 import type { ReactNode } from "react"
 
-import { Footer } from "@/components/layouts/footer"
-import { Header } from "@/components/layouts/header"
+import { SiteShell } from "@/components/layouts/site-shell"
 
 export default function SiteLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex min-h-screen flex-col">
-      <Header />
-      <div className="flex-1">{children}</div>
-      <Footer />
-    </div>
-  )
+  return <SiteShell>{children}</SiteShell>
 }
