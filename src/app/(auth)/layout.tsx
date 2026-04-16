@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 
-import { Container } from "@/components/elements"
-import GridBackground from "@/components/elements/grid-background"
+import { Container } from "@/components/shared"
+import GridBackground from "@/components/shared/grid-background"
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (

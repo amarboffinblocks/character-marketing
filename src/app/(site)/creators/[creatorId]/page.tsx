@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
-import { CreatorProfileView, getCreatorProfileById } from "@/features/creator-profile"
-import { allCreators } from "@/features/creator-marketplace"
+import { CreatorProfileView, getCreatorProfileById } from "@/features/site/creator-profile"
+import { allCreators } from "@/features/site/marketplace"
 
 type CreatorProfilePageProps = {
   params: Promise<{ creatorId: string }>

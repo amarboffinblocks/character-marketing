@@ -3,7 +3,7 @@ import {
   categories,
   CreatorMarketplaceView,
   sortOptions,
-} from "@/features/creator-marketplace"
+} from "@/features/site/marketplace"
 
 export default function CreatorsPage() {
   return (

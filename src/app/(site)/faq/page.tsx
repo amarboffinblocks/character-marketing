@@ -1,10 +1,10 @@
 import Link from "next/link"
 import { Mail, MessageSquare } from "lucide-react"
 
-import { Container, SectionHeader } from "@/components/elements"
-import { SubHeroSection } from "@/components/sections/sub-hero-section"
+import { Container, SectionHeader } from "@/components/shared"
 import { buttonVariants } from "@/components/ui/button"
-import { FAQAccordion, faqItems } from "@/features/faq"
+import { FAQAccordion, faqItems } from "@/features/site/faq"
+import { SubHeroSection } from "@/features/site/home"
 import { cn } from "@/lib/utils"
 
 const FAQ_TITLE_ID = "faq-page-heading"

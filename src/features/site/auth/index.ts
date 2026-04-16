@@ -1,0 +1,5 @@
+export { default as ForgotPasswordForm } from "@/features/site/auth/components/forgot-password-form"
+export { default as OTPForm } from "@/features/site/auth/components/otp-form"
+export { default as SignInForm } from "@/features/site/auth/components/sign-in-form"
+export { default as SignUpForm } from "@/features/site/auth/components/sign-up-form"
+export { default as VerifyEmailForm } from "@/features/site/auth/components/verify-email-form"

@@ -1,4 +1,4 @@
-import OTPForm  from "@/components/forms/otp-form"
+import { OTPForm } from "@/features/site/auth"
 
 export default function OTPVerificationPage() {
   return (

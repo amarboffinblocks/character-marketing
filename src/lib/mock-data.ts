@@ -3,7 +3,7 @@ export {
   categories,
   featuredCreators,
   sortOptions,
-} from "@/features/creator-marketplace/data/creator-marketplace-data"
+} from "@/features/site/marketplace/data/marketplace-data"
 
 // Backward-compatibility exports for older imports.
 export const priceRanges = [
