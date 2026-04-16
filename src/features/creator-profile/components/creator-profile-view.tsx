@@ -273,9 +273,7 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
                           </div>
                           <div className="border-t border-border/60 pt-4">
                             <Link
-                              href={`mailto:support@character.market?subject=${encodeURIComponent(
-                                `Purchase ${preselectPackage.title} from ${profile.name}`
-                              )}`}
+                              href={`/creators/${profile.id}/purchase-preselect?packageId=${encodeURIComponent(preselectPackage.id)}`}
                               className={cn(buttonVariants({ size: "lg" }), "w-full")}
                             >
                               Purchase Pre-Select Package

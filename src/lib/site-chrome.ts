@@ -4,6 +4,7 @@
  */
 export const HIDE_SITE_CHROME_PATTERNS: readonly RegExp[] = [
   /^\/creators\/[^/]+\/custom-package/,
+  /^\/creators\/[^/]+\/purchase-preselect/,
 ]
 
 export function shouldHideSiteChrome(pathname: string | null | undefined): boolean {

@@ -9,9 +9,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 const navLinks = [
-  { href: "/explore", label: "Explore" },
   { href: "/creators", label: "Creators" },
-  { href: "how-it-works", label: "How it works" },
   { href: "/faq", label: "FAQ" }
 
 ] as const

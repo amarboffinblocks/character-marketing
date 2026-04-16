@@ -4,7 +4,6 @@ import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { PurchasePreselectDialog } from "@/features/creator-profile/components/purchase-preselect-dialog"
 import type { CreatorServicePackage } from "@/features/creator-profile/model/creator-profile-types"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +15,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 
 type CreatorServicePackageCardProps = {
   pkg: CreatorServicePackage
+  creatorId: string
   creatorName: string
   className?: string
 }
@@ -25,12 +25,15 @@ type CreatorServicePackageCardProps = {
  */
 export function CreatorServicePackageCard({
   pkg,
+  creatorId,
   creatorName,
   className,
 }: CreatorServicePackageCardProps) {
   const customHref = `mailto:support@character.market?subject=${encodeURIComponent(
     `Purchase Custom Package from ${creatorName}`
   )}`
+
+  const preselectHref = `/creators/${creatorId}/purchase-preselect?packageId=${encodeURIComponent(pkg.id)}`
 
   return (
     <Card
@@ -85,7 +88,9 @@ export function CreatorServicePackageCard({
         </div>
 
         <div className="space-y-2 border-t border-border/60 pt-4">
-          <PurchasePreselectDialog pkg={pkg} creatorName={creatorName} />
+          <Link href={preselectHref} className={cn(buttonVariants({ size: "lg" }), "h-10 w-full")}>
+            Purchase Pre-Select
+          </Link>
           <Link
             href={customHref}
             className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-10 w-full")}
