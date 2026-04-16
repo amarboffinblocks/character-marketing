@@ -146,8 +146,6 @@ export function AppSidebar({
                     </SidebarMenuItem>
                 </SidebarMenu>
             </SidebarFooter>
-
-            <SidebarRail />
         </Sidebar>
     )
 }
