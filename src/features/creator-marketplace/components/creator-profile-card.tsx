@@ -71,7 +71,7 @@ export function CreatorProfileCard({ creator, featured = false }: CreatorProfile
           </button>
         </div>
 
-        <CardContent className="relative flex flex-1 flex-col gap-0 pt-4">
+        <CardContent className="relative flex flex-1 flex-col gap-0 pt-4 pb-4">
           <div className="flex items-center gap-3">
             <div className="relative shrink-0">
               <Image
@@ -116,7 +116,7 @@ export function CreatorProfileCard({ creator, featured = false }: CreatorProfile
             ))}
           </div>
 
-          <div className="absolute bottom-0 right-4 flex items-center justify-end gap-1 py-1 text-muted-foreground">
+          <div className="mt-auto flex items-center justify-end gap-1 text-muted-foreground">
             <Package className="size-3 shrink-0" aria-hidden />
             <span className="tabular-nums text-xs">{creator.completedOrders} orders</span>
           </div>
