@@ -19,7 +19,7 @@ export default async function CreatorDashboardLayout({
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar groups={creatorSidebarGroups} />
       <SidebarInset className="bg-background">
-        <DashboardHeader showSearch={false} />
+        {/* <DashboardHeader showSearch={false} /> */}
         <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </div>

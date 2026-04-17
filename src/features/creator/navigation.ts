@@ -9,6 +9,17 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
     ],
   },
   {
+    label: "Workspace",
+    items: [
+      { title: "Workspace Home", href: "/dashboard/creator/workspace", icon: "services" },
+      { title: "Characters", href: "/dashboard/creator/workspace/characters", icon: "profile" },
+      { title: "Personas", href: "/dashboard/creator/workspace/personas", icon: "profile" },
+      { title: "Lorebooks", href: "/dashboard/creator/workspace/lorebooks", icon: "reviews" },
+      { title: "Avatars", href: "/dashboard/creator/workspace/avatars", icon: "earnings" },
+      { title: "Backgrounds", href: "/dashboard/creator/workspace/backgrounds", icon: "earnings" },
+    ],
+  },
+  {
     label: "Operations",
     items: [
       { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
