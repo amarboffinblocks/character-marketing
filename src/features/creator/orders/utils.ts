@@ -26,7 +26,7 @@ export type OrderSortValue =
   | "amount-desc"
   | "updated-desc"
 
-export type OrderQuickFilter = "due_soon" | "high_value" | "needs_response"
+export type OrderQuickFilter = "due_soon" | "high_value" | "needs_response" | "overdue"
 
 export type OrderStatusFilter = CreatorOrderStatus | "all"
 
@@ -70,6 +70,12 @@ function isDueSoon(order: CreatorOrder) {
   return days >= 0 && days <= 7
 }
 
+export function isOrderOverdue(order: CreatorOrder) {
+  if (order.status === "completed") return false
+  const due = new Date(order.dueDateTime).getTime()
+  return due < Date.now()
+}
+
 export function applyOrderFilters(
   orders: CreatorOrder[],
   options: {
@@ -98,6 +104,8 @@ export function applyOrderFilters(
           return order.amount >= 2000
         case "needs_response":
           return Boolean(order.needsResponse)
+        case "overdue":
+          return isOrderOverdue(order)
       }
     })
 
@@ -138,8 +146,9 @@ export function getOrderSummaryMetrics(orders: CreatorOrder[]) {
   const completedThisMonth = orders.filter(
     (order) => order.status === "completed"
   ).length
+  const overdue = orders.filter((order) => isOrderOverdue(order)).length
 
-  return { activeOrders, dueThisWeek, waitingOnBuyer, completedThisMonth }
+  return { activeOrders, dueThisWeek, waitingOnBuyer, completedThisMonth, overdue }
 }
 
 export function getDueDateTone(order: CreatorOrder) {

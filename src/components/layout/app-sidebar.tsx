@@ -26,6 +26,7 @@ import {
     SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarTrigger,
 } from "@/components/ui/sidebar"
 
 export type AppSidebarItem = {
@@ -88,26 +89,30 @@ export function AppSidebar({
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader className="px-2 pt-3 pb-2">
-                <Link
-                    href="/dashboard/creator"
-                    className="group/brand flex items-center gap-2 rounded-md p-1 outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                >
-                    <span
-                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm ring-1 ring-sidebar-primary/30"
-                        aria-hidden
+            <SidebarHeader className="px-2 pt-3 pb-2 ">
+                <div className="flex  group-data-[collapsible=icon]:flex-col justify-between items-center">
+
+                    <Link
+                        href="/dashboard/creator"
+                        className="group/brand flex items-center gap-2 rounded-md p-1 outline-none transition-colors  focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                     >
-                        <Sparkles className="size-4" />
-                    </span>
-                    <div className="flex min-w-0 flex-1 flex-col leading-tight group-data-[collapsible=icon]:hidden">
-                        <span className="truncate text-sm font-semibold text-sidebar-foreground">
-                            {workspaceName}
+                        <span
+                            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm ring-1 ring-sidebar-primary/30"
+                            aria-hidden
+                        >
+                            <Sparkles className="size-4" />
                         </span>
-                        <span className="truncate text-[11px] text-sidebar-foreground/60">
-                            {workspaceSubtitle}
-                        </span>
-                    </div>
-                </Link>
+                        <div className="flex min-w-0 flex-1 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+                            <span className="truncate text-sm font-semibold text-sidebar-foreground">
+                                {workspaceName}
+                            </span>
+                            <span className="truncate text-[11px] text-sidebar-foreground/60">
+                                {workspaceSubtitle}
+                            </span>
+                        </div>
+                    </Link>
+                    <SidebarTrigger  />
+                </div>
             </SidebarHeader>
 
             <SidebarContent>

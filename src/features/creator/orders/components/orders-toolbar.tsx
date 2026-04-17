@@ -1,7 +1,18 @@
 "use client"
 
-import { Search } from "lucide-react"
+import {
+  AlertTriangle,
+  ArrowUpDown,
+  Clock,
+  DollarSign,
+  Filter,
+  MessageSquareText,
+  Search,
+  SlidersHorizontal,
+  X,
+} from "lucide-react"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -12,25 +23,40 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
+import {
+  orderStatusLabelMap,
+} from "@/features/creator/orders/utils"
 import type {
   OrderQuickFilter,
   OrderSortValue,
   OrderStatusFilter,
 } from "@/features/creator/orders/utils"
 
-const statusOptions: { label: string; value: OrderStatusFilter }[] = [
-  { label: "All", value: "all" },
-  { label: "New", value: "new" },
-  { label: "In Progress", value: "in_progress" },
-  { label: "Waiting on Buyer", value: "waiting_on_buyer" },
-  { label: "Review", value: "review" },
-  { label: "Completed", value: "completed" },
+const quickFilterOptions: {
+  label: string
+  value: OrderQuickFilter
+  icon: typeof Clock
+}[] = [
+  { label: "Due soon", value: "due_soon", icon: Clock },
+  { label: "Overdue", value: "overdue", icon: AlertTriangle },
+  { label: "High value", value: "high_value", icon: DollarSign },
+  { label: "Needs response", value: "needs_response", icon: MessageSquareText },
 ]
 
-const quickFilterOptions: { label: string; value: OrderQuickFilter }[] = [
-  { label: "Due soon", value: "due_soon" },
-  { label: "High value", value: "high_value" },
-  { label: "Needs response", value: "needs_response" },
+const sortOptions: { label: string; value: OrderSortValue }[] = [
+  { label: "Due date (soonest)", value: "due-asc" },
+  { label: "Due date (latest)", value: "due-desc" },
+  { label: "Highest value", value: "amount-desc" },
+  { label: "Recently updated", value: "updated-desc" },
+]
+
+const statusOptions: { label: string; value: OrderStatusFilter }[] = [
+  { label: "All statuses", value: "all" },
+  { label: orderStatusLabelMap.new, value: "new" },
+  { label: orderStatusLabelMap.in_progress, value: "in_progress" },
+  { label: orderStatusLabelMap.waiting_on_buyer, value: "waiting_on_buyer" },
+  { label: orderStatusLabelMap.review, value: "review" },
+  { label: orderStatusLabelMap.completed, value: "completed" },
 ]
 
 type OrdersToolbarProps = {
@@ -58,100 +84,178 @@ export function OrdersToolbar({
   onQuickFilterToggle,
   onResetFilters,
 }: OrdersToolbarProps) {
-  const hasFilters =
-    search.trim().length > 0 || status !== "all" || quickFilters.length > 0
+  const hasSearch = search.trim().length > 0
+  const hasStatus = status !== "all"
+  const activeFilterCount =
+    (hasSearch ? 1 : 0) + (hasStatus ? 1 : 0) + quickFilters.length
+  const hasFilters = activeFilterCount > 0
+
+  const statusLabel =
+    statusOptions.find((option) => option.value === status)?.label ?? "All statuses"
 
   return (
-    <section className="rounded-xl border border-border bg-card p-3 shadow-xs sm:p-4">
-      <div className="grid gap-3 md:grid-cols-[1.4fr_1fr_1fr]">
-        <div className="relative">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-            aria-hidden
-          />
-          <Input
-            value={search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search by order ID, buyer, or package"
-            className="pl-8"
-          />
+    <section className="rounded-2xl border border-border bg-card p-3 shadow-xs sm:p-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Filter className="size-4" />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-foreground">Filters</p>
+              <p className="text-[11px] text-muted-foreground">
+                Refine your work queue with search, status, and quick filters.
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="h-6 gap-1 px-2 text-[11px]">
+            <span className="font-medium text-foreground">{resultsCount}</span>
+            {resultsCount === 1 ? "order" : "orders"}
+          </Badge>
         </div>
 
-        <Select value={status} onValueChange={(value) => onStatusChange(value as OrderStatusFilter)}>
-          <SelectTrigger aria-label="Filter by status">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            {statusOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="grid gap-3 md:grid-cols-[1.6fr_1fr_1fr]">
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <Input
+              value={search}
+              onChange={(event) => onSearchChange(event.target.value)}
+              placeholder="Search by order ID, buyer, or package"
+              className="pl-8"
+            />
+            {hasSearch ? (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => onSearchChange("")}
+                className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            ) : null}
+          </div>
 
-        <Select value={sort} onValueChange={(value) => onSortChange(value as OrderSortValue)}>
-          <SelectTrigger aria-label="Sort orders">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="due-asc">Due date (soonest)</SelectItem>
-            <SelectItem value="due-desc">Due date (latest)</SelectItem>
-            <SelectItem value="amount-desc">Highest value</SelectItem>
-            <SelectItem value="updated-desc">Recently updated</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        {quickFilterOptions.map((filter) => {
-          const active = quickFilters.includes(filter.value)
-          return (
-            <button
-              key={filter.value}
-              type="button"
-              onClick={() => onQuickFilterToggle(filter.value)}
-              className={cn(
-                "rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                active
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-            >
-              {filter.label}
-            </button>
-          )
-        })}
-        <span className="ml-auto text-xs text-muted-foreground">
-          {resultsCount} {resultsCount === 1 ? "order" : "orders"}
-        </span>
-      </div>
-
-      {hasFilters ? (
-        <div className="mt-3 flex items-center justify-between border-t border-border/80 pt-3">
-          <p className="text-xs text-muted-foreground">Filters are applied</p>
-          <Button variant="ghost" size="sm" className="h-7 px-2" onClick={onResetFilters}>
-            Clear all
-          </Button>
-        </div>
-      ) : null}
-
-      <div className="mt-3 flex flex-wrap gap-2">
-        {statusOptions.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onStatusChange(option.value)}
-            className={cn(
-              "rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
-              status === option.value
-                ? "border-primary/30 bg-primary/10 text-primary"
-                : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
+          <Select
+            value={status}
+            onValueChange={(value) => onStatusChange(value as OrderStatusFilter)}
           >
-            {option.label}
-          </button>
-        ))}
+            <SelectTrigger aria-label="Filter by status">
+              <SlidersHorizontal className="size-4 text-muted-foreground" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={sort} onValueChange={(value) => onSortChange(value as OrderSortValue)}>
+            <SelectTrigger aria-label="Sort orders">
+              <ArrowUpDown className="size-4 text-muted-foreground" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              {sortOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">Quick filters:</span>
+          {quickFilterOptions.map((filter) => {
+            const Icon = filter.icon
+            const active = quickFilters.includes(filter.value)
+            return (
+              <button
+                key={filter.value}
+                type="button"
+                onClick={() => onQuickFilterToggle(filter.value)}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                  active
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <Icon className="size-3.5" />
+                {filter.label}
+              </button>
+            )
+          })}
+        </div>
+
+        {hasFilters ? (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/80 pt-3">
+            <span className="text-xs font-medium text-muted-foreground">
+              Active ({activeFilterCount}):
+            </span>
+
+            {hasSearch ? (
+              <Badge variant="secondary" className="h-6 gap-1 pr-1.5">
+                <span>Search: {search}</span>
+                <button
+                  type="button"
+                  aria-label="Clear search filter"
+                  onClick={() => onSearchChange("")}
+                  className="rounded-full p-0.5 hover:bg-background/80"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ) : null}
+
+            {hasStatus ? (
+              <Badge variant="secondary" className="h-6 gap-1 pr-1.5">
+                <span>Status: {statusLabel}</span>
+                <button
+                  type="button"
+                  aria-label="Clear status filter"
+                  onClick={() => onStatusChange("all")}
+                  className="rounded-full p-0.5 hover:bg-background/80"
+                >
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            ) : null}
+
+            {quickFilters.map((value) => {
+              const label =
+                quickFilterOptions.find((option) => option.value === value)?.label ?? value
+              return (
+                <Badge key={value} variant="secondary" className="h-6 gap-1 pr-1.5">
+                  <span>{label}</span>
+                  <button
+                    type="button"
+                    aria-label={`Remove ${label} filter`}
+                    onClick={() => onQuickFilterToggle(value)}
+                    className="rounded-full p-0.5 hover:bg-background/80"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Badge>
+              )
+            })}
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="ml-auto h-7 px-2 text-muted-foreground"
+              onClick={onResetFilters}
+            >
+              Clear all
+            </Button>
+          </div>
+        ) : null}
       </div>
     </section>
   )
