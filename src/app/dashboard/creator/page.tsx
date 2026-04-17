@@ -1,16 +1,5 @@
-import { DashboardHeader } from '@/components/layout/dashboard-header'
-import React from 'react'
+import { CreatorDashboardView } from "@/features/creator/dashboard"
 
-const page = () => {
-  return (
-    <div className='flex flex-col relative'>
-      <DashboardHeader />
-      <div className='flex-1'>
-
-      </div>
-
-    </div>
-  )
+export default function CreatorDashboardPage() {
+  return <CreatorDashboardView />
 }
-
-export default page

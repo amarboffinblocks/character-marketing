@@ -3,11 +3,10 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
-    Bell,
     BriefcaseBusiness,
     FolderKanban,
     LayoutDashboard,
-    LogOut,
+    LifeBuoy,
     MessageSquare,
     Settings,
     Sparkles,
@@ -27,9 +26,6 @@ import {
     SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
-    SidebarRail,
-    SidebarSeparator,
-    SidebarTrigger,
 } from "@/components/ui/sidebar"
 
 export type AppSidebarItem = {
@@ -48,6 +44,8 @@ type AppSidebarProps = {
     groups?: AppSidebarGroup[]
     workspaceName?: string
     workspaceSubtitle?: string
+    /** Route used for the "help & support" link in the footer. */
+    supportHref?: string
 }
 
 const sidebarIcons = {
@@ -64,63 +62,114 @@ const sidebarIcons = {
 export type AppSidebarIconName = keyof typeof sidebarIcons
 
 function isRouteActive(pathname: string, href: string) {
-    if (pathname === href) {
-        return true
-    }
+    if (pathname === href) return true
+    // Avoid treating every dashboard sub-page as matching the index route.
+    if (href === "/" || pathname === "/") return false
+    const normalized = href.replace(/\/+$/, "")
+    return pathname.startsWith(`${normalized}/`)
+}
 
-    return href !== "/dashboard/creator" && pathname.startsWith(`${href}/`)
+function getActiveHref(pathname: string, items: AppSidebarItem[]) {
+    const matched = items
+        .map((item) => item.href)
+        .filter((href) => isRouteActive(pathname, href))
+        .sort((a, b) => b.length - a.length)
+
+    return matched[0]
 }
 
 export function AppSidebar({
     groups,
-    workspaceName = "Creator Studio",
-    workspaceSubtitle = "Character Market",
+    workspaceName = "Character Market",
+    workspaceSubtitle = "Creator Studio",
+    supportHref = "/support",
 }: AppSidebarProps) {
-    const pathname = usePathname()
+    const pathname = usePathname() ?? ""
 
     return (
-        <Sidebar collapsible="icon" variant="inset" className="bg-accent/30"   >
-            <SidebarHeader className="bg-accent/30"  >
-                <div className="flex gap-2 group-data-[collapsible=icon]:flex-col justify-between items-center">
-                    <span className="inline-flex size-10 items-center justify-center rounded-xl bg-sidebar-primary/12 text-sidebar-primary ring-1 ring-sidebar-primary/20 group-data-[collapsible=icon]:ring-0  ">
-                        <Sparkles className="size-4" aria-hidden />
+        <Sidebar collapsible="icon" variant="inset">
+            <SidebarHeader className="px-2 pt-3 pb-2">
+                <Link
+                    href="/dashboard/creator"
+                    className="group/brand flex items-center gap-2 rounded-md p-1 outline-none transition-colors hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-sidebar-ring"
+                >
+                    <span
+                        className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm ring-1 ring-sidebar-primary/30"
+                        aria-hidden
+                    >
+                        <Sparkles className="size-4" />
                     </span>
-                    <SidebarTrigger className="group-data-[collapsible=icon]:order-1 " />
-
-                </div>
-
+                    <div className="flex min-w-0 flex-1 flex-col leading-tight group-data-[collapsible=icon]:hidden">
+                        <span className="truncate text-sm font-semibold text-sidebar-foreground">
+                            {workspaceName}
+                        </span>
+                        <span className="truncate text-[11px] text-sidebar-foreground/60">
+                            {workspaceSubtitle}
+                        </span>
+                    </div>
+                </Link>
             </SidebarHeader>
 
-            <SidebarContent className="bg-accent/30">
+            <SidebarContent>
                 {groups?.map((group) => (
                     <SidebarGroup key={group.label}>
                         <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {group.items.map((item) => {
-                                    const Icon = sidebarIcons[item.icon]
+                                {(() => {
+                                    const activeHref = getActiveHref(pathname, group.items)
 
-                                    return (
-                                        <SidebarMenuItem key={item.href}>
-                                            <SidebarMenuButton
-                                                render={<Link href={item.href} />}
-                                                isActive={isRouteActive(pathname, item.href)}
-                                                tooltip={item.title}
-                                                className="hover:bg-sidebar-accent/50"
-                                            >
-                                                <Icon />
-                                                <span>{item.title}</span>
-                                            </SidebarMenuButton>
-                                            {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}
-                                        </SidebarMenuItem>
-                                    )
-                                })}
+                                    return group.items.map((item) => {
+                                        const Icon = sidebarIcons[item.icon]
+                                        const active = item.href === activeHref
+
+                                        return (
+                                            <SidebarMenuItem key={item.href}>
+                                                <SidebarMenuButton
+                                                    render={<Link href={item.href} />}
+                                                    isActive={active}
+                                                    tooltip={item.title}
+                                                    className="data-active:bg-sidebar-primary/10 data-active:text-sidebar-primary data-active:hover:bg-sidebar-primary/15 data-active:hover:text-sidebar-primary data-active:[&_svg]:text-sidebar-primary"
+                                                >
+                                                    <Icon />
+                                                    <span>{item.title}</span>
+                                                </SidebarMenuButton>
+                                                {item.badge ? (
+                                                    <SidebarMenuBadge
+                                                        className={
+                                                            active
+                                                                ? "bg-sidebar-primary/10 text-sidebar-primary"
+                                                                : "bg-sidebar-accent text-sidebar-accent-foreground"
+                                                        }
+                                                    >
+                                                        {item.badge}
+                                                    </SidebarMenuBadge>
+                                                ) : null}
+                                            </SidebarMenuItem>
+                                        )
+                                    })
+                                })()}
                             </SidebarMenu>
                         </SidebarGroupContent>
                     </SidebarGroup>
                 ))}
             </SidebarContent>
 
+            <SidebarFooter className="px-2 pb-3">
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <SidebarMenuButton
+                            render={<Link href={supportHref} />}
+                            tooltip="Help & support"
+                            size="sm"
+                            className="text-sidebar-foreground/70 hover:text-sidebar-foreground"
+                        >
+                            <LifeBuoy />
+                            <span>Help &amp; support</span>
+                        </SidebarMenuButton>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+            </SidebarFooter>
         </Sidebar>
     )
 }

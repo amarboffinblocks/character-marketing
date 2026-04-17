@@ -1,9 +1,5 @@
-import React from 'react'
+import { CreatorOrdersView } from "@/features/creator/orders"
 
-const page = () => {
-  return (
-    <div>page</div>
-  )
+export default function CreatorOrdersPage() {
+  return <CreatorOrdersView />
 }
-
-export default page
