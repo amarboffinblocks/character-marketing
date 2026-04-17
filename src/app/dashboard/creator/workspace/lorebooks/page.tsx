@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { LorebooksWorkspaceView } from "@/features/creator/workspace/lorebooks/lorebooks-workspace-view"
 
 export default function CreatorWorkspaceLorebooksPage() {
-  return (
-    <DashboardPlaceholderState
-      title="Workspace · Lorebooks"
-      description="Organize lorebook entries, world details, and keyword libraries for faster delivery."
-    />
-  )
+  return <LorebooksWorkspaceView />
 }

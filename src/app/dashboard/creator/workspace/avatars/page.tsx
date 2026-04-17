@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { AvatarsWorkspaceView } from "@/features/creator/workspace/avatars/avatars-workspace-view"
 
 export default function CreatorWorkspaceAvatarsPage() {
-  return (
-    <DashboardPlaceholderState
-      title="Workspace · Avatars"
-      description="Store and iterate avatar assets for profile visuals and buyer deliverables."
-    />
-  )
+  return <AvatarsWorkspaceView />
 }

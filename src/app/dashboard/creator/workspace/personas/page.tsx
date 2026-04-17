@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { PersonasWorkspaceView } from "@/features/creator/workspace/personas/personas-workspace-view"
 
 export default function CreatorWorkspacePersonasPage() {
-  return (
-    <DashboardPlaceholderState
-      title="Workspace · Personas"
-      description="Create and maintain persona assets that can be reused across multiple orders."
-    />
-  )
+  return <PersonasWorkspaceView />
 }
