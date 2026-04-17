@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { WorkspaceHomeView } from "@/features/creator/workspace/workspace-home-view"
 
 export default function CreatorWorkspacePage() {
-  return (
-    <DashboardPlaceholderState
-      title="Workspace"
-      description="Create and organize reusable creator assets for characters, personas, lorebooks, avatars, and backgrounds."
-    />
-  )
+  return <WorkspaceHomeView />
 }
