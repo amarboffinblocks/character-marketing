@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { CreatorReviewsView } from "@/features/creator/reviews/creator-reviews-view"
 
 export default function CreatorReviewsPage() {
-  return (
-    <DashboardPlaceholderState
-      title="Reviews"
-      description="Track buyer feedback and quality signals across completed orders."
-    />
-  )
+  return <CreatorReviewsView />
 }

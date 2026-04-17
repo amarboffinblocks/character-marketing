@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { CreatorServicesView } from "@/features/creator/services/creator-services-view"
 
 export default function CreatorServicesPage() {
-  return (
-    <DashboardPlaceholderState
-      title="Services"
-      description="Configure your package catalog, pricing, and availability details."
-    />
-  )
+  return <CreatorServicesView />
 }

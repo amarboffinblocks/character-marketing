@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { CreatorSettingsView } from "@/features/creator/settings/creator-settings-view"
 
 export default function CreatorSettingsPage() {
-  return (
-    <DashboardPlaceholderState
-      title="Settings"
-      description="Manage creator preferences, notifications, and account controls."
-    />
-  )
+  return <CreatorSettingsView />
 }

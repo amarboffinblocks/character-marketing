@@ -1,10 +1,5 @@
-import { DashboardPlaceholderState } from "@/features/creator/dashboard/components/dashboard-placeholder-state"
+import { CreatorProfileView } from "@/features/creator/profile/creator-profile-view"
 
 export default function CreatorProfilePage() {
-  return (
-    <DashboardPlaceholderState
-      title="Profile"
-      description="Update your public creator presence, specialties, and portfolio."
-    />
-  )
+  return <CreatorProfileView />
 }
