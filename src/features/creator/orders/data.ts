@@ -101,3 +101,8 @@ export const creatorOrders: CreatorOrder[] = [
     priority: "low",
   },
 ]
+
+export function findCreatorOrderBySlug(orderSlug: string) {
+  const normalizedSlug = orderSlug.trim().toUpperCase()
+  return creatorOrders.find((order) => order.id.toUpperCase() === normalizedSlug)
+}

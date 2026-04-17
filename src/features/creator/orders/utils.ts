@@ -155,3 +155,35 @@ export function getDueDateTone(order: CreatorOrder) {
   }
   return "text-muted-foreground"
 }
+
+export function getDeadlineState(order: CreatorOrder) {
+  const due = new Date(order.dueDateTime).getTime()
+  const now = Date.now()
+  const days = (due - now) / (1000 * 60 * 60 * 24)
+
+  if (days < 0) {
+    return {
+      tone: "overdue" as const,
+      label: "Overdue",
+      detail: `Past due by ${Math.ceil(Math.abs(days))} day(s)`,
+      className: "border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+    }
+  }
+
+  if (days <= 2) {
+    return {
+      tone: "warning" as const,
+      label: "Due soon",
+      detail: `${Math.ceil(days)} day(s) remaining`,
+      className:
+        "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    }
+  }
+
+  return {
+    tone: "ok" as const,
+    label: "On track",
+    detail: `${Math.ceil(days)} day(s) remaining`,
+    className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  }
+}
