@@ -1,113 +1,77 @@
 "use client"
 
-import Link from "next/link"
-import { useMemo, useState } from "react"
+import { useMemo, useState, useRef, useEffect } from "react"
 import {
   CheckCheck,
   Circle,
-  ExternalLink,
+  FileText,
   ImageIcon,
-  MapPin,
-  Mic,
+  MessageSquare,
+  MoreVertical,
+  Paperclip,
   Phone,
   Search,
   Send,
-  Sparkles,
+  Smile,
   Video,
 } from "lucide-react"
+import { motion, AnimatePresence } from "motion/react"
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { CreatorMessageThread, creatorMessageThreads } from "@/features/creator/messages/messages-data"
 import { cn } from "@/lib/utils"
 
-type ThreadFilter = "all" | "needs_response" | "active" | "waiting" | "closed"
 
-function getStatusTone(status: CreatorMessageThread["status"]) {
-  switch (status) {
-    case "needs_response":
-      return "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-    case "active":
-      return "bg-primary/15 text-primary"
-    case "waiting":
-      return "bg-muted text-muted-foreground"
-    case "closed":
-      return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-    default:
-      return "bg-muted text-muted-foreground"
-  }
-}
-
-function formatStatusLabel(status: CreatorMessageThread["status"]) {
-  return status.replace("_", " ")
-}
-
-function initialsFromName(name: string) {
-  return name
-    .split(/\s+/)
-    .map((part) => part.slice(0, 1))
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
-}
 
 export function CreatorMessagesView() {
   const [threads, setThreads] = useState<CreatorMessageThread[]>(creatorMessageThreads)
-  const [search, setSearch] = useState("")
-  const [filter, setFilter] = useState<ThreadFilter>("all")
-  const [showUnreadOnly, setShowUnreadOnly] = useState(false)
   const [activeThreadId, setActiveThreadId] = useState<string>(threads[0]?.id ?? "")
+  const [search, setSearch] = useState("")
   const [composer, setComposer] = useState("")
+  const [activeTab, setActiveTab] = useState("all")
+  const scrollRef = useRef<HTMLDivElement>(null)
 
-  const inboxMetrics = useMemo(() => {
-    const unread = threads.reduce((total, thread) => total + thread.unreadCount, 0)
-    const needsResponse = threads.filter((thread) => thread.status === "needs_response").length
-    const active = threads.filter((thread) => thread.status === "active").length
-    return { unread, needsResponse, active }
-  }, [threads])
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight
+    }
+  }, [activeThreadId, threads])
 
   const filteredThreads = useMemo(() => {
     const query = search.trim().toLowerCase()
     return threads.filter((thread) => {
-      const matchesFilter = filter === "all" ? true : thread.status === filter
-      const matchesUnread = showUnreadOnly ? thread.unreadCount > 0 : true
       const matchesSearch =
         query.length === 0 ||
         thread.buyerName.toLowerCase().includes(query) ||
-        thread.orderId.toLowerCase().includes(query) ||
         thread.packageName.toLowerCase().includes(query)
-      return matchesFilter && matchesUnread && matchesSearch
+      return matchesSearch
     })
-  }, [filter, search, showUnreadOnly, threads])
+  }, [search, threads])
 
-  const activeThread =
-    filteredThreads.find((thread) => thread.id === activeThreadId) ??
-    filteredThreads[0] ??
-    null
+  const activeThread = threads.find((t) => t.id === activeThreadId) ?? threads[0]
 
-  function handleSendMessage() {
-    const next = composer.trim()
-    if (!next || !activeThread) return
+  const handleSendMessage = () => {
+    if (!composer.trim() || !activeThread) return
 
     setThreads((current) =>
-      current.map((thread) => {
-        if (thread.id !== activeThread.id) return thread
+      current.map((t) => {
+        if (t.id !== activeThread.id) return t
         return {
-          ...thread,
-          unreadCount: 0,
-          status: thread.status === "needs_response" ? "active" : thread.status,
-          lastMessageAt: "just now",
+          ...t,
+          lastMessageAt: "Just now",
           messages: [
-            ...thread.messages,
+            ...t.messages,
             {
-              id: `creator-${crypto.randomUUID()}`,
+              id: crypto.randomUUID(),
               sender: "creator",
-              text: next,
-              time: "Now",
+              text: composer,
+              time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             },
           ],
         }
@@ -116,300 +80,258 @@ export function CreatorMessagesView() {
     setComposer("")
   }
 
-  function markActiveThreadRead() {
-    if (!activeThread) return
-    setThreads((current) =>
-      current.map((thread) => (thread.id === activeThread.id ? { ...thread, unreadCount: 0 } : thread))
-    )
-  }
-
-  const pinnedThreads = filteredThreads.filter((thread) => thread.status === "needs_response").slice(0, 4)
-  const otherThreads = filteredThreads.filter((thread) => !pinnedThreads.some((item) => item.id === thread.id))
-
   return (
-    <div className="flex flex-col gap-6">
-      <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
-        <div className="flex flex-col gap-2">
-          <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Messages</h2>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Manage buyer communication, prioritize urgent replies, and keep order threads moving.
-          </p>
-        </div>
-      </section>
+    <TooltipProvider>
+      <div className="flex flex-1 overflow-hidden rounded-3xl border border-border/60 bg-background/50 h-[calc(100vh-48px)]">
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar - Conversations List */}
+          <aside className="flex w-full flex-col border-r border-border/40 bg-muted/5 sm:w-[380px]">
+            <div className="p-6 pb-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search here..."
+                  className="pl-10 h-11 bg-background/50 border-border/40 focus:ring-primary/20"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
 
-      <Card>
-        <CardHeader className="border-b pb-4">
-          <CardTitle>Creator Inbox</CardTitle>
-          <CardDescription>
-            Modern split-view messaging inspired by your reference layout, adapted to your theme.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4 py-4">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Unread messages</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{inboxMetrics.unread}</p>
             </div>
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Needs response</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{inboxMetrics.needsResponse}</p>
-            </div>
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-              <p className="text-xs text-muted-foreground">Active threads</p>
-              <p className="mt-1 text-lg font-semibold text-foreground">{inboxMetrics.active}</p>
-            </div>
-          </div>
 
-          <div className="grid gap-4 xl:grid-cols-[340px_1fr]">
-            <aside className="rounded-2xl border border-border/70 bg-card">
-              <div className="space-y-3 border-b border-border/70 p-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-lg font-semibold text-foreground">Messages</p>
-                  <Button
-                    type="button"
-                    variant={showUnreadOnly ? "default" : "ghost"}
-                    size="icon-sm"
-                    onClick={() => setShowUnreadOnly((current) => !current)}
-                    aria-label="Toggle unread threads"
+            <div className="flex-1 overflow-y-auto px-2 pb-6 pt-2 space-y-1 scrollbar-thin">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {filteredThreads.map((thread) => (
+                  <motion.button
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    key={thread.id}
+                    onClick={() => setActiveThreadId(thread.id)}
+                    className={cn(
+                      "flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-all hover:bg-accent/40",
+                      activeThreadId === thread.id ? "bg-accent shadow-sm" : "transparent"
+                    )}
                   >
-                    <Circle className="size-3.5" />
-                  </Button>
-                </div>
-
-                <div className="relative">
-                  <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search conversation..."
-                    className="pl-8"
-                  />
-                </div>
-
-                <Select value={filter} onValueChange={(value) => setFilter(value as ThreadFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter threads" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All threads</SelectItem>
-                    <SelectItem value="needs_response">Needs response</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="waiting">Waiting</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="max-h-[620px] overflow-auto p-2">
-                {filteredThreads.length === 0 ? (
-                  <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-4 text-sm text-muted-foreground">
-                    No conversations found.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {pinnedThreads.length > 0 ? (
-                      <div>
-                        <p className="px-2 py-1 text-xs font-medium text-muted-foreground">Pinned</p>
-                        <div className="space-y-1">
-                          {pinnedThreads.map((thread) => (
-                            <button
-                              key={thread.id}
-                              type="button"
-                              onClick={() => setActiveThreadId(thread.id)}
-                              className={cn(
-                                "w-full rounded-xl border p-3 text-left transition-colors",
-                                activeThread?.id === thread.id
-                                  ? "border-primary/40 bg-primary/5"
-                                  : "border-border/60 hover:bg-accent/30"
-                              )}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                                  {initialsFromName(thread.buyerName)}
-                                </span>
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <p className="truncate text-sm font-medium text-foreground">
-                                      {thread.buyerName}
-                                    </p>
-                                    <span className="text-[11px] text-muted-foreground">
-                                      {thread.lastMessageAt}
-                                    </span>
-                                  </div>
-                                  <p className="line-clamp-1 text-xs text-muted-foreground">
-                                    {thread.packageName}
-                                  </p>
-                                </div>
-                                {thread.unreadCount > 0 ? (
-                                  <Badge className="h-5 min-w-5 justify-center px-1.5">
-                                    {thread.unreadCount}
-                                  </Badge>
-                                ) : null}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    <div>
-                      <p className="px-2 py-1 text-xs font-medium text-muted-foreground">All message</p>
-                      <div className="space-y-1">
-                        {otherThreads.map((thread) => (
-                          <button
-                            key={thread.id}
-                            type="button"
-                            onClick={() => setActiveThreadId(thread.id)}
-                            className={cn(
-                              "w-full rounded-xl border p-3 text-left transition-colors",
-                              activeThread?.id === thread.id
-                                ? "border-primary/40 bg-primary/5"
-                                : "border-border/60 hover:bg-accent/30"
-                            )}
-                          >
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                                {initialsFromName(thread.buyerName)}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-2">
-                                  <p className="truncate text-sm font-medium text-foreground">
-                                    {thread.buyerName}
-                                  </p>
-                                  <span className="text-[11px] text-muted-foreground">
-                                    {thread.lastMessageAt}
-                                  </span>
-                                </div>
-                                <p className="line-clamp-1 text-xs text-muted-foreground">
-                                  {thread.messages.at(-1)?.text ?? thread.packageName}
-                                </p>
-                              </div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
+                    <div className="relative shrink-0">
+                      <Avatar className="size-12 shadow-md">
+                        <AvatarImage src={`https://i.pravatar.cc/150?u=${thread.buyerName}`} />
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                          {thread.buyerName[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      {thread.status === "needs_response" && (
+                        <span className="absolute -bottom-1 -right-1 size-3.5 rounded-full bg-red-500 border-2 border-background" />
+                      )}
                     </div>
-                  </div>
-                )}
-              </div>
-            </aside>
-
-            <section className="rounded-2xl border border-border/70 bg-card">
-              {activeThread ? (
-                <>
-                  <header className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
-                        {initialsFromName(activeThread.buyerName)}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">{activeThread.buyerName}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {activeThread.orderId} · {activeThread.packageName}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground truncate">{thread.buyerName}</span>
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          {thread.lastMessageAt}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className={cn(
+                          "truncate text-xs text-muted-foreground flex-1",
+                          thread.unreadCount > 0 && "font-semibold text-foreground"
+                        )}>
+                          {thread.messages?.[thread.messages.length - 1]?.text ?? thread.packageName}
                         </p>
+                        {thread.unreadCount > 0 && (
+                          <span className="flex items-center justify-center size-5 rounded-full bg-primary text-[10px] font-bold text-primary-foreground shadow-sm">
+                            {thread.unreadCount}
+                          </span>
+                        )}
                       </div>
                     </div>
+                  </motion.button>
+                ))}
+              </AnimatePresence>
+            </div>
+          </aside>
 
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className={cn("capitalize", getStatusTone(activeThread.status))}>
-                        {formatStatusLabel(activeThread.status)}
-                      </Badge>
-                      <Button type="button" size="icon-sm" variant="ghost" aria-label="Start call">
-                        <Phone className="size-4" />
-                      </Button>
-                      <Button type="button" size="icon-sm" variant="ghost" aria-label="Start video call">
-                        <Video className="size-4" />
-                      </Button>
-                      <Link
-                        href={`/dashboard/creator/orders/${activeThread.orderId}`}
-                        className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted"
-                      >
-                        Open order
-                        <ExternalLink className="size-3" />
-                      </Link>
+          {/* Chat Window */}
+          <main className="flex flex-1 flex-col bg-background/30">
+            {activeThread ? (
+              <>
+                <header className="flex h-[88px] items-center justify-between border-b border-border/40 px-8 py-4 backdrop-blur-md">
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Avatar className="size-12 shadow-sm">
+                        <AvatarImage src={`https://i.pravatar.cc/150?u=${activeThread.buyerName}`} />
+                        <AvatarFallback>{activeThread.buyerName[0]}</AvatarFallback>
+                      </Avatar>
+                      <span className="absolute bottom-0 right-0 size-3 rounded-full bg-green-500 border-2 border-background" />
                     </div>
-                  </header>
+                    <div>
+                      <h2 className="text-lg font-bold text-foreground leading-none">{activeThread.buyerName}</h2>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs text-muted-foreground">08 Member • 4 Online</span>
+                        <Badge variant="outline" className="text-[10px] h-4 px-1 opacity-60">
+                          {activeThread.orderId}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
 
-                  <div className="max-h-[450px] space-y-3 overflow-auto bg-muted/20 p-4">
-                    <div className="flex justify-center">
-                      <span className="rounded-full bg-background px-3 py-1 text-[11px] text-muted-foreground">
-                        Today
-                      </span>
-                    </div>
-                    {activeThread.messages.map((message) => (
+                  <div className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger 
+                        render={
+                          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted/50 transition-all">
+                            <Phone className="size-5 text-muted-foreground" />
+                          </Button>
+                        } 
+                      />
+                      <TooltipContent>Audio Call</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger 
+                        render={
+                          <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted/50 transition-all">
+                            <Video className="size-5 text-muted-foreground" />
+                          </Button>
+                        } 
+                      />
+                      <TooltipContent>Video Call</TooltipContent>
+                    </Tooltip>
+                    <Button variant="ghost" size="icon" className="rounded-full">
+                      <MoreVertical className="size-5 text-muted-foreground" />
+                    </Button>
+                  </div>
+                </header>
+
+                <div 
+                  ref={scrollRef}
+                  className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin bg-black/5 dark:bg-white/5"
+                >
+                  <div className="flex justify-center my-4">
+                    <span className="bg-background/80 backdrop-blur-sm px-4 py-1.5 rounded-full text-xs font-medium text-muted-foreground shadow-sm">
+                      Today
+                    </span>
+                  </div>
+
+                  {activeThread.messages.map((message, i) => {
+                    const isCreator = message.sender === "creator"
+                    const isSystem = message.sender === "system"
+                    
+                    if (isSystem) {
+                      return (
+                        <div key={message.id} className="flex justify-center">
+                          <div className="bg-muted/40 border border-border/40 px-6 py-2 rounded-xl text-xs text-muted-foreground italic max-w-md text-center">
+                            {message.text}
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    return (
                       <div
                         key={message.id}
                         className={cn(
-                          "max-w-[88%] rounded-2xl border px-3 py-2",
-                          message.sender === "creator"
-                            ? "ml-auto border-primary/40 bg-primary/10"
-                            : message.sender === "system"
-                              ? "mx-auto border-dashed border-border/70 bg-background text-center text-xs"
-                              : "border-border/70 bg-background"
+                          "flex group w-full",
+                          isCreator ? "justify-end" : "justify-start"
                         )}
                       >
-                        <p className="text-sm text-foreground">{message.text}</p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">{message.time}</p>
+                        <div className={cn(
+                          "flex max-w-[70%] items-end gap-3",
+                          isCreator ? "flex-reverse" : ""
+                        )}>
+                         
+                          <div className="space-y-1">
+                            {!isCreator && (
+                              <p className="text-[11px] font-semibold text-muted-foreground ml-1">
+                                {activeThread.buyerName}
+                              </p>
+                            )}
+                            <div
+                              className={cn(
+                                "relative px-4 py-3 shadow-sm",
+                                isCreator
+                                  ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-none"
+                                  : "bg-background border border-border/40 text-foreground rounded-2xl rounded-tl-none"
+                              )}
+                            >
+                              {message.text.includes(".pdf") ? (
+                                <div className="flex items-center gap-3 p-2 bg-black/10 rounded-lg cursor-pointer hover:bg-black/20 transition-colors">
+                                  <div className="size-10 flex items-center justify-center bg-red-500 rounded-md text-white">
+                                    <FileText className="size-5" />
+                                  </div>
+                                  <div className="pr-4">
+                                    <p className="text-xs font-bold leading-none">{message.text.split('\n')[0]}</p>
+                                    <p className="text-[10px] mt-1 opacity-70">20.2MB • 12th Jun 2024</p>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-sm leading-relaxed">{message.text}</p>
+                              )}
+                              <div className={cn(
+                                "flex items-center gap-1 mt-2 justify-end opacity-60",
+                                isCreator ? "text-primary-foreground/80" : "text-muted-foreground"
+                              )}>
+                                <span className="text-[10px] font-medium">{message.time}</span>
+                                {isCreator && <CheckCheck className="size-3" />}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    )
+                  })}
+                </div>
 
-                  <footer className="space-y-3 border-t border-border/70 p-4">
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setComposer("Thanks for the update. I will share the next draft by tomorrow.")
-                        }
-                      >
-                        <Sparkles className="size-3.5" />
-                        Quick reply
-                      </Button>
-                      <Button type="button" variant="outline" size="sm" onClick={markActiveThreadRead}>
-                        <CheckCheck className="size-3.5" />
-                        Mark as read
-                      </Button>
-                      {activeThread.status === "needs_response" ? (
-                        <Badge variant="secondary" className="bg-amber-500/15 text-amber-700 dark:text-amber-300">
-                          <Circle className="size-3.5 fill-current" />
-                          Buyer waiting
-                        </Badge>
-                      ) : null}
-                    </div>
-
-                    <div className="flex items-end gap-2">
-                      <Textarea
+                <footer className="p-6  bg-background/40">
+                  <div className="w-full mx-auto relative group">
+                    <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 p-2 pl-4 shadow-xl ring-offset-background group-within:ring-2 group-within:ring-primary/20 transition-all">
+                      <Input
+                        placeholder="Type message..."
+                        className="flex-1 border-none bg-transparent shadow-none focus-visible:ring-0 text-sm h-12"
                         value={composer}
-                        onChange={(event) => setComposer(event.target.value)}
-                        placeholder="Type a message..."
-                        className="min-h-12 flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault()
+                            handleSendMessage()
+                          }
+                        }}
+                        onChange={(e) => setComposer(e.target.value)}
                       />
-                      <div className="mb-1 flex items-center gap-1">
-                        <Button type="button" size="icon-sm" variant="ghost" aria-label="Attach image">
-                          <ImageIcon className="size-4" />
+                      <div className="flex items-center gap-1 shrink-0 px-2 border-l border-border/40">
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted text-muted-foreground">
+                          <Smile className="size-5" />
                         </Button>
-                        <Button type="button" size="icon-sm" variant="ghost" aria-label="Share location">
-                          <MapPin className="size-4" />
+                        <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted text-muted-foreground">
+                          <Paperclip className="size-5" />
                         </Button>
-                        <Button type="button" size="icon-sm" variant="ghost" aria-label="Record voice">
-                          <Mic className="size-4" />
-                        </Button>
-                        <Button type="button" onClick={handleSendMessage} aria-label="Send message">
-                          <Send className="size-4" />
+                        <Button 
+                          onClick={handleSendMessage}
+                          size="icon" 
+                          className="size-11 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/40 transition-all active:scale-95 ml-2"
+                        >
+                          <Send className="size-5" />
                         </Button>
                       </div>
                     </div>
-                  </footer>
-                </>
-              ) : (
-                <div className="p-6 text-sm text-muted-foreground">Select a conversation to view messages.</div>
-              )}
-            </section>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+                  </div>
+                </footer>
+              </>
+            ) : (
+              <div className="flex h-full items-center justify-center p-8 text-center">
+                <div className="space-y-4 max-w-sm">
+                  <div className="size-20 rounded-3xl bg-primary/5 flex items-center justify-center mx-auto">
+                    <MessageSquare className="size-10 text-primary/40" />
+                  </div>
+                  <h3 className="text-xl font-bold">Pick up where you left off</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Select a conversation from the sidebar to view messages and details about your active orders.
+                  </p>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    </TooltipProvider>
   )
 }

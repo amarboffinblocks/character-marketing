@@ -194,6 +194,12 @@ const detailsByOrderId: Record<string, OrderDetailsData> = {
         time: "Apr 17 · 09:08",
       },
       {
+        id: "buyer-3021-0",
+        sender: "buyer",
+        text: "terms_of_reference.pdf\n20.2MB · 12th Jun 2024",
+        time: "Apr 17 · 10:10",
+      },
+      {
         id: "buyer-3021-1",
         sender: "buyer",
         text: "Can you include one alternate hairstyle for social assets?",

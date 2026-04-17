@@ -24,7 +24,6 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
     items: [
       { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
       { title: "Services", href: "/dashboard/creator/services", icon: "services" },
-      { title: "Profile", href: "/dashboard/creator/profile", icon: "profile" },
     ],
   },
   {
@@ -37,6 +36,7 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
   {
     label: "Account",
     items: [
+      { title: "Profile", href: "/dashboard/creator/profile", icon: "profile" },
       { title: "Settings", href: "/dashboard/creator/settings", icon: "settings" },
     ],
   },
