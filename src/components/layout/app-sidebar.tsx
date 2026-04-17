@@ -79,8 +79,8 @@ export function AppSidebar({
     const pathname = usePathname()
 
     return (
-        <Sidebar collapsible="icon" variant="inset" className="bg-accent" >
-            <SidebarHeader className="bg-accent" >
+        <Sidebar collapsible="icon" variant="inset" className="bg-accent/30"   >
+            <SidebarHeader className="bg-accent/30"  >
                 <div className="flex gap-2 group-data-[collapsible=icon]:flex-col justify-between items-center">
                     <span className="inline-flex size-10 items-center justify-center rounded-xl bg-sidebar-primary/12 text-sidebar-primary ring-1 ring-sidebar-primary/20 group-data-[collapsible=icon]:ring-0  ">
                         <Sparkles className="size-4" aria-hidden />
@@ -91,7 +91,7 @@ export function AppSidebar({
 
             </SidebarHeader>
 
-            <SidebarContent className="bg-accent">
+            <SidebarContent className="bg-accent/30">
                 {groups?.map((group) => (
                     <SidebarGroup key={group.label}>
                         <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
@@ -121,31 +121,6 @@ export function AppSidebar({
                 ))}
             </SidebarContent>
 
-            <SidebarSeparator />
-
-            <SidebarFooter className="bg-accent">
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Notifications">
-                            <Bell />
-                            <span>Notifications</span>
-                        </SidebarMenuButton>
-                        <SidebarMenuBadge>3</SidebarMenuBadge>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton render={<Link href="/dashboard/creator/settings" />} tooltip="Settings">
-                            <Settings />
-                            <span>Settings</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton tooltip="Log out">
-                            <LogOut />
-                            <span>Log out</span>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-            </SidebarFooter>
         </Sidebar>
     )
 }
