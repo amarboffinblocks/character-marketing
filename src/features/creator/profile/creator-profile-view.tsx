@@ -40,13 +40,11 @@ import {
 import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
 import { cn } from "@/lib/utils"
 
-type ProfileTab = "basic" | "professional" | "portfolio" | "policies" | "links"
+type ProfileTab = "basic" | "professional" | "links"
 
 const profileTabs: SectionTabItem<ProfileTab>[] = [
   { value: "basic", label: "Basic info", icon: UserRound },
   { value: "professional", label: "Professional", icon: BadgeCheck },
-  { value: "portfolio", label: "Portfolio", icon: Images },
-  { value: "policies", label: "Policies", icon: ShieldCheck },
   { value: "links", label: "Links & visibility", icon: LinkIcon },
 ]
 
@@ -138,14 +136,6 @@ export function CreatorProfileView() {
             />
           ) : null}
 
-          {tab === "portfolio" ? (
-            <PortfolioSection form={form} updateField={updateField} />
-          ) : null}
-
-          {tab === "policies" ? (
-            <PoliciesSection form={form} updateField={updateField} onSave={saveProfile} hasUnsavedChanges={hasUnsavedChanges} />
-          ) : null}
-
           {tab === "links" ? (
             <LinksSection form={form} updateField={updateField} />
           ) : null}
@@ -169,8 +159,8 @@ function ProfileHero({
   onSave: () => void
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-border bg-card">
-      <div className="relative">
+    <section className="rounded-2xl border border-border bg-card">
+      <div className="relative overflow-hidden rounded-t-2xl">
         {form.bannerUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -198,17 +188,17 @@ function ProfileHero({
         </Button>
       </div>
 
-      <div className="-mt-12 flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end sm:gap-6 sm:px-6 sm:pb-6">
-        <div className="relative">
+      <div className="flex flex-col gap-4 px-5 pb-5 pt-2 sm:flex-row sm:items-start sm:gap-6 sm:px-6 sm:pb-6 sm:pt-3">
+        <div className="relative z-10 -mt-12 shrink-0 self-start">
           {form.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={form.avatarUrl}
               alt={form.displayName}
-              className="size-24 rounded-full border-4 border-card bg-muted object-cover shadow-md sm:size-28"
+              className="size-24 rounded-full border-4 border-card bg-muted object-cover shadow-md ring-2 ring-background sm:size-28"
             />
           ) : (
-            <span className="inline-flex size-24 items-center justify-center rounded-full border-4 border-card bg-primary/15 text-xl font-semibold text-primary shadow-md sm:size-28">
+            <span className="inline-flex size-24 items-center justify-center rounded-full border-4 border-card bg-primary/15 text-xl font-semibold text-primary shadow-md ring-2 ring-background sm:size-28">
               {initialsFromName(form.displayName)}
             </span>
           )}
@@ -217,14 +207,14 @@ function ProfileHero({
             size="icon-sm"
             variant="outline"
             aria-label="Change avatar"
-            className="absolute right-0 bottom-1 rounded-full bg-background shadow"
+            className="absolute right-1 bottom-1 rounded-full border-border bg-background shadow-sm ring-2 ring-background"
           >
             <Pencil className="size-3.5" />
           </Button>
         </div>
 
-        <div className="flex flex-1 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-          <div className="space-y-1">
+        <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+          <div className="min-w-0 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h2
                 className={cn(
@@ -245,7 +235,7 @@ function ProfileHero({
             <p className="max-w-2xl text-sm text-foreground/80">
               {fallback(form.tagline, "Add a short tagline that describes what you offer.")}
             </p>
-            <div className="flex items-center gap-2 pt-1 text-xs">
+            <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
               <Badge variant="secondary" className="bg-primary/15 text-primary">
                 {completionPercent}% complete
               </Badge>
@@ -261,7 +251,7 @@ function ProfileHero({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-0.5">
             <Button variant="outline">
               <ExternalLink className="size-4" />
               Preview public
@@ -634,195 +624,195 @@ function MetricTile({ label, value }: { label: string; value: string }) {
   )
 }
 
-function PortfolioSection({
-  form,
-  updateField,
-}: {
-  form: CreatorProfileForm
-  updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
-}) {
-  return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between border-b pb-4">
-        <div>
-          <CardTitle>Portfolio highlights</CardTitle>
-          <CardDescription>Showcase your strongest recent work.</CardDescription>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() =>
-            updateField("portfolio", [
-              ...form.portfolio,
-              {
-                id: `port-${crypto.randomUUID()}`,
-                title: "",
-                type: "character",
-                imageUrl: "",
-                summary: "",
-              },
-            ])
-          }
-        >
-          <Plus className="size-3.5" />
-          Add item
-        </Button>
-      </CardHeader>
-      <CardContent className="py-4">
-        {form.portfolio.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-            Add portfolio items to showcase your work for buyers.
-          </div>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {form.portfolio.map((item) => (
-              <PortfolioItemEditor
-                key={item.id}
-                item={item}
-                onChange={(updated) =>
-                  updateField(
-                    "portfolio",
-                    form.portfolio.map((port) => (port.id === item.id ? updated : port))
-                  )
-                }
-                onRemove={() =>
-                  updateField(
-                    "portfolio",
-                    form.portfolio.filter((port) => port.id !== item.id)
-                  )
-                }
-              />
-            ))}
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-}
+// function PortfolioSection({
+//   form,
+//   updateField,
+// }: {
+//   form: CreatorProfileForm
+//   updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
+// }) {
+//   return (
+//     <Card>
+//       <CardHeader className="flex-row items-start justify-between border-b pb-4">
+//         <div>
+//           <CardTitle>Portfolio highlights</CardTitle>
+//           <CardDescription>Showcase your strongest recent work.</CardDescription>
+//         </div>
+//         <Button
+//           variant="outline"
+//           size="sm"
+//           onClick={() =>
+//             updateField("portfolio", [
+//               ...form.portfolio,
+//               {
+//                 id: `port-${crypto.randomUUID()}`,
+//                 title: "",
+//                 type: "character",
+//                 imageUrl: "",
+//                 summary: "",
+//               },
+//             ])
+//           }
+//         >
+//           <Plus className="size-3.5" />
+//           Add item
+//         </Button>
+//       </CardHeader>
+//       <CardContent className="py-4">
+//         {form.portfolio.length === 0 ? (
+//           <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+//             Add portfolio items to showcase your work for buyers.
+//           </div>
+//         ) : (
+//           <div className="grid gap-3 md:grid-cols-2">
+//             {form.portfolio.map((item) => (
+//               <PortfolioItemEditor
+//                 key={item.id}
+//                 item={item}
+//                 onChange={(updated) =>
+//                   updateField(
+//                     "portfolio",
+//                     form.portfolio.map((port) => (port.id === item.id ? updated : port))
+//                   )
+//                 }
+//                 onRemove={() =>
+//                   updateField(
+//                     "portfolio",
+//                     form.portfolio.filter((port) => port.id !== item.id)
+//                   )
+//                 }
+//               />
+//             ))}
+//           </div>
+//         )}
+//       </CardContent>
+//     </Card>
+//   )
+// }
 
-function PortfolioItemEditor({
-  item,
-  onChange,
-  onRemove,
-}: {
-  item: PortfolioItem
-  onChange: (updated: PortfolioItem) => void
-  onRemove: () => void
-}) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
-      <div className="relative aspect-video bg-muted">
-        {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageUrl} alt={item.title || "Portfolio item"} className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-            <ImageLucide className="mr-1.5 size-4" />
-            Preview image
-          </div>
-        )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          onClick={onRemove}
-          aria-label="Remove portfolio item"
-          className="absolute top-2 right-2 bg-background/80 hover:bg-background"
-        >
-          <Trash2 className="size-3.5" />
-        </Button>
-      </div>
-      <div className="space-y-2 p-3">
-        <Input
-          value={item.title}
-          onChange={(event) => onChange({ ...item, title: event.target.value })}
-          placeholder="Portfolio title"
-        />
-        <div className="grid grid-cols-2 gap-2">
-          <Select
-            value={item.type}
-            onValueChange={(value) => onChange({ ...item, type: value as PortfolioType })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="character">Character</SelectItem>
-              <SelectItem value="persona">Persona</SelectItem>
-              <SelectItem value="lorebook">Lorebook</SelectItem>
-              <SelectItem value="avatar">Avatar</SelectItem>
-              <SelectItem value="background">Background</SelectItem>
-            </SelectContent>
-          </Select>
-          <Input
-            value={item.imageUrl}
-            onChange={(event) => onChange({ ...item, imageUrl: event.target.value })}
-            placeholder="Image URL"
-          />
-        </div>
-        <Textarea
-          value={item.summary}
-          onChange={(event) => onChange({ ...item, summary: event.target.value })}
-          placeholder="Short portfolio context"
-          className="min-h-16"
-        />
-      </div>
-    </div>
-  )
-}
+// function PortfolioItemEditor({
+//   item,
+//   onChange,
+//   onRemove,
+// }: {
+//   item: PortfolioItem
+//   onChange: (updated: PortfolioItem) => void
+//   onRemove: () => void
+// }) {
+//   return (
+//     <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
+//       <div className="relative aspect-video bg-muted">
+//         {item.imageUrl ? (
+//           // eslint-disable-next-line @next/next/no-img-element
+//           <img src={item.imageUrl} alt={item.title || "Portfolio item"} className="h-full w-full object-cover" />
+//         ) : (
+//           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+//             <ImageLucide className="mr-1.5 size-4" />
+//             Preview image
+//           </div>
+//         )}
+//         <Button
+//           type="button"
+//           variant="ghost"
+//           size="icon-sm"
+//           onClick={onRemove}
+//           aria-label="Remove portfolio item"
+//           className="absolute top-2 right-2 bg-background/80 hover:bg-background"
+//         >
+//           <Trash2 className="size-3.5" />
+//         </Button>
+//       </div>
+//       <div className="space-y-2 p-3">
+//         <Input
+//           value={item.title}
+//           onChange={(event) => onChange({ ...item, title: event.target.value })}
+//           placeholder="Portfolio title"
+//         />
+//         <div className="grid grid-cols-2 gap-2">
+//           <Select
+//             value={item.type}
+//             onValueChange={(value) => onChange({ ...item, type: value as PortfolioType })}
+//           >
+//             <SelectTrigger>
+//               <SelectValue />
+//             </SelectTrigger>
+//             <SelectContent>
+//               <SelectItem value="character">Character</SelectItem>
+//               <SelectItem value="persona">Persona</SelectItem>
+//               <SelectItem value="lorebook">Lorebook</SelectItem>
+//               <SelectItem value="avatar">Avatar</SelectItem>
+//               <SelectItem value="background">Background</SelectItem>
+//             </SelectContent>
+//           </Select>
+//           <Input
+//             value={item.imageUrl}
+//             onChange={(event) => onChange({ ...item, imageUrl: event.target.value })}
+//             placeholder="Image URL"
+//           />
+//         </div>
+//         <Textarea
+//           value={item.summary}
+//           onChange={(event) => onChange({ ...item, summary: event.target.value })}
+//           placeholder="Short portfolio context"
+//           className="min-h-16"
+//         />
+//       </div>
+//     </div>
+//   )
+// }
 
-function PoliciesSection({
-  form,
-  updateField,
-  onSave,
-  hasUnsavedChanges,
-}: {
-  form: CreatorProfileForm
-  updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
-  onSave: () => void
-  hasUnsavedChanges: boolean
-}) {
-  return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <CardTitle>Buyer policies</CardTitle>
-        <CardDescription>Clear expectations reduce friction and revision churn.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4 py-4">
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Buyer requirements</label>
-          <Textarea
-            value={form.buyerRequirements}
-            onChange={(event) => updateField("buyerRequirements", event.target.value)}
-            className="min-h-24"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Revision policy</label>
-          <Textarea
-            value={form.revisionPolicy}
-            onChange={(event) => updateField("revisionPolicy", event.target.value)}
-            className="min-h-24"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Refund policy</label>
-          <Textarea
-            value={form.refundPolicy}
-            onChange={(event) => updateField("refundPolicy", event.target.value)}
-            className="min-h-24"
-          />
-        </div>
-      </CardContent>
-      <CardContent className="flex items-center justify-end border-t py-3">
-        <Button onClick={onSave} disabled={!hasUnsavedChanges}>
-          <FileText className="size-4" />
-          Save policies
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}
+// function PoliciesSection({
+//   form,
+//   updateField,
+//   onSave,
+//   hasUnsavedChanges,
+// }: {
+//   form: CreatorProfileForm
+//   updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
+//   onSave: () => void
+//   hasUnsavedChanges: boolean
+// }) {
+//   return (
+//     <Card>
+//       <CardHeader className="border-b pb-4">
+//         <CardTitle>Buyer policies</CardTitle>
+//         <CardDescription>Clear expectations reduce friction and revision churn.</CardDescription>
+//       </CardHeader>
+//       <CardContent className="grid gap-4 py-4">
+//         <div className="space-y-1.5">
+//           <label className="text-xs font-medium text-muted-foreground">Buyer requirements</label>
+//           <Textarea
+//             value={form.buyerRequirements}
+//             onChange={(event) => updateField("buyerRequirements", event.target.value)}
+//             className="min-h-24"
+//           />
+//         </div>
+//         <div className="space-y-1.5">
+//           <label className="text-xs font-medium text-muted-foreground">Revision policy</label>
+//           <Textarea
+//             value={form.revisionPolicy}
+//             onChange={(event) => updateField("revisionPolicy", event.target.value)}
+//             className="min-h-24"
+//           />
+//         </div>
+//         <div className="space-y-1.5">
+//           <label className="text-xs font-medium text-muted-foreground">Refund policy</label>
+//           <Textarea
+//             value={form.refundPolicy}
+//             onChange={(event) => updateField("refundPolicy", event.target.value)}
+//             className="min-h-24"
+//           />
+//         </div>
+//       </CardContent>
+//       <CardContent className="flex items-center justify-end border-t py-3">
+//         <Button onClick={onSave} disabled={!hasUnsavedChanges}>
+//           <FileText className="size-4" />
+//           Save policies
+//         </Button>
+//       </CardContent>
+//     </Card>
+//   )
+// }
 
 function LinksSection({
   form,

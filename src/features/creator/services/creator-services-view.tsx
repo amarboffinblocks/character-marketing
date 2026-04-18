@@ -187,26 +187,31 @@ function ServiceCard({ service }: { service: ServicePackage }) {
 
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-4 border-b pb-4">
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="outline">{service.category}</Badge>
-            <Badge variant="secondary" className={cn("capitalize", statusClass[service.status])}>
-              {statusLabel[service.status]}
-            </Badge>
-          </div>
-          <CardTitle className="text-lg">{service.name}</CardTitle>
-          <CardDescription>{service.description}</CardDescription>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="hidden text-right sm:block">
-            <p className="text-xs text-muted-foreground">Starting from</p>
-            <p className="text-lg font-semibold text-foreground">{formatCurrency(startingPrice)}</p>
+      <CardHeader className="border-b pb-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline">{service.category}</Badge>
+              <Badge variant="secondary" className={cn("capitalize", statusClass[service.status])}>
+                {statusLabel[service.status]}
+              </Badge>
+            </div>
+            <CardTitle className="text-lg">{service.name}</CardTitle>
+            <CardDescription>{service.description}</CardDescription>
+            <div className="pt-1">
+              <p className="text-xs text-muted-foreground">Starting from</p>
+              <p className="text-lg font-semibold text-foreground">{formatCurrency(startingPrice)}</p>
+            </div>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="outline" size="icon-sm" aria-label="Service actions">
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label="Service actions"
+                  className="shrink-0"
+                >
                   <MoreHorizontal className="size-4" />
                 </Button>
               }

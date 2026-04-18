@@ -164,7 +164,10 @@ export function CreatorSettingsView() {
                 <Select
                   value={accountForm.language}
                   onValueChange={(value) =>
-                    setAccountForm((current) => ({ ...current, language: value }))
+                    setAccountForm((current) => ({
+                      ...current,
+                      language: value ?? "",
+                    }))
                   }
                 >
                   <SelectTrigger>

@@ -12,23 +12,31 @@ export function DashboardStatsGrid({ stats }: DashboardStatsGridProps) {
       {stats.map((stat) => {
         const Icon = stat.icon
         return (
-          <Card key={stat.label} size="sm" className="ring-border/70">
-            <CardHeader className="flex-row items-center justify-between pb-0">
-              <CardDescription className="text-xs">{stat.label}</CardDescription>
-              <span
-                className="inline-flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary"
-                aria-hidden
-              >
-                <Icon className="size-3.5" />
-              </span>
+          <Card
+            key={stat.label}
+            size="sm"
+            className="ring-border/70 bg-linear-to-br from-primary/8 via-primary/5 to-card"
+          >
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-2">
+                  <CardDescription className="text-xs">{stat.label}</CardDescription>
+                  <span className="text-3xl font-semibold tracking-tight text-foreground">
+                    {stat.value}
+                  </span>
+                </div>
+                <span
+                  className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20"
+                  aria-hidden
+                >
+                  <Icon className="size-6" />
+                </span>
+              </div>
             </CardHeader>
-            <CardContent className="flex flex-col gap-1">
-              <span className="text-2xl font-semibold tracking-tight text-foreground">
-                {stat.value}
-              </span>
+            <CardContent className="pt-0">
               <span
                 className={cn(
-                  "text-xs",
+                  "text-sm",
                   stat.trend === "up"
                     ? "text-emerald-600 dark:text-emerald-400"
                     : stat.trend === "down"

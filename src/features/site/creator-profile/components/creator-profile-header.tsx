@@ -9,13 +9,12 @@ import type { CreatorProfile } from "@/features/site/creator-profile/types"
 type CreatorProfileHeaderProps = {
   profile: CreatorProfile
   profilePath: string
-  mailtoHref: string
 }
 
 /**
  * Cover image, overlapping square avatar, identity block, and primary actions.
  */
-export function CreatorProfileHeader({ profile, profilePath, mailtoHref }: CreatorProfileHeaderProps) {
+export function CreatorProfileHeader({ profile, profilePath }: CreatorProfileHeaderProps) {
   const coverAlt = `Cover image for ${profile.name}`
 
   return (
@@ -64,9 +63,11 @@ export function CreatorProfileHeader({ profile, profilePath, mailtoHref }: Creat
           </div>
 
           <CreatorProfileToolbar
+            creatorId={profile.id}
             creatorName={profile.name}
+            creatorHandle={profile.handle}
+            creatorAvatar={profile.avatar}
             profilePath={profilePath}
-            mailtoHref={mailtoHref}
             className="w-full sm:w-auto"
           />
         </div>

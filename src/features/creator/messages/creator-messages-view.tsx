@@ -127,7 +127,7 @@ export function CreatorMessagesView() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-semibold text-foreground truncate">{thread.buyerName}</span>
+                        <span className="font-semibold text-foreground/70 truncate">{thread.buyerName}</span>
                         <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                           {thread.lastMessageAt}
                         </span>
@@ -166,7 +166,7 @@ export function CreatorMessagesView() {
                       <span className="absolute bottom-0 right-0 size-3 rounded-full bg-green-500 border-2 border-background" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold text-foreground leading-none">{activeThread.buyerName}</h2>
+                      <h2 className="text-lg font-bold text-foreground/80 leading-none">{activeThread.buyerName}</h2>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs text-muted-foreground">08 Member • 4 Online</span>
                         <Badge variant="outline" className="text-[10px] h-4 px-1 opacity-60">
@@ -283,8 +283,8 @@ export function CreatorMessagesView() {
                 </div>
 
                 <footer className="p-6  bg-background/40">
-                  <div className="w-full mx-auto relative group">
-                    <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 p-2 pl-4 shadow-xl ring-offset-background group-within:ring-2 group-within:ring-primary/20 transition-all">
+                  <div className="w-full mx-auto  relative group">
+                    <div className="flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 p-2 pl-4  ring-offset-background group-within:ring-2 group-within:ring-primary/20 transition-all">
                       <Input
                         placeholder="Type message..."
                         className="flex-1 border-none bg-transparent shadow-none focus-visible:ring-0 text-sm h-12"
@@ -307,7 +307,7 @@ export function CreatorMessagesView() {
                         <Button 
                           onClick={handleSendMessage}
                           size="icon" 
-                          className="size-11 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 hover:shadow-primary/40 transition-all active:scale-95 ml-2"
+                          className="size-11 rounded-xl bg-primary text-primary-foreground  transition-all active:scale-95 ml-2"
                         >
                           <Send className="size-5" />
                         </Button>

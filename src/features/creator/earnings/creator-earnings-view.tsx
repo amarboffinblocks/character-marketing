@@ -82,14 +82,16 @@ export function CreatorEarningsView() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
+      <section className="rounded-2xl border border-primary/20 bg-linear-to-br from-primary/12 via-primary/5 to-background p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4">
             <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
               <Wallet className="size-5" />
             </span>
             <div className="space-y-1.5">
-              <Badge variant="secondary" className="w-fit">Finance</Badge>
+              <Badge variant="secondary" className="w-fit border border-primary/20 bg-primary/10 text-primary">
+                Finance
+              </Badge>
               <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
                 Earnings
               </h2>
@@ -100,7 +102,7 @@ export function CreatorEarningsView() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={rangeFilter} onValueChange={(value) => setRangeFilter(value as typeof rangeFilter)}>
-              <SelectTrigger className="h-9 w-36">
+              <SelectTrigger className="h-9 w-36 border-primary/25 bg-background/80">
                 <SelectValue placeholder="Range" />
               </SelectTrigger>
               <SelectContent>
@@ -109,7 +111,7 @@ export function CreatorEarningsView() {
                 <SelectItem value="12m">Last 12 months</SelectItem>
               </SelectContent>
             </Select>
-            <Button variant="outline" className="h-9">
+            <Button variant="outline" className="h-9 border-primary/25 bg-background/80 hover:bg-primary/10">
               <Download className="size-4" />
               Export CSV
             </Button>
@@ -118,44 +120,34 @@ export function CreatorEarningsView() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Net earnings</CardDescription>
-            <CardTitle className="text-2xl">{formatUsd(totals.net)}</CardTitle>
-          </CardHeader>
-          <CardContent className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
-            <ArrowUpRight className="size-3.5" />
-            +18% vs last period
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Pending payout</CardDescription>
-            <CardTitle className="text-2xl">{formatUsd(totals.pending)}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Clears typically in 3-5 business days
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Paid out</CardDescription>
-            <CardTitle className="text-2xl">{formatUsd(totals.paid)}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Withdrawn to connected account
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Avg order value</CardDescription>
-            <CardTitle className="text-2xl">{formatUsd(totals.averageOrder)}</CardTitle>
-          </CardHeader>
-          <CardContent className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
-            <TrendingUp className="size-3.5" />
-            Trending up
-          </CardContent>
-        </Card>
+        <MetricCard
+          label="Net earnings"
+          value={formatUsd(totals.net)}
+          hint="+18% vs last period"
+          hintTone="positive"
+          icon={<BanknoteArrowUp className="size-6" />}
+          emphasis
+        />
+        <MetricCard
+          label="Pending payout"
+          value={formatUsd(totals.pending)}
+          hint="Clears typically in 3-5 business days"
+          icon={<Wallet className="size-6" />}
+        />
+        <MetricCard
+          label="Paid out"
+          value={formatUsd(totals.paid)}
+          hint="Withdrawn to connected account"
+          icon={<ArrowUpRight className="size-6" />}
+        />
+        <MetricCard
+          label="Avg order value"
+          value={formatUsd(totals.averageOrder)}
+          hint="Trending up"
+          hintTone="positive"
+          icon={<TrendingUp className="size-6" />}
+          emphasis
+        />
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
@@ -163,7 +155,7 @@ export function CreatorEarningsView() {
         <PayoutSummaryCard totals={totals} />
       </section>
 
-      <section className="rounded-2xl border border-border bg-card p-3 sm:p-4">
+      <section className="rounded-2xl border border-primary/20 bg-card/80 p-3 shadow-sm sm:p-4">
         <div className="grid gap-3 md:grid-cols-[1.6fr_1fr]">
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -171,11 +163,11 @@ export function CreatorEarningsView() {
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by order ID, buyer, or package"
-              className="pl-8"
+              className="border-primary/20 bg-background/80 pl-8"
             />
           </div>
           <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-            <SelectTrigger>
+            <SelectTrigger className="border-primary/20 bg-background/80">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -190,7 +182,7 @@ export function CreatorEarningsView() {
       </section>
 
       <Card>
-        <CardHeader className="border-b pb-4">
+        <CardHeader className="border-b border-primary/15 pb-4">
           <CardTitle>Transaction history</CardTitle>
           <CardDescription>Detailed breakdown of each order-level payout.</CardDescription>
         </CardHeader>
@@ -198,7 +190,7 @@ export function CreatorEarningsView() {
           <div className="hidden md:block">
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableRow className="bg-primary/5 hover:bg-primary/5">
                   <TableHead>Order</TableHead>
                   <TableHead>Buyer</TableHead>
                   <TableHead>Package</TableHead>
@@ -271,6 +263,54 @@ export function CreatorEarningsView() {
   )
 }
 
+function MetricCard({
+  label,
+  value,
+  hint,
+  icon,
+  emphasis = false,
+  hintTone = "muted",
+}: {
+  label: string
+  value: string
+  hint: string
+  icon: React.ReactNode
+  emphasis?: boolean
+  hintTone?: "muted" | "positive"
+}) {
+  return (
+    <Card
+      size="sm"
+      className={cn(
+        "border-border/80 bg-card/80",
+        emphasis && "border-primary/20 bg-linear-to-br from-primary/10 via-primary/5 to-card"
+      )}
+    >
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1.5">
+            <CardDescription>{label}</CardDescription>
+            <CardTitle className="text-3xl">{value}</CardTitle>
+          </div>
+          <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+            {icon}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent
+        className={cn(
+          "pt-0 text-sm",
+          hintTone === "positive"
+            ? "inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-300"
+            : "text-muted-foreground"
+        )}
+      >
+        {hint}
+      </CardContent>
+    </Card>
+  )
+}
+
 function EarningsAreaChart({
   series,
   total,
@@ -306,13 +346,13 @@ function EarningsAreaChart({
       : ""
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-start justify-between border-b pb-4">
+    <Card className="border-primary/20 bg-linear-to-b from-primary/5 to-card">
+      <CardHeader className="flex-row items-start justify-between border-b border-primary/15 pb-4">
         <div className="space-y-1">
           <CardTitle>Revenue trend</CardTitle>
           <CardDescription>{label} · net earnings</CardDescription>
         </div>
-        <div className="text-right">
+        <div className="text-left">
           <p className="text-2xl font-semibold tracking-tight text-foreground">{formatUsd(total)}</p>
           <p className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
             <ArrowUpRight className="size-3.5" />
@@ -330,8 +370,8 @@ function EarningsAreaChart({
         >
           <defs>
             <linearGradient id="earningsAreaGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="currentColor" stopOpacity="0.3" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
             </linearGradient>
           </defs>
           <g className="text-primary">
@@ -357,7 +397,7 @@ function PayoutSummaryCard({
   totals: { gross: number; fees: number; net: number; pending: number; paid: number }
 }) {
   return (
-    <Card>
+    <Card className="border-primary/15 bg-card/90">
       <CardHeader>
         <CardTitle>Payout breakdown</CardTitle>
         <CardDescription>Gross revenue to net payout summary.</CardDescription>

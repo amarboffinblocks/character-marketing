@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { Mail, ShieldCheck } from "lucide-react"
 
+import Logo from "@/components/icons/logo"
 import { Container } from "@/components/shared"
 
 const platformLinks = [
@@ -24,9 +25,12 @@ export function Footer() {
       <Container paddingY="md" size="xl" className="!pb-6">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.2fr_0.8fr_0.8fr]">
           <div className="max-w-md">
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary-foreground">
-              Character Market
-            </p>
+            <div className="flex items-center gap-3">
+              <Logo className="h-10 w-auto shrink-0" />
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-primary-foreground">
+                Character Market
+              </p>
+            </div>
             <p className="mt-3 text-sm leading-relaxed text-gray-400 sm:text-base">
               Commission premium AI character cards, personas, and worldbuilding assets
               from verified creators in one trusted marketplace.

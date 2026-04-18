@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+    BarChart3,
     BriefcaseBusiness,
     FolderKanban,
     LayoutDashboard,
@@ -11,9 +12,12 @@ import {
     Settings,
     Sparkles,
     Star,
+    Store,
+    Users,
     Wallet,
 } from "lucide-react"
 
+import Logo from "@/components/icons/logo"
 import {
     Sidebar,
     SidebarContent,
@@ -45,6 +49,8 @@ type AppSidebarProps = {
     groups?: AppSidebarGroup[]
     workspaceName?: string
     workspaceSubtitle?: string
+    /** Home link for the logo / title (e.g. creator vs admin dashboard). */
+    brandHref?: string
     /** Route used for the "help & support" link in the footer. */
     supportHref?: string
 }
@@ -58,6 +64,9 @@ const sidebarIcons = {
     reviews: Star,
     earnings: Wallet,
     settings: Settings,
+    users: Users,
+    store: Store,
+    chart: BarChart3,
 } as const
 
 export type AppSidebarIconName = keyof typeof sidebarIcons
@@ -83,6 +92,7 @@ export function AppSidebar({
     groups,
     workspaceName = "Character Market",
     workspaceSubtitle = "Creator Studio",
+    brandHref = "/dashboard/creator",
     supportHref = "/support",
 }: AppSidebarProps) {
     const pathname = usePathname() ?? ""
@@ -93,14 +103,14 @@ export function AppSidebar({
                 <div className="flex  group-data-[collapsible=icon]:flex-col justify-between items-center">
 
                     <Link
-                        href="/dashboard/creator"
+                        href={brandHref}
                         className="group/brand flex items-center gap-2 rounded-md p-1 outline-none transition-colors  focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                     >
                         <span
-                            className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm ring-1 ring-sidebar-primary/30"
+                            className="inline-flex h-8 w-auto shrink-0 items-center overflow-hidden rounded-lg"
                             aria-hidden
                         >
-                            <Sparkles className="size-4" />
+                            <Logo className="h-8 w-auto" />
                         </span>
                         <div className="flex min-w-0 flex-1 flex-col leading-tight group-data-[collapsible=icon]:hidden">
                             <span className="truncate text-sm font-semibold text-sidebar-foreground">

@@ -9,6 +9,7 @@ export type WorkspaceHealthItem = {
   count: number
   href: string
   icon: "characters" | "personas" | "lorebooks" | "avatars" | "backgrounds"
+  imageUrl?: string
 }
 
 const icons = {
@@ -44,6 +45,16 @@ export function WorkspaceHealthCard({ items }: WorkspaceHealthCardProps) {
                 "group rounded-xl border border-border/70 bg-card p-3 transition-colors hover:bg-accent/30"
               )}
             >
+              {item.imageUrl ? (
+                <div className="mb-3 overflow-hidden rounded-lg border border-border/70">
+                  <img
+                    src={item.imageUrl}
+                    alt={`${item.label} preview`}
+                    className="h-20 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                </div>
+              ) : null}
               <div className="mb-2 flex items-center gap-2">
                 <Icon className="size-4 text-muted-foreground" />
                 <p className="text-sm font-medium text-foreground">{item.label}</p>

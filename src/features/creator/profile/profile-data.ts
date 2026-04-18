@@ -43,28 +43,67 @@ export type CreatorProfileForm = {
 }
 
 export const defaultProfileForm: CreatorProfileForm = {
-  displayName: "",
-  handle: "",
-  tagline: "",
-  avatarUrl: "",
-  bannerUrl: "",
-  shortBio: "",
-  longBio: "",
-  timezone: "",
-  responseTime: "",
-  languages: [],
-  skills: [],
-  niche: "",
-  contentPreference: "SFW",
+  displayName: "Rhea Voss",
+  handle: "@rheawrites",
+  tagline: "Cinematic character packs, emotionally rich personas, and lore-ready worldbuilding.",
+  avatarUrl:
+    "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=800&q=80",
+  bannerUrl:
+    "https://images.unsplash.com/photo-1516387938699-a93567ec168e?auto=format&fit=crop&w=1600&q=80",
+  shortBio:
+    "I build premium roleplay assets for fantasy, cyberpunk, and modern drama creators with a focus on consistency and depth.",
+  longBio:
+    "Hi, I am Rhea. Over the last 4 years I have helped writers, streamers, and indie teams ship memorable character experiences. My process combines narrative structure, emotional arcs, and modular asset design so every package can scale from one-off commissions to long-running universes.",
+  timezone: "GMT+5:30 (IST)",
+  responseTime: "Typically within 2-4 hours",
+  languages: ["English", "Hindi", "Japanese (basic)"],
+  skills: ["Character Design", "Dialogue Writing", "Lore Structuring", "Prompt Engineering"],
+  niche: "Fantasy, Visual Novel, RP Servers, AI Character Marketplaces",
+  contentPreference: "Both",
   profileVisibility: "public",
-  responseRate: 0,
-  onTimeDelivery: 0,
-  repeatBuyerRate: 0,
-  socialLinks: [],
-  portfolio: [],
-  buyerRequirements: "",
-  revisionPolicy: "",
-  refundPolicy: "",
+  responseRate: 98,
+  onTimeDelivery: 96,
+  repeatBuyerRate: 41,
+  socialLinks: [
+    { id: "social-1", platform: "X / Twitter", url: "https://x.com/rheawrites" },
+    { id: "social-2", platform: "Discord", url: "https://discord.gg/rheastudio" },
+    { id: "social-3", platform: "ArtStation", url: "https://www.artstation.com/rheavoss" },
+  ],
+  portfolio: [
+    {
+      id: "port-1",
+      title: "Astra Kade - Neon Bounty Hunter",
+      type: "character",
+      imageUrl:
+        "https://images.unsplash.com/photo-1534447677768-be436bb09401?auto=format&fit=crop&w=1200&q=80",
+      summary:
+        "High-retention cyberpunk character pack with layered personality traits, mission hooks, and dialogue presets.",
+    },
+    {
+      id: "port-2",
+      title: "Veloria Court - Political Lorebook",
+      type: "lorebook",
+      imageUrl:
+        "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=1200&q=80",
+      summary:
+        "A faction-rich world bible with timeline anchors, relationship matrices, and continuity-safe canon snippets.",
+    },
+    {
+      id: "port-3",
+      title: "Noir Hostess Persona",
+      type: "persona",
+      imageUrl:
+        "https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1200&q=80",
+      summary:
+        "Multi-tone conversational persona tuned for romance RP and slow-burn narrative pacing.",
+    },
+  ],
+  buyerRequirements:
+    "Please share your target genre, audience age rating, preferred tone, and 2-3 reference examples before kickoff.",
+  revisionPolicy:
+    "Two revision rounds are included for scope-safe edits. Structural rewrites or new requirements are handled as add-ons.",
+  refundPolicy:
+    "Refunds are available before first draft delivery. After draft submission, partial refunds may be issued based on completed work.",
 }
 
 export function computeCompletion(form: CreatorProfileForm) {

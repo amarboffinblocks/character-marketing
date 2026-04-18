@@ -62,16 +62,13 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
  */
 export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
   const profilePath = `/creators/${profile.id}`
-  const mailtoHref = `mailto:support@character.market?subject=${encodeURIComponent(
-    `Commission request for ${profile.name}`
-  )}`
   const preselectPackage = profile.packages[0]
   const customPackages = profile.packages.slice(1)
   const displayedCustomPackages = getCustomPackages(profile.packages)
 
   return (
     <main className="bg-linear-to-b from-background via-background to-muted/15">
-      <CreatorProfileHeader profile={profile} profilePath={profilePath} mailtoHref={mailtoHref} />
+      <CreatorProfileHeader profile={profile} profilePath={profilePath} />
 
       <Container size="xl" className="mt-4 pb-10">
         <CreatorProfileStatBar profile={profile} />

@@ -41,7 +41,7 @@ export function AssetGrowthChart({ series, totalAdded, period }: AssetGrowthChar
           <CardTitle>Asset Growth</CardTitle>
           <CardDescription>Newly added assets across your workspace.</CardDescription>
         </div>
-        <div className="text-right">
+        <div className="text-left">
           <p className="text-2xl font-semibold tracking-tight text-foreground">+{totalAdded}</p>
           <p className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
             <TrendingUp className="size-3.5" />
@@ -59,8 +59,8 @@ export function AssetGrowthChart({ series, totalAdded, period }: AssetGrowthChar
         >
           <defs>
             <linearGradient id="workspaceGrowthGradient" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="currentColor" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.4" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
             </linearGradient>
           </defs>
           <g className="text-primary">

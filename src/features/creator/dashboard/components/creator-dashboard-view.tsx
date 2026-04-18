@@ -114,30 +114,35 @@ function buildWorkspaceHealth(): WorkspaceHealthItem[] {
       count: creatorCharacters.length,
       href: "/dashboard/creator/workspace/characters",
       icon: "characters",
+      imageUrl: "https://picsum.photos/seed/character-card/480/240",
     },
     {
       label: "Personas",
       count: creatorPersonas.length,
       href: "/dashboard/creator/workspace/personas",
       icon: "personas",
+      imageUrl: "https://picsum.photos/seed/persona-card/480/240",
     },
     {
       label: "Lorebooks",
       count: creatorLorebooks.length,
       href: "/dashboard/creator/workspace/lorebooks",
       icon: "lorebooks",
+      imageUrl: "https://picsum.photos/seed/lorebook-card/480/240",
     },
     {
       label: "Avatars",
       count: creatorAvatars.length,
       href: "/dashboard/creator/workspace/avatars",
       icon: "avatars",
+      imageUrl: "https://picsum.photos/seed/avatar-card/480/240",
     },
     {
       label: "Backgrounds",
       count: creatorBackgrounds.length,
       href: "/dashboard/creator/workspace/backgrounds",
       icon: "backgrounds",
+      imageUrl: "https://picsum.photos/seed/background-card/480/240",
     },
   ]
 }

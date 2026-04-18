@@ -33,22 +33,24 @@ export function WorkspaceKpiGrid({ items }: WorkspaceKpiGridProps) {
           <Link key={item.label} href={item.href} className="group">
             <Card
               size="sm"
-              className="relative overflow-hidden bg-linear-to-br from-primary/5 via-accent/20 to-background transition-all hover:-translate-y-0.5 hover:shadow-md"
+              className="relative overflow-hidden bg-linear-to-br from-primary/8 via-primary/5 to-background transition-all hover:-translate-y-0.5 hover:shadow-md"
             >
-              <CardHeader className="flex-row items-start justify-between pb-0">
-                <div className="space-y-1">
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="space-y-1.5">
                   <CardDescription className="text-[11px] uppercase tracking-wide">
                     {item.label}
                   </CardDescription>
-                  <CardTitle className="text-2xl leading-none font-semibold tracking-tight text-foreground">
+                  <CardTitle className="text-3xl leading-none font-semibold tracking-tight text-foreground">
                     {item.value}
                   </CardTitle>
+                  </div>
+                  <span className="inline-flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
+                    <Icon className="size-6" />
+                  </span>
                 </div>
-                <span className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
-                  <Icon className="size-4" />
-                </span>
               </CardHeader>
-              <CardContent className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CardContent className="flex items-center gap-1.5 pt-0 text-sm text-muted-foreground">
                 <span>{item.hint}</span>
                 <ArrowUpRight className="size-3 transition-transform group-hover:translate-x-0.5" />
               </CardContent>
