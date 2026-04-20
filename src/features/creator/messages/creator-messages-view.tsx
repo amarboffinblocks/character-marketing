@@ -177,7 +177,7 @@ export function CreatorMessagesView() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Tooltip>
+                    {/* <Tooltip>
                       <TooltipTrigger 
                         render={
                           <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted/50 transition-all">
@@ -186,8 +186,8 @@ export function CreatorMessagesView() {
                         } 
                       />
                       <TooltipContent>Audio Call</TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
+                    </Tooltip> */}
+                    {/* <Tooltip>
                       <TooltipTrigger 
                         render={
                           <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted/50 transition-all">
@@ -196,14 +196,14 @@ export function CreatorMessagesView() {
                         } 
                       />
                       <TooltipContent>Video Call</TooltipContent>
-                    </Tooltip>
+                    </Tooltip> */}
                     <Button variant="ghost" size="icon" className="rounded-full">
                       <MoreVertical className="size-5 text-muted-foreground" />
                     </Button>
                   </div>
                 </header>
 
-                <div 
+                <div
                   ref={scrollRef}
                   className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-thin bg-black/5 dark:bg-white/5"
                 >
@@ -216,7 +216,7 @@ export function CreatorMessagesView() {
                   {activeThread.messages.map((message, i) => {
                     const isCreator = message.sender === "creator"
                     const isSystem = message.sender === "system"
-                    
+
                     if (isSystem) {
                       return (
                         <div key={message.id} className="flex justify-center">
@@ -239,7 +239,7 @@ export function CreatorMessagesView() {
                           "flex max-w-[70%] items-end gap-3",
                           isCreator ? "flex-reverse" : ""
                         )}>
-                         
+
                           <div className="space-y-1">
                             {!isCreator && (
                               <p className="text-[11px] font-semibold text-muted-foreground ml-1">
@@ -304,9 +304,9 @@ export function CreatorMessagesView() {
                         <Button variant="ghost" size="icon" className="rounded-full hover:bg-muted text-muted-foreground">
                           <Paperclip className="size-5" />
                         </Button>
-                        <Button 
+                        <Button
                           onClick={handleSendMessage}
-                          size="icon" 
+                          size="icon"
                           className="size-11 rounded-xl bg-primary text-primary-foreground  transition-all active:scale-95 ml-2"
                         >
                           <Send className="size-5" />

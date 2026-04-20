@@ -29,9 +29,9 @@ export function AssetGrowthChart({ series, totalAdded, period }: AssetGrowthChar
   const areaPath =
     points.length > 0
       ? `M ${points[0].x},${height - paddingY} L ${polyPoints
-          .split(" ")
-          .map((p) => p.replace(",", " "))
-          .join(" L ")} L ${points[points.length - 1].x},${height - paddingY} Z`
+        .split(" ")
+        .map((p) => p.replace(",", " "))
+        .join(" L ")} L ${points[points.length - 1].x},${height - paddingY} Z`
       : ""
 
   return (
