@@ -49,7 +49,7 @@ const globalBids: GlobalBid[] = [
     hours: "20-30 interactions/week",
     description:
       "Kael Draven is a sharp-minded fixer operating in a neon-lit cyberpunk city. He helps users navigate high-stakes decisions, underground deals, and strategic planning through immersive roleplay and calculated thinking.",
-  
+
     skills: [
       "Cyberpunk Worldbuilding",
       "Strategic Thinking",
@@ -57,24 +57,24 @@ const globalBids: GlobalBid[] = [
       "Character Persona",
       "Decision Making"
     ],
-  
+
     paymentVerified: true,
     rating: "4.9",
     spent: "12K+ interactions",
     location: "Neo-Verse City",
     proposals: "20 to 25 users engaged",
-  
+
     persona: {
       tone: "Calm, calculated, slightly intimidating",
       traits: ["Strategic", "Cold", "Intelligent", "Resourceful"],
     },
-  
+
     lorebook: {
       universe: "Neo-Verse",
       background:
         "A legendary fixer known for solving impossible problems in the underground network of a futuristic dystopian city.",
     },
-  
+
     avatar: "kael-draven.png",
     background: "cyberpunk-city"
   },
@@ -88,7 +88,7 @@ const globalBids: GlobalBid[] = [
     hours: "15-25 interactions/week",
     description:
       "Luna Aetheris is a serene celestial being who offers emotional guidance, reflective conversations, and calming interactions. Designed for users seeking comfort, clarity, and mindful dialogue.",
-  
+
     skills: [
       "Emotional Support",
       "Guided Conversations",
@@ -96,24 +96,24 @@ const globalBids: GlobalBid[] = [
       "Character Persona",
       "Companion Roleplay"
     ],
-  
+
     paymentVerified: true,
     rating: "4.7",
     spent: "8K+ interactions",
     location: "Astral Plane",
     proposals: "25 to 30 users engaged",
-  
+
     persona: {
       tone: "Soft, calming, empathetic",
       traits: ["Gentle", "Wise", "Supportive", "Intuitive"],
     },
-  
+
     lorebook: {
       universe: "Celestial Realm",
       background:
         "A cosmic entity who observes human emotions and guides lost souls toward inner peace and understanding.",
     },
-  
+
     avatar: "luna-aetheris.png",
     background: "celestial-sky"
   },
@@ -127,7 +127,7 @@ const globalBids: GlobalBid[] = [
     hours: "10-20 interactions/week",
     description:
       "Nyx Shadowbane is a mysterious lorekeeper from a dark fantasy universe, designed for immersive AI roleplay. This character comes with a deeply structured lorebook, consistent personality, and rich narrative depth for long-term storytelling.",
-  
+
     skills: [
       "Lorebooks",
       "Worldbuilding",
@@ -135,25 +135,25 @@ const globalBids: GlobalBid[] = [
       "Character Persona",
       "Narrative Design"
     ],
-  
+
     paymentVerified: true,
     rating: "4.8",
     spent: "5K+ interactions",
     location: "Shadowfall Realm",
     proposals: "15 to 20 users engaged",
-  
+
     // 👇 added but structure preserved (optional extension)
     persona: {
       tone: "Dark, poetic, immersive",
       traits: ["Mysterious", "Wise", "Cryptic"],
     },
-  
+
     lorebook: {
       universe: "Shadowfall Realm",
       background:
         "An ancient entity who preserves forbidden knowledge and guides travelers through forgotten histories.",
     },
-  
+
     avatar: "nyx-shadowbane.png",
     background: "dark-fantasy-castle"
   }

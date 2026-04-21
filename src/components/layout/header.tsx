@@ -35,7 +35,7 @@ const activityLinks = [
   { href: "/orders", label: "Orders" },
   { href: "/post-a-bid", label: "Bids & Requests" },
   { href: "/inventory", label: "Inventory" },
- 
+
 ] as const
 
 export function Header() {

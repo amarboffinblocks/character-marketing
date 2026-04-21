@@ -58,7 +58,7 @@ export default function EditPostABidPage() {
         <MoveLeft className="size-4" />
         Back to bids
       </Link>
-     
+
       <PostABidForm
         initialValues={bid}
         submitLabel="Save changes"

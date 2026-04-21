@@ -43,7 +43,7 @@ export default function NewPostABidPage() {
         <MoveLeft className="size-4" />
         Back to bids
       </Link>
-   
+
       <PostABidForm submitLabel="Publish" onCancel={() => router.push("/post-a-bid")} onSubmit={handleSubmit} />
     </main>
   )
