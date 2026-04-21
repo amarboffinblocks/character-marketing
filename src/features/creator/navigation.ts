@@ -5,13 +5,12 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
     label: "Overview",
     items: [
       { title: "Dashboard", href: "/dashboard/creator", icon: "dashboard" },
-      { title: "Orders", href: "/dashboard/creator/orders", icon: "orders", badge: "12" },
     ],
   },
   {
     label: "Workspace",
     items: [
-      { title: "Workspace Home", href: "/dashboard/creator/workspace", icon: "services" },
+      { title: "Home", href: "/dashboard/creator/workspace", icon: "services" },
       { title: "Characters", href: "/dashboard/creator/workspace/characters", icon: "profile" },
       { title: "Personas", href: "/dashboard/creator/workspace/personas", icon: "profile" },
       { title: "Lorebooks", href: "/dashboard/creator/workspace/lorebooks", icon: "reviews" },
@@ -24,6 +23,9 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
     items: [
       { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
       { title: "Services", href: "/dashboard/creator/services", icon: "services" },
+      { title: "Orders", href: "/dashboard/creator/orders", icon: "orders", badge: "12" },
+      { title: "Global Bids", href: "/dashboard/creator/global-bids", icon: "store" },
+
     ],
   },
   {

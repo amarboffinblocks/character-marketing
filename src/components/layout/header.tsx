@@ -2,11 +2,9 @@
 
 import Link from "next/link"
 import {
-  ClipboardList,
-  CreditCard,
+  ChevronDown,
   LogOut,
   Menu,
-  Package,
   Settings,
   UserRound,
   X,
@@ -25,10 +23,19 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
-const navLinks = [
-  { href: "/creators", label: "Creators" },
-  { href: "/faq", label: "FAQ" }
+const marketplaceLinks = [
+  { href: "/creators", label: "All Creators" },
+  { href: "/creators?sort=rating", label: "Top Creators" },
+  // { href: "/creators#categories", label: "Categories" },
+  { href: "/saved-creators", label: "Saved Creators" },
+  { href: "/creators", label: "Hired Creators" },
+] as const
 
+const activityLinks = [
+  { href: "/orders", label: "Orders" },
+  { href: "/post-a-bid", label: "Bids & Requests" },
+  { href: "/inventory", label: "Inventory" },
+ 
 ] as const
 
 export function Header() {
@@ -49,16 +56,73 @@ export function Header() {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-6 md:flex" aria-label="Main navigation">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
+        <nav className="hidden items-center gap-2 md:flex" aria-label="Main navigation">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Marketplace
+                  <ChevronDown className="size-4" aria-hidden />
+                </button>
+              }
+            />
+            <DropdownMenuContent align="center" className="min-w-48">
+              {marketplaceLinks.map((link) => (
+                <DropdownMenuItem
+                  key={`${link.label}-${link.href}`}
+                  render={<Link href={link.href} className="cursor-pointer" />}
+                >
+                  {link.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ variant: "ghost", size: "sm" }),
+                    "gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Activity
+                  <ChevronDown className="size-4" aria-hidden />
+                </button>
+              }
+            />
+            <DropdownMenuContent align="center" className="min-w-48">
+              {activityLinks.map((link) => (
+                <DropdownMenuItem
+                  key={`${link.label}-${link.href}`}
+                  render={<Link href={link.href} className="cursor-pointer" />}
+                >
+                  {link.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Link
+            href="/messages"
+            className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Messages
+          </Link>
+          <Link
+            href="/faq"
+            className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            FAQ
+          </Link>
         </nav>
 
         <div className="flex items-center gap-2">
@@ -90,19 +154,16 @@ export function Header() {
                 </button>
               }
             />
-            <DropdownMenuContent align="end" className="min-w-48">
-              <DropdownMenuItem render={<Link href="/orders" className="cursor-pointer" />}>
-                <ClipboardList className="size-4" />
-                My orders
-              </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href="/transactions" className="cursor-pointer" />}>
-                <CreditCard className="size-4" />
-                Transactions
-              </DropdownMenuItem>
-              <DropdownMenuItem render={<Link href="/inventory" className="cursor-pointer" />}>
-                <Package className="size-4" />
-                Inventory
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="min-w-56 p-2">
+              <div className="flex items-center gap-3 px-1 py-1.5">
+                <div className="flex size-9 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground">
+                  BR
+                </div>
+                <div className="flex min-w-0 flex-col">
+                  <p className="truncate text-sm font-semibold text-foreground">Buyer account</p>
+                  <p className="truncate text-xs text-muted-foreground">buyer@character.market</p>
+                </div>
+              </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem render={<Link href="/profile" className="cursor-pointer" />}>
                 <UserRound className="size-4" />
@@ -146,9 +207,10 @@ export function Header() {
         )}
       >
         <nav className="flex flex-col gap-1.5" aria-label="Mobile navigation">
-          {navLinks.map((link) => (
+          <p className="px-3 pt-1 text-xs font-medium text-muted-foreground">Marketplace</p>
+          {marketplaceLinks.map((link) => (
             <Link
-              key={link.href}
+              key={`${link.label}-${link.href}`}
               href={link.href}
               className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
               onClick={closeMenu}
@@ -156,31 +218,37 @@ export function Header() {
               {link.label}
             </Link>
           ))}
+
+          <p className="mt-3 px-3 pt-1 text-xs font-medium text-muted-foreground">Activity</p>
+          {activityLinks.map((link) => (
+            <Link
+              key={`${link.label}-${link.href}`}
+              href={link.href}
+              className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              onClick={closeMenu}
+            >
+              {link.label}
+            </Link>
+          ))}
+
+          <Link
+            href="/messages"
+            className="mt-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            onClick={closeMenu}
+          >
+            Messages
+          </Link>
+          <Link
+            href="/faq"
+            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            onClick={closeMenu}
+          >
+            FAQ
+          </Link>
         </nav>
 
         <div className="mt-4 flex flex-col gap-1 border-t border-border/60 pt-4">
           <p className="px-3 text-xs font-medium text-muted-foreground">Account</p>
-          <Link
-            href="/orders"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-            onClick={closeMenu}
-          >
-            My orders
-          </Link>
-          <Link
-            href="/transactions"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-            onClick={closeMenu}
-          >
-            Transactions
-          </Link>
-          <Link
-            href="/inventory"
-            className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-            onClick={closeMenu}
-          >
-            Inventory
-          </Link>
           <Link
             href="/profile"
             className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
