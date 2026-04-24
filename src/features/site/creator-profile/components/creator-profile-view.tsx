@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, Circle } from "lucide-react"
 type CreatorProfileViewProps = {
   profile: CreatorProfile
+  isAuthenticated: boolean
 }
 const TABS = [
   { id: "about", label: "About" },
@@ -60,7 +61,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 /**
  * Full creator profile layout: hero header, stats, tabbed main column, and packages sidebar.
  */
-export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
+export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileViewProps) {
   const profilePath = `/creators/${profile.id}`
   const preselectPackage = profile.packages[0]
   const customPackages = profile.packages.slice(1)
@@ -68,7 +69,7 @@ export function CreatorProfileView({ profile }: CreatorProfileViewProps) {
 
   return (
     <main className="bg-linear-to-b from-background via-background to-muted/15">
-      <CreatorProfileHeader profile={profile} profilePath={profilePath} />
+      <CreatorProfileHeader profile={profile} profilePath={profilePath} isAuthenticated={isAuthenticated} />
 
       <Container size="xl" className="mt-4 pb-10">
         <CreatorProfileStatBar profile={profile} />

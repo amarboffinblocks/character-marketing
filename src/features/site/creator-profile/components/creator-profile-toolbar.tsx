@@ -14,6 +14,7 @@ type CreatorProfileToolbarProps = {
   creatorAvatar: string
   /** Path only, e.g. `/creators/luna-pixel` */
   profilePath: string
+  isAuthenticated: boolean
   className?: string
 }
 
@@ -26,6 +27,7 @@ export function CreatorProfileToolbar({
   creatorHandle,
   creatorAvatar,
   profilePath,
+  isAuthenticated,
   className,
 }: CreatorProfileToolbarProps) {
   const [chatOpen, setChatOpen] = useState(false)
@@ -50,31 +52,33 @@ export function CreatorProfileToolbar({
 
   return (
     <>
-      <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
-        <button
-          type="button"
-          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
-          aria-label={`Save ${creatorName} to favorites`}
-        >
-          <Heart className="size-4" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
-          aria-label={`Share ${creatorName}'s profile`}
-          onClick={() => void share()}
-        >
-          <Share2 className="size-4" aria-hidden />
-        </button>
-        <button
-          type="button"
-          className={cn(buttonVariants({ size: "default" }), "h-10 gap-2 px-5")}
-          onClick={() => setChatOpen(true)}
-        >
-          <MessageSquare className="size-4" aria-hidden />
-          Chat
-        </button>
-      </div>
+      {isAuthenticated ? (
+        <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
+          <button
+            type="button"
+            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
+            aria-label={`Save ${creatorName} to favorites`}
+          >
+            <Heart className="size-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
+            aria-label={`Share ${creatorName}'s profile`}
+            onClick={() => void share()}
+          >
+            <Share2 className="size-4" aria-hidden />
+          </button>
+          <button
+            type="button"
+            className={cn(buttonVariants({ size: "default" }), "h-10 gap-2 px-5")}
+            onClick={() => setChatOpen(true)}
+          >
+            <MessageSquare className="size-4" aria-hidden />
+            Chat
+          </button>
+        </div>
+      ) : null}
 
       <CreatorChatPanel
         open={chatOpen}

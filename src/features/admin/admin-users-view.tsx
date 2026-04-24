@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Download, Eye, Search, Users } from "lucide-react"
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,7 +28,6 @@ import type { AdminUserRecord } from "@/features/admin/admin-users-data"
 import { adminUserRecords } from "@/features/admin/admin-users-data"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
-import { cn } from "@/lib/utils"
 
 const roleVariant: Record<AdminUserRecord["role"], "default" | "secondary" | "outline"> = {
   buyer: "secondary",
@@ -37,6 +37,22 @@ const roleVariant: Record<AdminUserRecord["role"], "default" | "secondary" | "ou
 
 type RoleFilter = "all" | AdminUserRecord["role"]
 type StatusFilter = "all" | AdminUserRecord["status"]
+
+function getUserAvatarUrl(user: AdminUserRecord) {
+  return `https://i.pravatar.cc/120?u=${encodeURIComponent(user.email)}`
+}
+
+function getInitials(name: string) {
+  return (
+    name
+      .trim()
+      .split(/\s+/)
+      .map((part) => part.slice(0, 1))
+      .join("")
+      .slice(0, 2)
+      .toUpperCase() || "U"
+  )
+}
 
 export function AdminUsersView() {
   const [search, setSearch] = useState("")
@@ -122,7 +138,7 @@ export function AdminUsersView() {
                   <TableHead className="min-w-[100px] font-mono text-xs text-muted-foreground">
                     User ID
                   </TableHead>
-                  <TableHead className="min-w-[140px]">Name</TableHead>
+                  <TableHead className="min-w-[220px]">Name</TableHead>
                   <TableHead className="min-w-[200px]">Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
@@ -139,8 +155,14 @@ export function AdminUsersView() {
                     <TableCell className="align-middle font-mono text-xs text-muted-foreground">
                       {u.id}
                     </TableCell>
-                    <TableCell className="align-middle font-medium text-foreground">
-                      {u.displayName}
+                    <TableCell className="align-middle">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="size-11 border border-border/70">
+                          <AvatarImage src={getUserAvatarUrl(u)} alt={u.displayName} />
+                          <AvatarFallback>{getInitials(u.displayName)}</AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium text-foreground">{u.displayName}</span>
+                      </div>
                     </TableCell>
                     <TableCell className="align-middle text-sm text-muted-foreground">{u.email}</TableCell>
                     <TableCell className="align-middle">
@@ -186,10 +208,16 @@ export function AdminUsersView() {
             {filtered.map((u) => (
               <li key={u.id} className="space-y-3 px-4 py-4">
                 <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="font-medium text-foreground">{u.displayName}</p>
-                    <p className="font-mono text-[11px] text-muted-foreground">{u.id}</p>
-                    <p className="text-xs text-muted-foreground">{u.email}</p>
+                  <div className="flex items-center gap-2.5">
+                    <Avatar className="size-10 border border-border/70">
+                      <AvatarImage src={getUserAvatarUrl(u)} alt={u.displayName} />
+                      <AvatarFallback>{getInitials(u.displayName)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium text-foreground">{u.displayName}</p>
+                      <p className="font-mono text-[11px] text-muted-foreground">{u.id}</p>
+                      <p className="text-xs text-muted-foreground">{u.email}</p>
+                    </div>
                   </div>
                   <Badge variant={roleVariant[u.role]} className="capitalize">
                     {u.role}

@@ -1,8 +1,11 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useState } from "react"
+import { toast } from "sonner"
 import {
+    AlertCircle,
     BarChart3,
     BriefcaseBusiness,
     ChevronsUpDown,
@@ -29,6 +32,7 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
     Sidebar,
     SidebarContent,
@@ -63,6 +67,11 @@ type AppSidebarProps = {
     brandHref?: string
     /** Route used for the "help & support" link in the footer. */
     supportHref?: string
+    /** Show warning badge when profile completion is low. */
+    showProfileWarning?: boolean
+    userDisplayName?: string
+    userEmail?: string
+    userAvatarUrl?: string | null
 }
 
 const sidebarIcons = {
@@ -80,6 +89,26 @@ const sidebarIcons = {
 } as const
 
 export type AppSidebarIconName = keyof typeof sidebarIcons
+
+function ProfileWarningBadge() {
+    return (
+        <Tooltip>
+            <TooltipTrigger
+                render={
+                    <span className="inline-flex size-4 items-center justify-center rounded-full border border-yellow-200 bg-yellow-400 text-white shadow-sm">
+                        <AlertCircle className="size-4" aria-hidden />
+                    </span>
+                }
+            />
+            <TooltipContent className="border border-border bg-card text-card-foreground shadow-lg">
+                <span className="inline-flex items-center gap-1.5">
+                    <AlertCircle className="size-4 text-yellow-500" aria-hidden />
+                    Profile is incomplete
+                </span>
+            </TooltipContent>
+        </Tooltip>
+    )
+}
 
 function isRouteActive(pathname: string, href: string) {
     if (pathname === href) return true
@@ -104,9 +133,35 @@ export function AppSidebar({
     workspaceSubtitle = "Creator Studio",
     brandHref = "/dashboard/creator",
     supportHref = "/support",
+    showProfileWarning = false,
+    userDisplayName = "Character Market User",
+    userEmail = "user@example.com",
+    userAvatarUrl = null,
 }: AppSidebarProps) {
     const pathname = usePathname() ?? ""
+    const router = useRouter()
+    const [isSigningOut, setIsSigningOut] = useState(false)
     const visibleGroups = groups?.filter((group) => group.label.toLowerCase() !== "account")
+    const accountBasePath = brandHref.startsWith("/dashboard/admin") ? "/dashboard/admin" : "/dashboard/creator"
+
+    const handleSignOut = async () => {
+        if (isSigningOut) return
+        setIsSigningOut(true)
+        try {
+            const response = await fetch("/api/auth/sign-out", { method: "POST" })
+            if (!response.ok) {
+                toast.error("Logout failed", { description: "Please try again." })
+                return
+            }
+            toast.success("Logged out successfully")
+            router.push("/sign-in")
+            router.refresh()
+        } catch {
+            toast.error("Logout failed", { description: "Please try again." })
+        } finally {
+            setIsSigningOut(false)
+        }
+    }
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -252,24 +307,49 @@ export function AppSidebar({
                                 type="button"
                                 className="flex w-full items-center gap-2 rounded-md border border-sidebar-border/70 bg-sidebar-accent/40 p-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
                             >
-                                <Avatar className="size-8">
-                                    <AvatarImage src="https://i.pravatar.cc/120?u=character-market-user" />
-                                    <AvatarFallback>CM</AvatarFallback>
-                                </Avatar>
+                                <span className="relative inline-flex">
+                                    <Avatar className="size-8">
+                                        <AvatarImage src={userAvatarUrl ?? undefined} />
+                                        <AvatarFallback>
+                                            {userDisplayName
+                                                .trim()
+                                                .split(/\s+/)
+                                                .map((part) => part.slice(0, 1))
+                                                .join("")
+                                                .slice(0, 2)
+                                                .toUpperCase() || "CM"}
+                                        </AvatarFallback>
+                                    </Avatar>
+                                    {showProfileWarning ? (
+                                        <span className="absolute -right-1 -top-1">
+                                            <ProfileWarningBadge />
+                                        </span>
+                                    ) : null}
+                                </span>
                                 <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                                    <p className="truncate text-sm font-medium text-sidebar-foreground">shadcn</p>
-                                    <p className="truncate text-xs text-sidebar-foreground/70">m@example.com</p>
+                                    <p className="truncate text-sm font-medium text-sidebar-foreground">{userDisplayName}</p>
+                                    <p className="truncate text-xs text-sidebar-foreground/70">{userEmail}</p>
                                 </div>
                                 <ChevronsUpDown className="size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
                             </button>
                         }
                     />
                     <DropdownMenuContent align="start" className="min-w-56">
-                        <DropdownMenuItem render={<Link href="/profile" className="cursor-pointer" />}>
-                            <UserRound className="size-4" />
-                            Profile
+                        <DropdownMenuItem
+                            className="flex items-center justify-between"
+                            render={<Link href={`${accountBasePath}/profile`} className="cursor-pointer" />}
+                        >
+                            <span className="flex items-center gap-2">
+                                <UserRound className="size-4" />
+                                Profile
+                            </span>
+                            {showProfileWarning ? (
+                                <span>
+                                    <ProfileWarningBadge />
+                                </span>
+                            ) : null}
                         </DropdownMenuItem>
-                        <DropdownMenuItem render={<Link href="/settings" className="cursor-pointer" />}>
+                        <DropdownMenuItem render={<Link href={`${accountBasePath}/settings`} className="cursor-pointer" />}>
                             <Settings className="size-4" />
                             Settings
                         </DropdownMenuItem>
@@ -280,10 +360,11 @@ export function AppSidebar({
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                             variant="destructive"
-                            render={<Link href="/sign-in" className="cursor-pointer" />}
+                            onClick={handleSignOut}
+                            disabled={isSigningOut}
                         >
                             <LogOut className="size-4" />
-                            Logout
+                            {isSigningOut ? "Logging out..." : "Logout"}
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

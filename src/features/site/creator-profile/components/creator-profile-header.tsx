@@ -9,12 +9,13 @@ import type { CreatorProfile } from "@/features/site/creator-profile/types"
 type CreatorProfileHeaderProps = {
   profile: CreatorProfile
   profilePath: string
+  isAuthenticated: boolean
 }
 
 /**
  * Cover image, overlapping square avatar, identity block, and primary actions.
  */
-export function CreatorProfileHeader({ profile, profilePath }: CreatorProfileHeaderProps) {
+export function CreatorProfileHeader({ profile, profilePath, isAuthenticated }: CreatorProfileHeaderProps) {
   const coverAlt = `Cover image for ${profile.name}`
 
   return (
@@ -68,6 +69,7 @@ export function CreatorProfileHeader({ profile, profilePath }: CreatorProfileHea
             creatorHandle={profile.handle}
             creatorAvatar={profile.avatar}
             profilePath={profilePath}
+            isAuthenticated={isAuthenticated}
             className="w-full sm:w-auto"
           />
         </div>

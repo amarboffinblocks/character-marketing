@@ -3,6 +3,7 @@ import { notFound } from "next/navigation"
 
 import { CreatorProfileView, getCreatorProfileById } from "@/features/site/creator-profile"
 import { allCreators } from "@/features/site/marketplace"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 type CreatorProfilePageProps = {
   params: Promise<{ creatorId: string }>
@@ -31,5 +32,16 @@ export default async function CreatorProfilePage({ params }: CreatorProfilePageP
     notFound()
   }
 
-  return <CreatorProfileView profile={profile} />
+  let isAuthenticated = false
+  try {
+    const supabase = await createServerSupabaseClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    isAuthenticated = Boolean(user)
+  } catch {
+    isAuthenticated = false
+  }
+
+  return <CreatorProfileView profile={profile} isAuthenticated={isAuthenticated} />
 }

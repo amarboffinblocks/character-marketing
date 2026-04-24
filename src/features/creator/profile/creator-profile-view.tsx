@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import {
   BadgeCheck,
   Camera,
@@ -25,7 +26,16 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { PageLoader } from "@/components/ui/page-loader"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -38,6 +48,7 @@ import {
   type ProfileVisibility,
 } from "@/features/creator/profile/profile-data"
 import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
+import type { SignInAllowedRole } from "@/lib/auth-roles"
 import { cn } from "@/lib/utils"
 
 type ProfileTab = "basic" | "professional" | "links"
@@ -59,20 +70,114 @@ function initialsFromName(name: string) {
     .toUpperCase()
 }
 
-function fallback(value: string, placeholder: string) {
+function fallback(value: string | null | undefined, placeholder: string) {
+  if (typeof value !== "string") return placeholder
   return value.trim().length === 0 ? placeholder : value
 }
 
-export function CreatorProfileView() {
+function normalizeCreatorProfileForm(data?: Partial<CreatorProfileForm> | null): CreatorProfileForm {
+  const source = (data ?? {}) as Partial<CreatorProfileForm> & { handle?: unknown }
+  const resolvedEmail =
+    typeof source.email === "string"
+      ? source.email
+      : typeof source.handle === "string"
+        ? source.handle
+        : ""
+
+  return {
+    ...defaultProfileForm,
+    ...source,
+    email: resolvedEmail,
+  }
+}
+
+export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedRole }) {
+  const router = useRouter()
   const [form, setForm] = useState<CreatorProfileForm>(defaultProfileForm)
   const [saved, setSaved] = useState(JSON.stringify(defaultProfileForm))
   const [lastSavedAt, setLastSavedAt] = useState("Today, 5:45 PM")
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false)
+  const [isProfileLoading, setIsProfileLoading] = useState(true)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [tab, setTab] = useState<ProfileTab>("basic")
   const [skillInput, setSkillInput] = useState("")
   const [languageInput, setLanguageInput] = useState("")
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
 
   const completion = computeCompletion(form)
   const hasUnsavedChanges = JSON.stringify(form) !== saved
+
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadProfile() {
+      try {
+        const response = await fetch(`/api/profile/me?role=${role}`)
+        if (!response.ok) return
+        const result = (await response.json()) as { data?: Partial<CreatorProfileForm> | null }
+        if (!isMounted || !result.data) return
+
+        const merged = normalizeCreatorProfileForm(result.data)
+        setForm(merged)
+        setSaved(JSON.stringify(merged))
+      } catch {
+        // Keep local defaults when profile API is unavailable.
+      } finally {
+        if (isMounted) {
+          setIsProfileLoading(false)
+        }
+      }
+    }
+
+    void loadProfile()
+    return () => {
+      isMounted = false
+    }
+  }, [role])
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!hasUnsavedChanges) return
+      event.preventDefault()
+      event.returnValue = ""
+    }
+
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload)
+    }
+  }, [hasUnsavedChanges])
+
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (!hasUnsavedChanges) return
+      if (event.defaultPrevented) return
+      if (event.button !== 0) return
+      if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+      const target = event.target as HTMLElement | null
+      const anchor = target?.closest("a[href]") as HTMLAnchorElement | null
+      if (!anchor) return
+      if (anchor.target === "_blank" || anchor.hasAttribute("download")) return
+
+      const url = new URL(anchor.href, window.location.href)
+      const current = new URL(window.location.href)
+      if (url.origin !== current.origin) return
+      if (url.href === current.href) return
+
+      event.preventDefault()
+      setPendingHref(url.href)
+      setLeaveDialogOpen(true)
+    }
+
+    document.addEventListener("click", handleDocumentClick, true)
+    return () => {
+      document.removeEventListener("click", handleDocumentClick, true)
+    }
+  }, [hasUnsavedChanges])
 
   function updateField<Key extends keyof CreatorProfileForm>(
     key: Key,
@@ -81,9 +186,69 @@ export function CreatorProfileView() {
     setForm((current) => ({ ...current, [key]: value }))
   }
 
+  async function persistProfile(nextForm: CreatorProfileForm) {
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      const response = await fetch("/api/profile/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role,
+          data: nextForm,
+        }),
+      })
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string; details?: string }
+        setSaveError(result.details ?? result.error ?? "Unable to save profile")
+        return
+      }
+
+      setSaved(JSON.stringify(nextForm))
+      setLastSavedAt(new Date().toLocaleString())
+      router.refresh()
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   function saveProfile() {
-    setSaved(JSON.stringify(form))
-    setLastSavedAt(new Date().toLocaleString())
+    void persistProfile(form)
+  }
+
+  async function uploadProfileImage(kind: "avatar" | "banner", file: File) {
+    const setUploading = kind === "avatar" ? setIsUploadingAvatar : setIsUploadingBanner
+    setUploading(true)
+    setSaveError(null)
+
+    try {
+      const payload = new FormData()
+      payload.append("kind", kind)
+      payload.append("file", file)
+
+      const response = await fetch("/api/profile/upload", {
+        method: "POST",
+        body: payload,
+      })
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string; details?: string }
+        setSaveError(result.details ?? result.error ?? "Upload failed")
+        return
+      }
+
+      const result = (await response.json()) as { url?: string }
+      if (!result.url) return
+
+      const nextForm = {
+        ...form,
+        avatarUrl: kind === "avatar" ? result.url : form.avatarUrl,
+        bannerUrl: kind === "banner" ? result.url : form.bannerUrl,
+      }
+      setForm(nextForm)
+      await persistProfile(nextForm)
+    } finally {
+      setUploading(false)
+    }
   }
 
   function addSkill() {
@@ -102,11 +267,22 @@ export function CreatorProfileView() {
 
   return (
     <div className="flex flex-col gap-6">
+      <PageLoader
+        open={isProfileLoading || isSaving || isUploadingAvatar || isUploadingBanner}
+        label={isProfileLoading ? "Loading profile..." : "Saving profile..."}
+      />
       <ProfileHero
         form={form}
+        role={role}
         completionPercent={completion.percent}
         hasUnsavedChanges={hasUnsavedChanges}
         lastSavedAt={lastSavedAt}
+        isSaving={isSaving}
+        isUploadingAvatar={isUploadingAvatar}
+        isUploadingBanner={isUploadingBanner}
+        saveError={saveError}
+        onUploadAvatar={(file) => void uploadProfileImage("avatar", file)}
+        onUploadBanner={(file) => void uploadProfileImage("banner", file)}
         onSave={saveProfile}
       />
 
@@ -120,7 +296,7 @@ export function CreatorProfileView() {
           <SectionTabs value={tab} onChange={setTab} items={profileTabs} />
 
           {tab === "basic" ? (
-            <BasicInfoSection form={form} updateField={updateField} onSave={saveProfile} hasUnsavedChanges={hasUnsavedChanges} />
+            <BasicInfoSection form={form} updateField={updateField} />
           ) : null}
 
           {tab === "professional" ? (
@@ -141,23 +317,66 @@ export function CreatorProfileView() {
           ) : null}
         </div>
       </section>
+
+      <Dialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Leave without saving?</DialogTitle>
+            <DialogDescription>
+              You have unsaved profile changes. If you leave now, your updates will be lost.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setLeaveDialogOpen(false)}>
+              Continue editing
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (pendingHref) {
+                  window.location.href = pendingHref
+                }
+              }}
+            >
+              Leave page
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
 
 function ProfileHero({
   form,
+  role,
   completionPercent,
   hasUnsavedChanges,
   lastSavedAt,
+  isSaving,
+  isUploadingAvatar,
+  isUploadingBanner,
+  saveError,
+  onUploadAvatar,
+  onUploadBanner,
   onSave,
 }: {
   form: CreatorProfileForm
+  role: SignInAllowedRole
   completionPercent: number
   hasUnsavedChanges: boolean
   lastSavedAt: string
+  isSaving: boolean
+  isUploadingAvatar: boolean
+  isUploadingBanner: boolean
+  saveError: string | null
+  onUploadAvatar: (file: File) => void
+  onUploadBanner: (file: File) => void
   onSave: () => void
 }) {
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
   return (
     <section className="rounded-2xl border border-border bg-card">
       <div className="relative overflow-hidden rounded-t-2xl">
@@ -182,10 +401,23 @@ function ProfileHero({
           size="sm"
           variant="outline"
           className="absolute top-4 right-4 gap-1.5 bg-background/80 backdrop-blur-sm"
+          onClick={() => bannerInputRef.current?.click()}
+          disabled={isUploadingBanner}
         >
           <Camera className="size-3.5" />
-          Change banner
+          {isUploadingBanner ? "Uploading..." : "Change banner"}
         </Button>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) onUploadBanner(file)
+            event.currentTarget.value = ""
+          }}
+        />
       </div>
 
       <div className="flex flex-col gap-4 px-5 pb-5 pt-2 sm:flex-row sm:items-start sm:gap-6 sm:px-6 sm:pb-6 sm:pt-3">
@@ -208,9 +440,22 @@ function ProfileHero({
             variant="outline"
             aria-label="Change avatar"
             className="absolute right-1 bottom-1 rounded-full border-border bg-background shadow-sm ring-2 ring-background"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={isUploadingAvatar}
           >
             <Pencil className="size-3.5" />
           </Button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) onUploadAvatar(file)
+              event.currentTarget.value = ""
+            }}
+          />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
@@ -226,11 +471,11 @@ function ProfileHero({
               </h2>
               <Badge variant="secondary" className="gap-1 bg-primary/15 text-primary">
                 <CheckCircle2 className="size-3" />
-                Creator profile
+                {role === "creator" ? "Creator profile" : "User profile"}
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              {fallback(form.handle, "@your-handle")}
+              {fallback(form.email, "you@example.com")}
             </p>
             <p className="max-w-2xl text-sm text-foreground/80">
               {fallback(form.tagline, "Add a short tagline that describes what you offer.")}
@@ -248,17 +493,15 @@ function ProfileHero({
               >
                 {hasUnsavedChanges ? "Unsaved changes" : `Saved · ${lastSavedAt}`}
               </span>
+              {saveError ? <span className="text-destructive">{saveError}</span> : null}
             </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-0.5">
-            <Button variant="outline">
-              <ExternalLink className="size-4" />
-              Preview public
-            </Button>
-            <Button onClick={onSave} disabled={!hasUnsavedChanges}>
+          
+            <Button onClick={onSave} disabled={!hasUnsavedChanges || isSaving}>
               <Save className="size-4" />
-              Save profile
+              {isSaving ? "Saving..." : "Save profile"}
             </Button>
           </div>
         </div>
@@ -319,7 +562,7 @@ function ProfilePreviewCard({
               {fallback(form.displayName, "Your creator name")}
             </p>
             <p className="truncate text-[11px] text-muted-foreground">
-              {fallback(form.handle, "@your-handle")}
+              {fallback(form.email, "you@example.com")}
             </p>
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
               {fallback(form.tagline, "Add a short tagline that describes what you offer.")}
@@ -412,13 +655,9 @@ function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
 function BasicInfoSection({
   form,
   updateField,
-  onSave,
-  hasUnsavedChanges,
 }: {
   form: CreatorProfileForm
   updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
-  onSave: () => void
-  hasUnsavedChanges: boolean
 }) {
   return (
     <Card>
@@ -435,10 +674,11 @@ function BasicInfoSection({
           />
         </div>
         <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Handle</label>
+          <label className="text-xs font-medium text-muted-foreground">Email</label>
           <Input
-            value={form.handle}
-            onChange={(event) => updateField("handle", event.target.value)}
+            value={form.email}
+            onChange={(event) => updateField("email", event.target.value)}
+            type="email"
           />
         </div>
         <div className="space-y-1.5 md:col-span-2">
@@ -483,12 +723,6 @@ function BasicInfoSection({
             className="min-h-28"
           />
         </div>
-      </CardContent>
-      <CardContent className="flex items-center justify-end border-t py-3">
-        <Button onClick={onSave} disabled={!hasUnsavedChanges}>
-          <Save className="size-4" />
-          Save basic info
-        </Button>
       </CardContent>
     </Card>
   )

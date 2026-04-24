@@ -1,6 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 import {
   Building2,
   Camera,
@@ -17,6 +19,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { PageLoader } from "@/components/ui/page-loader"
 import {
   Select,
   SelectContent,
@@ -57,30 +60,143 @@ function fallback(value: string, placeholder: string) {
 }
 
 export function AdminProfileView() {
+  const router = useRouter()
   const [form, setForm] = useState<AdminProfileForm>(defaultAdminProfileForm)
   const [saved, setSaved] = useState(JSON.stringify(defaultAdminProfileForm))
   const [lastSavedAt, setLastSavedAt] = useState("Today, 5:45 PM")
+  const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false)
+  const [isProfileLoading, setIsProfileLoading] = useState(true)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [tab, setTab] = useState<ProfileTab>("basic")
 
   const completion = useMemo(() => computeAdminProfileCompletion(form), [form])
   const hasUnsavedChanges = JSON.stringify(form) !== saved
 
+  useEffect(() => {
+    let isMounted = true
+
+    async function loadProfile() {
+      try {
+        const response = await fetch("/api/profile/me?role=admin")
+        if (!response.ok) return
+        const result = (await response.json()) as { data?: Partial<AdminProfileForm> | null }
+        if (!isMounted || !result.data) return
+
+        const merged = { ...defaultAdminProfileForm, ...result.data }
+        setForm(merged)
+        setSaved(JSON.stringify(merged))
+      } catch {
+        // Keep defaults when profile API is unavailable.
+      } finally {
+        if (isMounted) {
+          setIsProfileLoading(false)
+        }
+      }
+    }
+
+    void loadProfile()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   function updateField<Key extends keyof AdminProfileForm>(key: Key, value: AdminProfileForm[Key]) {
     setForm((current) => ({ ...current, [key]: value }))
   }
 
+  async function persistProfile(nextForm: AdminProfileForm) {
+    setIsSaving(true)
+    setSaveError(null)
+    try {
+      const response = await fetch("/api/profile/me", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          role: "admin",
+          data: nextForm,
+        }),
+      })
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string; details?: string }
+        const message = result.details ?? result.error ?? "Unable to save profile"
+        setSaveError(message)
+        toast.error("Profile save failed", { description: message })
+        return
+      }
+
+      setSaved(JSON.stringify(nextForm))
+      setLastSavedAt(new Date().toLocaleString())
+      toast.success("Profile saved successfully")
+      router.refresh()
+    } catch {
+      toast.error("Profile save failed", { description: "Please try again." })
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   function saveProfile() {
-    setSaved(JSON.stringify(form))
-    setLastSavedAt(new Date().toLocaleString())
+    void persistProfile(form)
+  }
+
+  async function uploadProfileImage(kind: "avatar" | "banner", file: File) {
+    const setUploading = kind === "avatar" ? setIsUploadingAvatar : setIsUploadingBanner
+    setUploading(true)
+    setSaveError(null)
+
+    try {
+      const payload = new FormData()
+      payload.append("kind", kind)
+      payload.append("file", file)
+
+      const response = await fetch("/api/profile/upload", {
+        method: "POST",
+        body: payload,
+      })
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string; details?: string }
+        const message = result.details ?? result.error ?? "Upload failed"
+        setSaveError(message)
+        toast.error("Image upload failed", { description: message })
+        return
+      }
+
+      const result = (await response.json()) as { url?: string }
+      if (!result.url) return
+
+      const nextForm = {
+        ...form,
+        avatarUrl: kind === "avatar" ? result.url : form.avatarUrl,
+        bannerUrl: kind === "banner" ? result.url : form.bannerUrl,
+      }
+      setForm(nextForm)
+      await persistProfile(nextForm)
+    } catch {
+      toast.error("Image upload failed", { description: "Please try again." })
+    } finally {
+      setUploading(false)
+    }
   }
 
   return (
     <div className="flex flex-col gap-6">
+      <PageLoader
+        open={isProfileLoading || isSaving || isUploadingAvatar || isUploadingBanner}
+        label={isProfileLoading ? "Loading profile..." : "Saving profile..."}
+      />
       <AdminProfileHero
         form={form}
         completionPercent={completion.percent}
         hasUnsavedChanges={hasUnsavedChanges}
         lastSavedAt={lastSavedAt}
+        isSaving={isSaving}
+        isUploadingAvatar={isUploadingAvatar}
+        isUploadingBanner={isUploadingBanner}
+        saveError={saveError}
+        onUploadAvatar={(file) => void uploadProfileImage("avatar", file)}
+        onUploadBanner={(file) => void uploadProfileImage("banner", file)}
         onSave={saveProfile}
       />
 
@@ -115,14 +231,29 @@ function AdminProfileHero({
   completionPercent,
   hasUnsavedChanges,
   lastSavedAt,
+  isSaving,
+  isUploadingAvatar,
+  isUploadingBanner,
+  saveError,
+  onUploadAvatar,
+  onUploadBanner,
   onSave,
 }: {
   form: AdminProfileForm
   completionPercent: number
   hasUnsavedChanges: boolean
   lastSavedAt: string
+  isSaving: boolean
+  isUploadingAvatar: boolean
+  isUploadingBanner: boolean
+  saveError: string | null
+  onUploadAvatar: (file: File) => void
+  onUploadBanner: (file: File) => void
   onSave: () => void
 }) {
+  const bannerInputRef = useRef<HTMLInputElement>(null)
+  const avatarInputRef = useRef<HTMLInputElement>(null)
+
   return (
     <section className="rounded-2xl border border-border bg-card">
       <div className="relative overflow-hidden rounded-t-2xl">
@@ -147,10 +278,23 @@ function AdminProfileHero({
           size="sm"
           variant="outline"
           className="absolute top-4 right-4 gap-1.5 bg-background/80 backdrop-blur-sm"
+          onClick={() => bannerInputRef.current?.click()}
+          disabled={isUploadingBanner}
         >
           <Camera className="size-3.5" />
-          Change banner
+          {isUploadingBanner ? "Uploading..." : "Change banner"}
         </Button>
+        <input
+          ref={bannerInputRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          className="hidden"
+          onChange={(event) => {
+            const file = event.target.files?.[0]
+            if (file) onUploadBanner(file)
+            event.currentTarget.value = ""
+          }}
+        />
       </div>
 
       <div className="flex flex-col gap-4 px-5 pb-5 pt-2 sm:flex-row sm:items-start sm:gap-6 sm:px-6 sm:pb-6 sm:pt-3">
@@ -173,9 +317,22 @@ function AdminProfileHero({
             variant="outline"
             aria-label="Change avatar"
             className="absolute right-1 bottom-1 rounded-full border-border bg-background shadow-sm ring-2 ring-background"
+            onClick={() => avatarInputRef.current?.click()}
+            disabled={isUploadingAvatar}
           >
             <Pencil className="size-3.5" />
           </Button>
+          <input
+            ref={avatarInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              if (file) onUploadAvatar(file)
+              event.currentTarget.value = ""
+            }}
+          />
         </div>
 
         <div className="flex min-w-0 flex-1 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
@@ -209,13 +366,14 @@ function AdminProfileHero({
               >
                 {hasUnsavedChanges ? "Unsaved changes" : `Saved · ${lastSavedAt}`}
               </span>
+              {saveError ? <span className="text-destructive">{saveError}</span> : null}
             </div>
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 sm:pt-0.5">
-            <Button onClick={onSave} disabled={!hasUnsavedChanges}>
+            <Button onClick={onSave} disabled={!hasUnsavedChanges || isSaving}>
               <Save className="size-4" />
-              Save profile
+              {isSaving ? "Saving..." : "Save profile"}
             </Button>
           </div>
         </div>
