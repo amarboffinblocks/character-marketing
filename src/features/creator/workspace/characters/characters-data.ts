@@ -7,6 +7,7 @@ export type CreatorCharacter = {
   characterName: string
   handle: string
   avatarUrl?: string
+  backgroundUrl?: string
   visibility: CharacterVisibility
   safety: CharacterSafety
   tags: string[]
@@ -24,6 +25,25 @@ export type CreatorCharacter = {
 }
 
 export const creatorCharacters: CreatorCharacter[] = [
+  {
+    id: "char-jessey",
+    characterName: "Jessey Vale",
+    handle: "@flowingbloom",
+    visibility: "public",
+    safety: "SFW",
+    tags: ["Modern Fantasy", "Detective", "Slow Burn"],
+    description: "A sharp-eyed private investigator who sees magic hiding in ordinary city nights.",
+    scenario: "Rain-soaked urban fantasy setting where hidden covens, cursed artifacts, and paid investigations overlap.",
+    personalitySummary: "Observant, dry-witted, patient under pressure, and unexpectedly gentle with people who earn his trust.",
+    firstMessage: "You are late, and the city has already changed its mind about letting us leave unharmed.",
+    alternativeMessages: "Sit down, Jessey says, sliding the case file across the desk.;If you want the truth, don’t flinch when it looks back.",
+    exampleDialogue: "I do not chase ghosts for fun. I chase them because someone always gets hurt when nobody else believes they are real.",
+    authorNotes: "Built for mystery, tension, and emotional trust-building scenes. Works well in long-form roleplay.",
+    characterNotes: "Lean into noir pacing, precise sensory details, and restrained affection. Best visual direction is charcoal coats, silver rings, tired eyes, and neon reflections.",
+    status: "published",
+    updatedAt: "Just now",
+    usageCount: 0,
+  },
   {
     id: "char-1",
     characterName: "Adam McLeod",
