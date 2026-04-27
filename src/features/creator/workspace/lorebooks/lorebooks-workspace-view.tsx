@@ -84,7 +84,7 @@ export function LorebooksWorkspaceView() {
   }
 
   async function handleShare(lorebookId: string) {
-    const shareUrl = `${window.location.origin}/dashboard/creator/workspace/lorebooks?lorebook=${lorebookId}`
+    const shareUrl = `${window.location.origin}/share/lorebooks/${lorebookId}`
     try {
       await navigator.clipboard.writeText(shareUrl)
       toast.success("Lorebook link copied")

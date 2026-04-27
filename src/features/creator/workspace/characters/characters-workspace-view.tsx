@@ -80,7 +80,7 @@ export function CharactersWorkspaceView() {
   }
 
   async function handleShare(characterId: string) {
-    const shareUrl = `${window.location.origin}/dashboard/creator/workspace/characters?character=${characterId}`
+    const shareUrl = `${window.location.origin}/share/characters/${characterId}`
     try {
       await navigator.clipboard.writeText(shareUrl)
       toast.success("Character link copied")

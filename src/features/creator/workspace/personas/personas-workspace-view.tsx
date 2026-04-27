@@ -1,10 +1,13 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
+import Link from "next/link"
+import { useEffect, useMemo, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Plus, Search } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
@@ -13,44 +16,47 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import { PersonaCard } from "@/features/creator/workspace/personas/persona-card"
 import {
   CreatorPersona,
-  creatorPersonas,
   PersonaSafety,
   PersonaVisibility,
 } from "@/features/creator/workspace/personas/personas-data"
-
-type PersonaFormState = {
-  personaName: string
-  avatarUrl: string
-  tags: string
-  safety: PersonaSafety
-  visibility: PersonaVisibility
-  personaDetails: string
-}
-
-const defaultPersonaForm: PersonaFormState = {
-  personaName: "",
-  avatarUrl: "",
-  tags: "",
-  safety: "SFW",
-  visibility: "public",
-  personaDetails: "",
-}
+import { cn } from "@/lib/utils"
 
 export function PersonasWorkspaceView() {
+  const router = useRouter()
   const [search, setSearch] = useState("")
   const [visibilityFilter, setVisibilityFilter] = useState<"all" | PersonaVisibility>("all")
   const [safetyFilter, setSafetyFilter] = useState<"all" | PersonaSafety>("all")
-  const [openCreateDialog, setOpenCreateDialog] = useState(false)
-  const [personas, setPersonas] = useState<CreatorPersona[]>(creatorPersonas)
-  const [form, setForm] = useState<PersonaFormState>(defaultPersonaForm)
+  const [personas, setPersonas] = useState<CreatorPersona[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [pendingDeletePersona, setPendingDeletePersona] = useState<CreatorPersona | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadPersonas() {
+      try {
+        const response = await fetch("/api/creator/personas")
+        if (!response.ok) return
+        const payload = (await response.json()) as { items?: CreatorPersona[] }
+        if (!mounted) return
+        setPersonas(payload.items ?? [])
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    }
+
+    void loadPersonas()
+    return () => {
+      mounted = false
+    }
+  }, [])
 
   const filteredPersonas = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -69,30 +75,41 @@ export function PersonasWorkspaceView() {
     })
   }, [personas, safetyFilter, search, visibilityFilter])
 
-  function handleCreatePersona(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!form.personaName.trim() || !form.personaDetails.trim()) return
+  function handleEdit(personaId: string) {
+    router.push(`/dashboard/creator/workspace/personas/edit?edit=${personaId}`)
+  }
 
-    const tags = form.tags
-      .split(",")
-      .map((tag) => tag.trim())
-      .filter(Boolean)
-
-    const newPersona: CreatorPersona = {
-      id: `persona-${crypto.randomUUID()}`,
-      personaName: form.personaName.trim(),
-      avatarUrl: form.avatarUrl.trim(),
-      tags,
-      safety: form.safety,
-      visibility: form.visibility,
-      personaDetails: form.personaDetails.trim(),
-      updatedAt: "just now",
-      usageCount: 0,
+  async function handleShare(personaId: string) {
+    const shareUrl = `${window.location.origin}/share/personas/${personaId}`
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      toast.success("Persona link copied")
+    } catch {
+      toast.error("Unable to copy link")
     }
+  }
 
-    setPersonas((current) => [newPersona, ...current])
-    setForm(defaultPersonaForm)
-    setOpenCreateDialog(false)
+  function handleDelete(personaId: string) {
+    const target = personas.find((persona) => persona.id === personaId) ?? null
+    setPendingDeletePersona(target)
+    setDeleteDialogOpen(true)
+  }
+
+  async function confirmDeletePersona() {
+    if (!pendingDeletePersona) return
+    const personaId = pendingDeletePersona.id
+    const response = await fetch(`/api/creator/personas?id=${personaId}`, { method: "DELETE" })
+    const payload = (await response.json()) as { error?: string; details?: string }
+    if (!response.ok) {
+      toast.error("Unable to delete persona", {
+        description: payload.details ?? payload.error ?? "Please try again.",
+      })
+      return
+    }
+    setPersonas((current) => current.filter((persona) => persona.id !== personaId))
+    toast.success("Persona deleted")
+    setDeleteDialogOpen(false)
+    setPendingDeletePersona(null)
   }
 
   return (
@@ -104,122 +121,16 @@ export function PersonasWorkspaceView() {
               Workspace · Personas
             </h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Manage reusable persona voice packs and open the create form in dialog.
+              Build reusable persona voice packs for your marketplace listings.
             </p>
           </div>
-
-          <Dialog open={openCreateDialog} onOpenChange={setOpenCreateDialog}>
-            <DialogTrigger render={<Button className="h-9" />}>
-              <Plus className="size-4" />
-              New Persona
-            </DialogTrigger>
-            <DialogContent className="max-w-3xl">
-              <DialogHeader>
-                <DialogTitle>Create Persona</DialogTitle>
-                <DialogDescription>
-                  Fill persona name, avatar, tags, safety, visibility, and persona details.
-                </DialogDescription>
-              </DialogHeader>
-
-              <form className="space-y-4" onSubmit={handleCreatePersona}>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Persona Name</p>
-                    <Input
-                      value={form.personaName}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, personaName: event.target.value }))
-                      }
-                      placeholder="Ex: Royal Advisor"
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Avatar URL</p>
-                    <Input
-                      value={form.avatarUrl}
-                      onChange={(event) =>
-                        setForm((current) => ({ ...current, avatarUrl: event.target.value }))
-                      }
-                      placeholder="https://..."
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Tags</p>
-                  <Input
-                    value={form.tags}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, tags: event.target.value }))
-                    }
-                    placeholder="Romance, Advisor, Strategic"
-                  />
-                  <p className="text-xs text-muted-foreground">Use comma separated tags.</p>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Safety</p>
-                    <Select
-                      value={form.safety}
-                      onValueChange={(value) =>
-                        setForm((current) => ({ ...current, safety: value as PersonaSafety }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select safety" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SFW">SFW</SelectItem>
-                        <SelectItem value="NSFW">NSFW</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium text-foreground">Visibility</p>
-                    <Select
-                      value={form.visibility}
-                      onValueChange={(value) =>
-                        setForm((current) => ({ ...current, visibility: value as PersonaVisibility }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select visibility" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="public">Public</SelectItem>
-                        <SelectItem value="private">Private</SelectItem>
-                        <SelectItem value="unlisted">Unlisted</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-foreground">Persona Details</p>
-                  <Textarea
-                    value={form.personaDetails}
-                    onChange={(event) =>
-                      setForm((current) => ({ ...current, personaDetails: event.target.value }))
-                    }
-                    placeholder="Describe tone, behavior style, and speaking pattern..."
-                    className="min-h-28"
-                    required
-                  />
-                </div>
-
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setOpenCreateDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create Persona</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Link
+            href="/dashboard/creator/workspace/personas/new"
+            className={cn(buttonVariants(), "h-9")}
+          >
+            <Plus className="size-4" />
+            New Persona
+          </Link>
         </div>
       </section>
 
@@ -268,14 +179,18 @@ export function PersonasWorkspaceView() {
             </Select>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {/* <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <span>
               Showing <span className="font-medium text-foreground">{filteredPersonas.length}</span> personas
             </span>
             <Badge variant="outline">{personas.length} total</Badge>
-          </div>
+          </div> */}
 
-          {filteredPersonas.length === 0 ? (
+          {isLoading ? (
+            <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-10 text-center">
+              <p className="text-sm font-medium text-foreground">Loading personas...</p>
+            </div>
+          ) : filteredPersonas.length === 0 ? (
             <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-10 text-center">
               <p className="text-sm font-medium text-foreground">No personas found</p>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -285,12 +200,45 @@ export function PersonasWorkspaceView() {
           ) : (
             <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {filteredPersonas.map((persona) => (
-                <PersonaCard key={persona.id} persona={persona} />
+                <PersonaCard
+                  key={persona.id}
+                  persona={persona}
+                  onEdit={handleEdit}
+                  onShare={handleShare}
+                  onDelete={handleDelete}
+                />
               ))}
             </ul>
           )}
         </CardContent>
       </Card>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete persona?</DialogTitle>
+            <DialogDescription>
+              {pendingDeletePersona
+                ? `This will permanently remove "${pendingDeletePersona.personaName}".`
+                : "This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false)
+                setPendingDeletePersona(null)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={confirmDeletePersona}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
