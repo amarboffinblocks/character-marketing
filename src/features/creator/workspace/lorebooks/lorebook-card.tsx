@@ -1,11 +1,15 @@
-import { BookText } from "lucide-react"
+import { BookText, Edit3, Share2, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import type { CreatorLorebook } from "@/features/creator/workspace/lorebooks/lorebooks-data"
 import { cn } from "@/lib/utils"
 
 type LorebookCardProps = {
   lorebook: CreatorLorebook
+  onEdit: (id: string) => void
+  onShare: (id: string) => void
+  onDelete: (id: string) => void
 }
 
 function initialsFromName(name: string) {
@@ -17,7 +21,7 @@ function initialsFromName(name: string) {
     .toUpperCase()
 }
 
-export function LorebookCard({ lorebook }: LorebookCardProps) {
+export function LorebookCard({ lorebook, onEdit, onShare, onDelete }: LorebookCardProps) {
   return (
     <li className="group rounded-xl border border-border/70 bg-card p-3 text-card-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-border hover:bg-accent/20">
       <div className="flex items-start gap-3">
@@ -35,8 +39,15 @@ export function LorebookCard({ lorebook }: LorebookCardProps) {
         )}
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold">{lorebook.lorebookName}</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {lorebook.tags.slice(0, 5).map((tag) => (
+              <Badge key={tag} variant="secondary" className="h-5 text-[10px] font-semibold text-primary/80">
+                {tag}
+              </Badge>
+            ))}
+          </div>
           <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-            {lorebook.entries[0]?.context ?? "No entries yet"}
+            {lorebook.description || lorebook.entries[0]?.context || "No description yet"}
           </p>
         </div>
       </div>
@@ -56,11 +67,7 @@ export function LorebookCard({ lorebook }: LorebookCardProps) {
         >
           {lorebook.safety}
         </Badge>
-        {lorebook.tags.slice(0, 2).map((tag) => (
-          <Badge key={tag} variant="outline" className="h-5 text-[10px]">
-            {tag}
-          </Badge>
-        ))}
+       
       </div>
 
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
@@ -69,6 +76,20 @@ export function LorebookCard({ lorebook }: LorebookCardProps) {
           {lorebook.entries.length} entries
         </span>
         <span>Updated {lorebook.updatedAt}</span>
+      </div>
+      <div className="mt-3 flex items-center gap-1.5 border-t border-border/60 pt-2">
+        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onEdit(lorebook.id)}>
+          <Edit3 className="size-3.5" />
+          Edit
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={() => onShare(lorebook.id)}>
+          <Share2 className="size-3.5" />
+          Share
+        </Button>
+        <Button type="button" size="sm" variant="ghost" className="ml-auto h-7 px-2 text-xs text-destructive hover:text-destructive" onClick={() => onDelete(lorebook.id)}>
+          <Trash2 className="size-3.5" />
+          Delete
+        </Button>
       </div>
     </li>
   )

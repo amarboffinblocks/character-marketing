@@ -10,6 +10,7 @@ export type LorebookEntry = {
 export type CreatorLorebook = {
   id: string
   lorebookName: string
+  description: string
   avatarUrl?: string
   tags: string[]
   safety: LorebookSafety
@@ -22,6 +23,7 @@ export const creatorLorebooks: CreatorLorebook[] = [
   {
     id: "lorebook-1",
     lorebookName: "Crimson Harbor Lore",
+    description: "Guild politics, trade disputes, and cursed harbor law for city-story continuity.",
     avatarUrl: "",
     tags: ["Fantasy", "Port City", "Political"],
     safety: "SFW",
@@ -43,6 +45,7 @@ export const creatorLorebooks: CreatorLorebook[] = [
   {
     id: "lorebook-2",
     lorebookName: "Neon District Memory Pack",
+    description: "Underground district memory anchors for neon-noir campaigns and stealth scenes.",
     avatarUrl: "",
     tags: ["Cyberpunk", "Noir"],
     safety: "NSFW",

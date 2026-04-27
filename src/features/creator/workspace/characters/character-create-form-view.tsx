@@ -114,13 +114,29 @@ export function CharacterCreateFormView() {
   }
 
   function addTag() {
-    const next = tagInput.trim()
-    if (!next) return
-    if (formValues.tags.includes(next)) {
+    const parts = tagInput
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0)
+
+    if (parts.length === 0) return
+
+    const existing = new Set(formValues.tags.map((tag) => tag.toLowerCase()))
+    const nextTags = [...formValues.tags]
+
+    for (const part of parts) {
+      const normalized = part.toLowerCase()
+      if (existing.has(normalized)) continue
+      nextTags.push(part)
+      existing.add(normalized)
+    }
+
+    if (nextTags.length === formValues.tags.length) {
       setTagInput("")
       return
     }
-    updateField("tags", [...formValues.tags, next])
+
+    updateField("tags", nextTags)
     setTagInput("")
   }
 
