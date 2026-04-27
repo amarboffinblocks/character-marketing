@@ -2,20 +2,15 @@ import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { CreatorProfileView, getCreatorProfileById } from "@/features/site/creator-profile"
-import { allCreators } from "@/features/site/marketplace"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 type CreatorProfilePageProps = {
   params: Promise<{ creatorId: string }>
 }
 
-export function generateStaticParams() {
-  return allCreators.map((creator) => ({ creatorId: creator.id }))
-}
-
 export async function generateMetadata({ params }: CreatorProfilePageProps): Promise<Metadata> {
   const { creatorId } = await params
-  const profile = getCreatorProfileById(creatorId)
+  const profile = await getCreatorProfileById(creatorId)
   if (!profile) {
     return { title: "Creator not found" }
   }
@@ -27,7 +22,7 @@ export async function generateMetadata({ params }: CreatorProfilePageProps): Pro
 
 export default async function CreatorProfilePage({ params }: CreatorProfilePageProps) {
   const { creatorId } = await params
-  const profile = getCreatorProfileById(creatorId)
+  const profile = await getCreatorProfileById(creatorId)
   if (!profile) {
     notFound()
   }

@@ -39,7 +39,7 @@ export function CreatorMarketplaceView({
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState(sortOptions[0]?.id ?? "relevance")
   const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE)
-  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [verifiedOnly, setVerifiedOnly] = useState(false)
   const [availableOnly, setAvailableOnly] = useState(false)
   const [currentPage, setCurrentPage] = useState(1)
@@ -50,7 +50,7 @@ export function CreatorMarketplaceView({
         query,
         sort,
         maxPrice,
-        selectedCategoryIds,
+        selectedTagIds,
         verifiedOnly,
         availableOnly,
       }),
@@ -60,7 +60,7 @@ export function CreatorMarketplaceView({
       query,
       sort,
       maxPrice,
-      selectedCategoryIds,
+      selectedTagIds,
       verifiedOnly,
       availableOnly,
     ]
@@ -98,11 +98,11 @@ export function CreatorMarketplaceView({
     setCurrentPage(1)
   }
 
-  const handleToggleCategory = (categoryId: string) => {
-    setSelectedCategoryIds((current) =>
-      current.includes(categoryId)
-        ? current.filter((value) => value !== categoryId)
-        : [...current, categoryId]
+  const handleToggleTag = (tagId: string) => {
+    setSelectedTagIds((current) =>
+      current.includes(tagId)
+        ? current.filter((value) => value !== tagId)
+        : [...current, tagId]
     )
     setCurrentPage(1)
   }
@@ -111,7 +111,7 @@ export function CreatorMarketplaceView({
     setQuery("")
     setSort(sortOptions[0]?.id ?? "relevance")
     setMaxPrice(DEFAULT_MAX_PRICE)
-    setSelectedCategoryIds([])
+    setSelectedTagIds([])
     setVerifiedOnly(false)
     setAvailableOnly(false)
     setCurrentPage(1)
@@ -123,13 +123,13 @@ export function CreatorMarketplaceView({
         <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
           <div className="sticky top-20">
             <CreatorMarketplaceFilterSidebar
-              categories={categories}
+              tags={categories}
               maxPrice={maxPrice}
-              selectedCategoryIds={selectedCategoryIds}
+              selectedTagIds={selectedTagIds}
               verifiedOnly={verifiedOnly}
               availableOnly={availableOnly}
               onMaxPriceChange={handleMaxPriceChange}
-              onToggleCategory={handleToggleCategory}
+              onToggleTag={handleToggleTag}
               onVerifiedOnlyChange={handleVerifiedOnlyChange}
               onAvailableOnlyChange={handleAvailableOnlyChange}
               onClearFilters={handleClearFilters}

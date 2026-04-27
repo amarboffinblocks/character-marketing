@@ -1,15 +1,14 @@
-import {
-  allCreators,
-  categories,
-  CreatorMarketplaceView,
-  sortOptions,
-} from "@/features/site/marketplace"
+import { CreatorMarketplaceView, sortOptions } from "@/features/site/marketplace"
+import { buildTags, getMarketplaceCreators } from "@/features/site/marketplace/data/marketplace-server-data"
 
-export default function CreatorsPage() {
+export default async function CreatorsPage() {
+  const creators = await getMarketplaceCreators()
+  const tags = buildTags(creators)
+
   return (
     <CreatorMarketplaceView
-      creators={allCreators}
-      categories={categories}
+      creators={creators}
+      categories={tags}
       sortOptions={sortOptions}
     />
   )

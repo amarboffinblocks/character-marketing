@@ -26,18 +26,17 @@ import {
 } from "@/components/ui/table"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
-import { allCreators } from "@/features/site/marketplace"
 import type { Creator } from "@/features/site/marketplace/types"
 
 type AvailabilityFilter = "all" | "available" | "unavailable"
 
-export function AdminCreatorsView() {
+export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
   const [search, setSearch] = useState("")
   const [availability, setAvailability] = useState<AvailabilityFilter>("all")
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return allCreators.filter((c) => {
+    return creators.filter((c) => {
       const matchesSearch =
         q.length === 0 ||
         c.name.toLowerCase().includes(q) ||
@@ -51,7 +50,7 @@ export function AdminCreatorsView() {
             : !c.isAvailable
       return matchesSearch && matchesAvail
     })
-  }, [search, availability])
+  }, [creators, search, availability])
 
   return (
     <div className="flex flex-col gap-6">

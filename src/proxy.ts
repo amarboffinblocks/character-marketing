@@ -73,6 +73,13 @@ export async function proxy(request: NextRequest) {
 
     const role = await resolvePersistedRole(supabase, user)
 
+    if (pathname === "/" && (role === "admin" || role === "creator")) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = role === "admin" ? "/dashboard/admin" : "/dashboard/creator"
+      redirectUrl.search = ""
+      return NextResponse.redirect(redirectUrl)
+    }
+
     // Allow logged-in buyers/users to access sign-up and start creator onboarding.
     if (pathname === "/sign-up" && role === "user") {
       return response

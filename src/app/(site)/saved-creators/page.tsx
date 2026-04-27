@@ -1,19 +1,14 @@
-import {
-  allCreators,
-  categories,
-  CreatorMarketplaceView,
-  sortOptions,
-} from "@/features/site/marketplace"
+import { CreatorMarketplaceView, sortOptions } from "@/features/site/marketplace"
+import { buildTags, getMarketplaceCreators } from "@/features/site/marketplace/data/marketplace-server-data"
 
-const savedCreatorIds = ["luna-pixel", "story-sage", "shadow-craft", "aria-writes"] as const
-
-const savedCreators = allCreators.filter((creator) => savedCreatorIds.includes(creator.id))
-
-export default function SavedCreatorsPage() {
+export default async function SavedCreatorsPage() {
+  const creators = await getMarketplaceCreators()
+  const savedCreators = creators.slice(0, 8)
+  const tags = buildTags(savedCreators)
   return (
     <CreatorMarketplaceView
       creators={savedCreators}
-      categories={categories}
+      categories={tags}
       sortOptions={sortOptions}
     />
   )

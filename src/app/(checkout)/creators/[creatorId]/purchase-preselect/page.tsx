@@ -19,7 +19,7 @@ export default async function PurchasePreselectPage({
 }: PurchasePreselectPageProps) {
   const { creatorId } = await params
   const { packageId } = await searchParams
-  const profile = getCreatorProfileById(creatorId)
+  const profile = await getCreatorProfileById(creatorId)
 
   if (!profile) {
     notFound()

@@ -39,7 +39,7 @@ export function CreatorMarketplaceResultsToolbar({
             value={query}
             onChange={(event) => onQueryChange(event.currentTarget.value)}
             className="h-10 pl-9"
-            placeholder="Search creators, specialties..."
+            placeholder="Search creators, tags..."
             aria-label="Search creators"
           />
         </div>

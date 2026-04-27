@@ -1,11 +1,6 @@
-import { buildCreatorProfile } from "@/features/site/creator-profile/profile"
 import type { CreatorProfile } from "@/features/site/creator-profile/types"
-import { getCreatorById } from "@/features/site/marketplace/data/marketplace-data"
+import { getMarketplaceCreatorProfileById } from "@/features/site/marketplace/data/marketplace-server-data"
 
-export function getCreatorProfileById(id: string): CreatorProfile | null {
-  const creator = getCreatorById(id)
-  if (!creator) {
-    return null
-  }
-  return buildCreatorProfile(creator)
+export async function getCreatorProfileById(id: string): Promise<CreatorProfile | null> {
+  return getMarketplaceCreatorProfileById(id)
 }

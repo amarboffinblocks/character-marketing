@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminUserRecord } from "@/features/admin/admin-users-data"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
-import { getCreatorById } from "@/features/site/marketplace/data/marketplace-data"
+import { getMarketplaceCreatorProfileById } from "@/features/site/marketplace/data/marketplace-server-data"
 import { cn } from "@/lib/utils"
 
 const roleBadge: Record<
@@ -32,13 +32,15 @@ type AdminUserProfileViewProps = {
   userId: string
 }
 
-export function AdminUserProfileView({ userId }: AdminUserProfileViewProps) {
+export async function AdminUserProfileView({ userId }: AdminUserProfileViewProps) {
   const user = getAdminUserRecord(userId)
   if (!user) {
     notFound()
   }
 
-  const creatorProfile = user.linkedCreatorId ? getCreatorById(user.linkedCreatorId) : undefined
+  const creatorProfile = user.linkedCreatorId
+    ? await getMarketplaceCreatorProfileById(user.linkedCreatorId)
+    : undefined
 
   return (
     <div className="flex flex-col gap-6">

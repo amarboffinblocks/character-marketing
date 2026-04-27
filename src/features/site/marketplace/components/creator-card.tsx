@@ -92,7 +92,7 @@ export function CreatorProfileCard({ creator, featured = false }: CreatorProfile
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="truncate font-semibold leading-snug text-card-foreground">{creator.name}</h3>
-              <p className="text-sm text-muted-foreground">@{creator.handle}</p>
+              <p className="text-sm text-muted-foreground">{creator.tagline}</p>
             </div>
           </div>
 

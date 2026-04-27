@@ -4,12 +4,14 @@ import { ArrowRight } from "lucide-react"
 import { Container, SectionHeader } from "@/components/shared"
 import { buttonVariants } from "@/components/ui/button"
 import { CreatorProfileCard } from "@/features/site/marketplace/components/creator-card"
-import { featuredCreators } from "@/features/site/marketplace"
+import { getMarketplaceCreators } from "@/features/site/marketplace/data/marketplace-server-data"
 import { cn } from "@/lib/utils"
 
 const SECTION_TITLE_ID = "featured-creators-heading"
 
-export function FeaturedCreatorsSection() {
+export async function FeaturedCreatorsSection() {
+  const featuredCreators = (await getMarketplaceCreators()).slice(0, 4)
+
   return (
     <section
       aria-labelledby={SECTION_TITLE_ID}

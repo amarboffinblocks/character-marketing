@@ -2,6 +2,8 @@ export type Creator = {
   id: string
   name: string
   handle: string
+  tagline: string
+  languages: string[]
   avatar: string
   coverImage: string
   rating: number

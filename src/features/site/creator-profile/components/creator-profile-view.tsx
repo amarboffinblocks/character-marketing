@@ -126,7 +126,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Languages</h3>
                     <ul className="mt-3 flex list-none flex-wrap gap-2">
-                      {profile.languages.map((lang) => (
+                    {profile.languages.map((lang) => (
                         <li key={lang}>
                           <Badge variant="secondary" className="font-normal">
                             {lang}

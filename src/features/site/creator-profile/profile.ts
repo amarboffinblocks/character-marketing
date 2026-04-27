@@ -120,7 +120,7 @@ export function buildCreatorProfile(creator: Creator): CreatorProfile {
     location: o.location ?? "Remote",
     memberSinceLabel: o.memberSinceLabel ?? defaultMemberSince(creator),
     completionRate: o.completionRate ?? defaultCompletionRate(creator),
-    languages: o.languages ?? ["English"],
+    languages: o.languages ?? (creator.languages.length > 0 ? creator.languages : ["English"]),
     displaySpecialties,
     packages,
     portfolioImageUrls: o.portfolioImageUrls ?? defaultPortfolioUrls(creator),

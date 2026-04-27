@@ -3,26 +3,26 @@
 import type { CreatorMarketplaceCategory } from "@/features/site/marketplace/types"
 
 type CreatorMarketplaceFilterSidebarProps = {
-  categories: CreatorMarketplaceCategory[]
+  tags: CreatorMarketplaceCategory[]
   maxPrice: number
-  selectedCategoryIds: string[]
+  selectedTagIds: string[]
   verifiedOnly: boolean
   availableOnly: boolean
   onMaxPriceChange: (maxPrice: number) => void
-  onToggleCategory: (categoryId: string) => void
+  onToggleTag: (tagId: string) => void
   onVerifiedOnlyChange: (checked: boolean) => void
   onAvailableOnlyChange: (checked: boolean) => void
   onClearFilters: () => void
 }
 
 export function CreatorMarketplaceFilterSidebar({
-  categories,
+  tags,
   maxPrice,
-  selectedCategoryIds,
+  selectedTagIds,
   verifiedOnly,
   availableOnly,
   onMaxPriceChange,
-  onToggleCategory,
+  onToggleTag,
   onVerifiedOnlyChange,
   onAvailableOnlyChange,
   onClearFilters,
@@ -42,24 +42,24 @@ export function CreatorMarketplaceFilterSidebar({
 
       <div className="mt-6 space-y-7">
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Category</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h3>
           <ul className="mt-3 space-y-2.5">
-            {categories.map((category) => {
-              const checked = selectedCategoryIds.includes(category.id)
+            {tags.map((tag) => {
+              const checked = selectedTagIds.includes(tag.id)
 
               return (
-                <li key={category.id}>
+                <li key={tag.id}>
                   <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
                     <span className="flex items-center gap-2">
                       <input
                         type="checkbox"
                         className="size-4 rounded border-border"
                         checked={checked}
-                        onChange={() => onToggleCategory(category.id)}
+                        onChange={() => onToggleTag(tag.id)}
                       />
-                      <span>{category.name}</span>
+                      <span>{tag.name}</span>
                     </span>
-                    <span className="text-xs text-muted-foreground">{category.count}</span>
+                    <span className="text-xs text-muted-foreground">{tag.count}</span>
                   </label>
                 </li>
               )

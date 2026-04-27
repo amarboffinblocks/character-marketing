@@ -16,15 +16,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getAdminCreatorExtra } from "@/features/admin/admin-creator-extras"
 import { getAdminUserRecord } from "@/features/admin/admin-users-data"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
-import { getCreatorById } from "@/features/site/marketplace/data/marketplace-data"
+import { getMarketplaceCreatorProfileById } from "@/features/site/marketplace/data/marketplace-server-data"
 import { cn } from "@/lib/utils"
 
 type AdminCreatorProfileViewProps = {
   creatorId: string
 }
 
-export function AdminCreatorProfileView({ creatorId }: AdminCreatorProfileViewProps) {
-  const creator = getCreatorById(creatorId)
+export async function AdminCreatorProfileView({ creatorId }: AdminCreatorProfileViewProps) {
+  const creator = await getMarketplaceCreatorProfileById(creatorId)
   if (!creator) {
     notFound()
   }

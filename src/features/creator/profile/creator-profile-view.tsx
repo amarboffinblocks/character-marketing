@@ -252,17 +252,39 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
   }
 
   function addSkill() {
-    const next = skillInput.trim()
-    if (!next || form.skills.includes(next)) return
-    updateField("skills", [...form.skills, next])
+    const nextSkills = skillInput
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => !form.skills.includes(item))
+    if (nextSkills.length === 0) return
+    updateField("skills", [...form.skills, ...nextSkills])
     setSkillInput("")
   }
 
   function addLanguage() {
-    const next = languageInput.trim()
-    if (!next || form.languages.includes(next)) return
-    updateField("languages", [...form.languages, next])
+    const nextLanguages = languageInput
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .filter((item) => !form.languages.includes(item))
+    if (nextLanguages.length === 0) return
+    updateField("languages", [...form.languages, ...nextLanguages])
     setLanguageInput("")
+  }
+
+  function handleSkillInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault()
+      addSkill()
+    }
+  }
+
+  function handleLanguageInputKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault()
+      addLanguage()
+    }
   }
 
   return (
@@ -309,6 +331,8 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
               setLanguageInput={setLanguageInput}
               onAddSkill={addSkill}
               onAddLanguage={addLanguage}
+              onSkillInputKeyDown={handleSkillInputKeyDown}
+              onLanguageInputKeyDown={handleLanguageInputKeyDown}
             />
           ) : null}
 
@@ -737,6 +761,8 @@ function ProfessionalSection({
   setLanguageInput,
   onAddSkill,
   onAddLanguage,
+  onSkillInputKeyDown,
+  onLanguageInputKeyDown,
 }: {
   form: CreatorProfileForm
   updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
@@ -746,6 +772,8 @@ function ProfessionalSection({
   setLanguageInput: (value: string) => void
   onAddSkill: () => void
   onAddLanguage: () => void
+  onSkillInputKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
+  onLanguageInputKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
 }) {
   return (
     <Card>
@@ -786,10 +814,12 @@ function ProfessionalSection({
             <Input
               value={skillInput}
               onChange={(event) => setSkillInput(event.target.value)}
+              onKeyDown={onSkillInputKeyDown}
               placeholder="Add skill"
             />
-            <Button type="button" variant="outline" onClick={onAddSkill}>
+            <Button type="button" variant="outline" className="min-w-20 h-10 gap-1.5" onClick={onAddSkill}>
               <Plus className="size-4" />
+              Add
             </Button>
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -817,10 +847,12 @@ function ProfessionalSection({
             <Input
               value={languageInput}
               onChange={(event) => setLanguageInput(event.target.value)}
+              onKeyDown={onLanguageInputKeyDown}
               placeholder="Add language"
             />
-            <Button type="button" variant="outline" onClick={onAddLanguage}>
+            <Button type="button" variant="outline" className="min-w-20 h-10 gap-1.5" onClick={onAddLanguage}>
               <Plus className="size-4" />
+              Add
             </Button>
           </div>
           <div className="flex flex-wrap gap-1.5">

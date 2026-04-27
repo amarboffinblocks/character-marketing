@@ -4,7 +4,7 @@ export type CreatorMarketplaceFilters = {
   query: string
   sort: string
   maxPrice: number
-  selectedCategoryIds: string[]
+  selectedTagIds: string[]
   verifiedOnly: boolean
   availableOnly: boolean
 }
@@ -28,9 +28,9 @@ export function getPaginationRange(
   return [1, "ellipsis", currentPage - 1, currentPage, currentPage + 1, "ellipsis", totalPages]
 }
 
-function matchesCategory(creator: Creator, category: CreatorMarketplaceCategory) {
-  const categoryName = category.name.toLowerCase()
-  return creator.specialties.some((specialty) => specialty.toLowerCase().includes(categoryName))
+function matchesTag(creator: Creator, tag: CreatorMarketplaceCategory) {
+  const tagName = tag.name.toLowerCase()
+  return creator.specialties.some((specialty) => specialty.toLowerCase() === tagName)
 }
 
 export function sortCreators(creators: Creator[], sort: string) {
@@ -59,13 +59,11 @@ export function sortCreators(creators: Creator[], sort: string) {
 
 export function filterCreators(
   creators: Creator[],
-  categories: CreatorMarketplaceCategory[],
+  tags: CreatorMarketplaceCategory[],
   filters: CreatorMarketplaceFilters
 ) {
   const normalizedQuery = filters.query.trim().toLowerCase()
-  const selectedCategories = categories.filter((category) =>
-    filters.selectedCategoryIds.includes(category.id)
-  )
+  const selectedTags = tags.filter((tag) => filters.selectedTagIds.includes(tag.id))
 
   const filtered = creators.filter((creator) => {
     const inPriceRange = creator.startingPrice <= filters.maxPrice
@@ -77,16 +75,14 @@ export function filterCreators(
       creator.handle.toLowerCase().includes(normalizedQuery) ||
       creator.specialties.some((specialty) => specialty.toLowerCase().includes(normalizedQuery))
 
-    const matchesSelectedCategories =
-      selectedCategories.length === 0 ||
-      selectedCategories.some((category) => matchesCategory(creator, category))
+    const matchesSelectedTags = selectedTags.length === 0 || selectedTags.some((tag) => matchesTag(creator, tag))
 
     return (
       inPriceRange &&
       matchesVerifiedFilter &&
       matchesAvailabilityFilter &&
       matchesSearch &&
-      matchesSelectedCategories
+      matchesSelectedTags
     )
   })
 
