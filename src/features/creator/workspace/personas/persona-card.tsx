@@ -66,7 +66,7 @@ export function PersonaCard({ persona, onEdit, onShare, onDelete }: PersonaCardP
         >
           {persona.safety}
         </Badge>
-     
+
       </div>
 
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
