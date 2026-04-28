@@ -1,6 +1,8 @@
 "use client"
 
+import { useMemo } from "react"
 import type { CreatorMarketplaceCategory } from "@/features/site/marketplace/types"
+import { MultiSelect } from "@/components/ui/multi-select"
 
 type CreatorMarketplaceFilterSidebarProps = {
   tags: CreatorMarketplaceCategory[]
@@ -27,6 +29,29 @@ export function CreatorMarketplaceFilterSidebar({
   onAvailableOnlyChange,
   onClearFilters,
 }: CreatorMarketplaceFilterSidebarProps) {
+  const tagOptions = useMemo(
+    () =>
+      tags.map((tag) => ({
+        value: tag.id,
+        label: tag.name,
+      })),
+    [tags]
+  )
+
+  const handleTagSelectionChange = (nextSelectedTagIds: string[]) => {
+    const currentSet = new Set(selectedTagIds)
+    const nextSet = new Set(nextSelectedTagIds)
+
+    tags.forEach((tag) => {
+      const isCurrentlySelected = currentSet.has(tag.id)
+      const shouldBeSelected = nextSet.has(tag.id)
+
+      if (isCurrentlySelected !== shouldBeSelected) {
+        onToggleTag(tag.id)
+      }
+    })
+  }
+
   return (
     <aside className="rounded-xl border border-border/70 bg-card p-5">
       <div className="flex items-center justify-between">
@@ -43,28 +68,19 @@ export function CreatorMarketplaceFilterSidebar({
       <div className="mt-6 space-y-7">
         <section>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h3>
-          <ul className="mt-3 space-y-2.5">
-            {tags.map((tag) => {
-              const checked = selectedTagIds.includes(tag.id)
-
-              return (
-                <li key={tag.id}>
-                  <label className="flex cursor-pointer items-center justify-between gap-3 text-sm">
-                    <span className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="size-4 rounded border-border"
-                        checked={checked}
-                        onChange={() => onToggleTag(tag.id)}
-                      />
-                      <span>{tag.name}</span>
-                    </span>
-                    <span className="text-xs text-muted-foreground">{tag.count}</span>
-                  </label>
-                </li>
-              )
-            })}
-          </ul>
+          <div className="mt-3 space-y-2.5">
+            <MultiSelect
+              options={tagOptions}
+              defaultValue={selectedTagIds}
+              onValueChange={handleTagSelectionChange}
+              placeholder="Select tags"
+              hideSelectAll
+              maxCount={2}
+              searchable
+              className="w-full"
+              popoverClassName="w-[var(--anchor-width)]"
+            />
+          </div>
         </section>
 
         <section>
