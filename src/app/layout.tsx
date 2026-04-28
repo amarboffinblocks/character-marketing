@@ -22,12 +22,9 @@ export const metadata: Metadata = {
   description: "Character Market",
   applicationName: "Character Market",
   icons: {
-    icon: [
-      { url: "/icon.svg", type: "image/svg+xml" },
-      { url: "/icon-light-32x32.png", sizes: "32x32", type: "image/png" },
-      { url: "/icon-dark-32x32.png", sizes: "32x32", type: "image/png" },
-    ],
-    apple: [{ url: "/apple-icon.png", sizes: "180x180", type: "image/png" }],
+    icon: [{ url: "/market_logo.svg", type: "image/svg+xml" }],
+    shortcut: [{ url: "/market_logo.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/market_logo.svg", type: "image/svg+xml" }],
   },
 };
 

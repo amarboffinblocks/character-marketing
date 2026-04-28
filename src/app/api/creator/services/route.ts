@@ -78,6 +78,7 @@ function mapRow(row: Record<string, unknown>) {
     characterCount: asNumber(row.character_count, 0),
     highlights: asStringArray(row.highlights),
     isRecommended: asBoolean(row.is_recommended),
+    createdAt: asString(row.created_at),
     updatedAt: asString(row.updated_at),
   }
 }

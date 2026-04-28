@@ -12,6 +12,7 @@ export type CreatorServicePackage = {
   characterCount: number
   highlights: string[]
   isRecommended: boolean
+  createdAt: string
   updatedAt: string
 }
 

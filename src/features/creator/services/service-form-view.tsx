@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Plus } from "lucide-react"
+import { ArrowLeft, Plus } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -181,7 +181,17 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6">
-      <div className="space-y-1">
+      <div className="space-y-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-fit gap-1.5 px-0 text-muted-foreground hover:text-foreground"
+          onClick={() => router.push("/dashboard/creator/services")}
+        >
+          <ArrowLeft className="size-4" />
+          Back to services
+        </Button>
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="text-sm text-muted-foreground">
           Add the package details shown to buyers on your service cards.
