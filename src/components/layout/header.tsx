@@ -41,12 +41,35 @@ export async function Header() {
               : user.email ?? "",
       }
       const completion = computeCompletion(normalized)
-      showProfileWarning = completion.percent < 70
+      showProfileWarning = roleKey === "creator" && completion.percent < 70
+
+      let avatarUrlCandidate: string | null = null
+      if (normalized.avatarUrl && typeof normalized.avatarUrl === "string" && normalized.avatarUrl.trim().length > 0) {
+        avatarUrlCandidate = normalized.avatarUrl.trim()
+      } else if (profileData && typeof profileData.avatarUrl === "string" && profileData.avatarUrl.trim().length > 0) {
+        avatarUrlCandidate = profileData.avatarUrl.trim()
+      } else if (
+        profileData &&
+        profileData.creator &&
+        typeof profileData.creator === "object" &&
+        typeof (profileData.creator as Record<string, unknown>).avatarUrl === "string" &&
+        (profileData.creator as Record<string, string>).avatarUrl.trim().length > 0
+      ) {
+        avatarUrlCandidate = (profileData.creator as Record<string, string>).avatarUrl.trim()
+      }
+
+      return (
+        <HeaderClient
+          isAuthenticated={isAuthenticated}
+          showProfileWarning={showProfileWarning}
+          avatarUrl={avatarUrlCandidate}
+        />
+      )
     }
   } catch {
     isAuthenticated = false
     showProfileWarning = false
   }
 
-  return <HeaderClient isAuthenticated={isAuthenticated} showProfileWarning={showProfileWarning} />
+  return <HeaderClient isAuthenticated={isAuthenticated} showProfileWarning={showProfileWarning} avatarUrl={null} />
 }

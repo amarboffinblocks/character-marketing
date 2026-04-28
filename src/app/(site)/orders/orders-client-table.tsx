@@ -90,10 +90,17 @@ function safeCreatorSummary(profileData: unknown) {
   const displayName =
     (creator && typeof creator.displayName === "string" && creator.displayName.trim()) ||
     (creator && typeof creator.name === "string" && creator.name.trim()) ||
+    (root && typeof root.displayName === "string" && root.displayName.trim()) ||
+    (root && typeof root.name === "string" && root.name.trim()) ||
     ""
 
-  const handle = creator && typeof creator.handle === "string" ? creator.handle.trim() : ""
-  const avatarUrl = creator && typeof creator.avatarUrl === "string" ? creator.avatarUrl.trim() : ""
+  const handle = 
+    (creator && typeof creator.handle === "string" ? creator.handle.trim() : "") ||
+    (root && typeof root.handle === "string" ? root.handle.trim() : "")
+
+  const avatarUrl = 
+    (creator && typeof creator.avatarUrl === "string" ? creator.avatarUrl.trim() : "") ||
+    (root && typeof root.avatarUrl === "string" ? root.avatarUrl.trim() : "")
 
   return {
     displayName,
@@ -299,12 +306,20 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
                   <div className="flex items-center gap-3">
-                    <span
-                      className="inline-flex size-9 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs"
-                      aria-hidden
-                    >
-                      <UserRound className="size-4.5" />
-                    </span>
+                    {creator.avatarUrl ? (
+                      <img
+                        src={creator.avatarUrl}
+                        alt={creatorName}
+                        className="size-9 rounded-full object-cover shadow-xs"
+                      />
+                    ) : (
+                      <span
+                        className="inline-flex size-9 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs"
+                        aria-hidden
+                      >
+                        <UserRound className="size-4.5" />
+                      </span>
+                    )}
                     <div className="flex flex-col gap-0.5">
                       <span className="text-sm font-semibold tracking-tight text-foreground">
                         {creatorName}
@@ -365,12 +380,20 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
               <>
                 <DialogHeader>
                   <div className="flex items-center gap-3 mb-1">
-                    <span
-                      className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                      aria-hidden
-                    >
-                      <UserRound className="size-5" />
-                    </span>
+                    {creator.avatarUrl ? (
+                      <img
+                        src={creator.avatarUrl}
+                        alt={creator.displayName || "Creator"}
+                        className="size-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <span
+                        className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground"
+                        aria-hidden
+                      >
+                        <UserRound className="size-5" />
+                      </span>
+                    )}
                     <div className="flex flex-col text-left">
                       <DialogTitle className="text-base font-semibold">
                         {selectedOrder.package_title}

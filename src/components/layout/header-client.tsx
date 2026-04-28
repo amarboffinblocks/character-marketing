@@ -29,6 +29,7 @@ const activityLinks = [
 type HeaderClientProps = {
   isAuthenticated: boolean
   showProfileWarning: boolean
+  avatarUrl?: string | null
 }
 
 function ProfileWarningBadge() {
@@ -51,7 +52,7 @@ function ProfileWarningBadge() {
   )
 }
 
-export function HeaderClient({ isAuthenticated, showProfileWarning }: HeaderClientProps) {
+export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl }: HeaderClientProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const router = useRouter()
@@ -133,8 +134,12 @@ export function HeaderClient({ isAuthenticated, showProfileWarning }: HeaderClie
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <button type="button" className={cn(buttonVariants({ variant: "outline", size: "icon" }), "relative size-9 shrink-0 rounded-full")} aria-label="Account menu">
-                      <UserRound className="size-4" aria-hidden />
+                    <button type="button" className={cn(buttonVariants({ variant: "outline", size: "icon" }), "relative size-9 shrink-0 rounded-full overflow-hidden")} aria-label="Account menu">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="Profile" className="size-full object-cover" />
+                      ) : (
+                        <UserRound className="size-4" aria-hidden />
+                      )}
                       {showProfileWarning ? (
                         <span className="absolute -right-0.5 -top-0.5">
                           <ProfileWarningBadge />
@@ -145,9 +150,14 @@ export function HeaderClient({ isAuthenticated, showProfileWarning }: HeaderClie
                 />
                 <DropdownMenuContent align="end" className="min-w-56 p-2">
                   <DropdownMenuItem className="flex justify-between" render={<Link href="/profile" className="cursor-pointer" />}>
-                  <span className="flex gap-2 items-center">
-                  <UserRound className="size-4 flex " />Profile
-                  </span>
+                    <span className="flex gap-2 items-center">
+                      {avatarUrl ? (
+                        <img src={avatarUrl} alt="Profile" className="size-5 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <UserRound className="size-4 flex-shrink-0" />
+                      )}
+                      Profile
+                    </span>
                     {showProfileWarning ? (
                       <span>
                         <ProfileWarningBadge />
