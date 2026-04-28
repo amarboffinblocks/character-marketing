@@ -122,6 +122,10 @@ export async function POST(request: Request) {
     )
   }
 
+  if (!data) {
+    return NextResponse.json({ error: "Unable to create character." }, { status: 400 })
+  }
+
   return NextResponse.json({ id: data.id }, { status: 201 })
 }
 
@@ -293,6 +297,10 @@ export async function PATCH(request: Request) {
       },
       { status: 400 }
     )
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Unable to update character." }, { status: 400 })
   }
 
   return NextResponse.json({ id: data.id, success: true })

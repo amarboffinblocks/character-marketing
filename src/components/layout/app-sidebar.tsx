@@ -127,6 +127,11 @@ function getActiveHref(pathname: string, items: AppSidebarItem[]) {
     return matched[0]
 }
 
+function getGlobalActiveHref(pathname: string, groups?: AppSidebarGroup[]) {
+  const allItems = groups?.flatMap((group) => group.items) ?? []
+  return getActiveHref(pathname, allItems)
+}
+
 export function AppSidebar({
     groups,
     workspaceName = "Character Market",
@@ -142,6 +147,7 @@ export function AppSidebar({
     const router = useRouter()
     const [isSigningOut, setIsSigningOut] = useState(false)
     const visibleGroups = groups?.filter((group) => group.label.toLowerCase() !== "account")
+  const globalActiveHref = getGlobalActiveHref(pathname, visibleGroups)
     const accountBasePath = brandHref.startsWith("/dashboard/admin") ? "/dashboard/admin" : "/dashboard/creator"
 
     const handleSignOut = async () => {
@@ -210,7 +216,7 @@ export function AppSidebar({
                     <SidebarGroupContent>
                         <SidebarMenu>
                             {visibleGroups?.map((group) => {
-                                const activeHref = getActiveHref(pathname, group.items)
+                                const activeHref = globalActiveHref
                                 const isWorkspaceGroup = group.label.toLowerCase() === "workspace"
 
                                 if (!isWorkspaceGroup) {

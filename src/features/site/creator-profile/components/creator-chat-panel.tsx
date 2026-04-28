@@ -1,11 +1,15 @@
 "use client"
 
 import Image from "next/image"
-import { useCallback, useEffect, useId, useRef, useState } from "react"
+import Link from "next/link"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { MessageSquare, Send, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { fetchThreadMessages, openOrCreateThread, sendThreadMessage } from "@/features/messaging/api"
+import { formatMessageTime, type MessageItem } from "@/features/messaging/types"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 type ChatMessage = {
@@ -13,10 +17,6 @@ type ChatMessage = {
   role: "user" | "creator"
   text: string
   timeLabel: string
-}
-
-function nowLabel() {
-  return new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })
 }
 
 type CreatorChatPanelProps = {
@@ -37,16 +37,22 @@ export function CreatorChatPanel({
   creatorAvatar,
 }: CreatorChatPanelProps) {
   const titleId = useId()
+  const supabase = useMemo(() => createClientSupabaseClient(), [])
   const [input, setInput] = useState("")
+  const [threadId, setThreadId] = useState("")
+  const [isInitializing, setIsInitializing] = useState(false)
+  const [isSending, setIsSending] = useState(false)
+  const [error, setError] = useState("")
   const [messages, setMessages] = useState<ChatMessage[]>(() => [
     {
       id: `welcome-${creatorId}`,
       role: "creator",
       text: `Hi — I'm ${creatorName}. Tell me about your project and I'll reply here when I'm available.`,
-      timeLabel: nowLabel(),
+      timeLabel: formatMessageTime(new Date().toISOString()),
     },
   ])
   const endRef = useRef<HTMLDivElement>(null)
+  const initPromiseRef = useRef<Promise<void> | null>(null)
 
   const scrollToBottom = useCallback(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -70,19 +76,73 @@ export function CreatorChatPanel({
     }
   }, [open, onOpenChange])
 
-  function handleSend(e: React.FormEvent) {
+  const mapMessage = useCallback((item: MessageItem): ChatMessage => {
+    return {
+      id: item.id,
+      role: item.senderRole === "buyer" ? "user" : "creator",
+      text: item.text,
+      timeLabel: formatMessageTime(item.createdAt),
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    if (initPromiseRef.current) return
+    if (threadId) return
+
+    const initChat = async () => {
+      setIsInitializing(true)
+      setError("")
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+        const user = session?.user ?? null
+        if (!user) {
+          setError("Please sign in to start chatting.")
+          return
+        }
+
+        const participants = [user.id, creatorId].sort()
+        const directOrderId = `direct:${participants[0]}:${participants[1]}`
+        const thread = await openOrCreateThread({
+          orderId: directOrderId,
+          otherUserId: creatorId,
+          otherUserName: creatorName,
+        })
+        setThreadId(thread.id)
+        const apiMessages = await fetchThreadMessages(thread.id)
+        setMessages((current) => {
+          if (apiMessages.length === 0) return current
+          return apiMessages.map(mapMessage)
+        })
+      } catch (initError) {
+        setError(initError instanceof Error ? initError.message : "Unable to start chat.")
+      } finally {
+        setIsInitializing(false)
+        initPromiseRef.current = null
+      }
+    }
+
+    initPromiseRef.current = initChat()
+  }, [creatorId, creatorName, mapMessage, open, supabase, threadId])
+
+  async function handleSend(e: React.FormEvent) {
     e.preventDefault()
     const trimmed = input.trim()
-    if (!trimmed) return
+    if (!trimmed || !threadId) return
 
-    const userMsg: ChatMessage = {
-      id: `u-${crypto.randomUUID()}`,
-      role: "user",
-      text: trimmed,
-      timeLabel: nowLabel(),
+    setIsSending(true)
+    setError("")
+    try {
+      const sent = await sendThreadMessage(threadId, trimmed)
+      setMessages((current) => [...current, mapMessage(sent)])
+      setInput("")
+    } catch (sendError) {
+      setError(sendError instanceof Error ? sendError.message : "Unable to send message.")
+    } finally {
+      setIsSending(false)
     }
-    setMessages((m) => [...m, userMsg])
-    setInput("")
   }
 
   if (!open) return null
@@ -135,6 +195,9 @@ export function CreatorChatPanel({
         </div>
 
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 py-3">
+          {isInitializing ? (
+            <p className="text-xs text-muted-foreground">Connecting chat...</p>
+          ) : null}
           {messages.map((m) => (
             <div
               key={m.id}
@@ -178,14 +241,31 @@ export function CreatorChatPanel({
               className="min-h-10 flex-1"
               autoComplete="off"
               aria-label="Message"
+              disabled={isInitializing || isSending || !threadId}
             />
-            <Button type="submit" size="icon" className="shrink-0" aria-label="Send message">
+            <Button
+              type="submit"
+              size="icon"
+              className="shrink-0"
+              aria-label="Send message"
+              disabled={isInitializing || isSending || !threadId || !input.trim()}
+            >
               <Send className="size-4" />
             </Button>
           </div>
+          {threadId ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Continue full conversation in{" "}
+              <Link href={`/messages?thread=${encodeURIComponent(threadId)}`} className="underline">
+                Messages
+              </Link>
+              .
+            </p>
+          ) : null}
+          {error ? <p className="mt-1 text-[11px] text-destructive">{error}</p> : null}
           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
             <MessageSquare className="size-3 shrink-0" aria-hidden />
-            Demo chat — messages stay on this device until you connect a real inbox.
+            Messages sync with your shared inbox.
           </p>
         </form>
       </div>

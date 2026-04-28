@@ -34,7 +34,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       backgroundUrl: asText(data.background_url),
       visibility: asText(data.visibility) || "private",
       safety: asText(data.safety) || "SFW",
-      tags: Array.isArray(data.tags) ? data.tags.filter((v): v is string => typeof v === "string") : [],
+      tags: Array.isArray(data.tags)
+        ? data.tags.filter((value: unknown): value is string => typeof value === "string")
+        : [],
       description: asText(data.description),
       scenario: asText(data.scenario),
       personalitySummary: asText(data.personality_summary),

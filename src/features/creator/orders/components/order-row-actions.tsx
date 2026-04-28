@@ -40,7 +40,14 @@ export function OrderRowActions({ order }: OrderRowActionsProps) {
           <ExternalLink className="size-4" />
           Open order
         </DropdownMenuItem>
-        <DropdownMenuItem render={<Link href="/dashboard/creator/messages" className="cursor-pointer" />}>
+        <DropdownMenuItem
+          render={
+            <Link
+              href={`/dashboard/creator/messages?order=${encodeURIComponent(order.id)}`}
+              className="cursor-pointer"
+            />
+          }
+        >
           <MessageSquareText className="size-4" />
           Message buyer
         </DropdownMenuItem>

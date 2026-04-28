@@ -101,6 +101,10 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: "Unable to create persona.", details: error.message }, { status: 400 })
   }
+  if (!data) {
+    return NextResponse.json({ error: "Unable to create persona." }, { status: 400 })
+  }
+
   return NextResponse.json({ id: data.id }, { status: 201 })
 }
 
@@ -143,6 +147,10 @@ export async function PATCH(request: Request) {
   if (error) {
     return NextResponse.json({ error: "Unable to update persona.", details: error.message }, { status: 400 })
   }
+  if (!data) {
+    return NextResponse.json({ error: "Unable to update persona." }, { status: 400 })
+  }
+
   return NextResponse.json({ id: data.id, success: true })
 }
 

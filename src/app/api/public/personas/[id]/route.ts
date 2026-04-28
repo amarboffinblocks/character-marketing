@@ -31,7 +31,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       personaName: asText(data.persona_name),
       personaDetails: asText(data.persona_details),
       avatarUrl: asText(data.avatar_url),
-      tags: Array.isArray(data.tags) ? data.tags.filter((v): v is string => typeof v === "string") : [],
+      tags: Array.isArray(data.tags)
+        ? data.tags.filter((value: unknown): value is string => typeof value === "string")
+        : [],
       safety: asText(data.safety) || "SFW",
       visibility: asText(data.visibility) || "private",
       usageCount: Number(data.usage_count ?? 0) || 0,

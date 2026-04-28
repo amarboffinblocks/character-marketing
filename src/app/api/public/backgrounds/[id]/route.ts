@@ -30,7 +30,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       id: asText(data.id),
       backgroundName: asText(data.background_name),
       imageUrl: asText(data.image_url),
-      tags: Array.isArray(data.tags) ? data.tags.filter((v): v is string => typeof v === "string") : [],
+      tags: Array.isArray(data.tags)
+        ? data.tags.filter((value: unknown): value is string => typeof value === "string")
+        : [],
       safety: asText(data.safety) || "SFW",
       visibility: asText(data.visibility) || "private",
       type: asText(data.type) || "indoor",

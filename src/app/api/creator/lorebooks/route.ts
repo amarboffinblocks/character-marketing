@@ -138,6 +138,10 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ error: "Unable to create lorebook.", details: error.message }, { status: 400 })
   }
+  if (!data) {
+    return NextResponse.json({ error: "Unable to create lorebook." }, { status: 400 })
+  }
+
   return NextResponse.json({ id: data.id }, { status: 201 })
 }
 
@@ -195,6 +199,10 @@ export async function PATCH(request: Request) {
   if (error) {
     return NextResponse.json({ error: "Unable to update lorebook.", details: error.message }, { status: 400 })
   }
+  if (!data) {
+    return NextResponse.json({ error: "Unable to update lorebook." }, { status: 400 })
+  }
+
   return NextResponse.json({ id: data.id, success: true })
 }
 
