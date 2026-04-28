@@ -666,9 +666,9 @@ export function CustomPackageRequestForm({
         <CardHeader className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className="bg-amber-500 text-white hover:bg-amber-500/90">Custom Package Request</Badge>
-            <Badge variant="secondary">{tokensLabel}</Badge>
+            <Badge variant="secondary">{tokensLabel} Tokens</Badge>
           </div>
-          <CardTitle className="text-lg">{packageTitle}</CardTitle>
+          <CardTitle className="text-xl">{packageTitle}</CardTitle>
           <p className="text-sm text-muted-foreground">{packageDescription}</p>
           <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">${packagePrice}</p>
         </CardHeader>

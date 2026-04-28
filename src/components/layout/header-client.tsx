@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { AlertCircle, ChevronDown, LogOut, Menu, Settings, UserRound, X } from "lucide-react"
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
 
 import Logo from "@/components/icons/logo"
@@ -30,6 +30,7 @@ type HeaderClientProps = {
   isAuthenticated: boolean
   showProfileWarning: boolean
   avatarUrl?: string | null
+  userRole?: string
 }
 
 function ProfileWarningBadge() {
@@ -52,10 +53,16 @@ function ProfileWarningBadge() {
   )
 }
 
-export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl }: HeaderClientProps) {
+export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, userRole }: HeaderClientProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const router = useRouter()
+  const pathname = usePathname()
+  const showCreatorWarning = Boolean(
+    showProfileWarning &&
+      userRole === "creator" &&
+      pathname?.startsWith("/dashboard/creator")
+  )
 
   const closeMenu = () => setIsMenuOpen(false)
 
@@ -140,7 +147,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl }:
                       ) : (
                         <UserRound className="size-4" aria-hidden />
                       )}
-                      {showProfileWarning ? (
+                      {showCreatorWarning ? (
                         <span className="absolute -right-0.5 -top-0.5">
                           <ProfileWarningBadge />
                         </span>
@@ -158,7 +165,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl }:
                       )}
                       Profile
                     </span>
-                    {showProfileWarning ? (
+                    {showCreatorWarning ? (
                       <span>
                         <ProfileWarningBadge />
                       </span>

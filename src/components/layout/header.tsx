@@ -6,6 +6,7 @@ import { HeaderClient } from "./header-client"
 export async function Header() {
   let isAuthenticated = false
   let showProfileWarning = false
+  let userRole = "user"
 
   try {
     const supabase = await createServerSupabaseClient()
@@ -28,6 +29,7 @@ export async function Header() {
           : typeof user.user_metadata?.role === "string" && user.user_metadata.role.trim().length > 0
             ? user.user_metadata.role
             : "user"
+      userRole = roleKey
 
       const selected = (profileData[roleKey] as Partial<CreatorProfileForm> | undefined) ?? {}
       const normalized: CreatorProfileForm = {
@@ -63,6 +65,7 @@ export async function Header() {
           isAuthenticated={isAuthenticated}
           showProfileWarning={showProfileWarning}
           avatarUrl={avatarUrlCandidate}
+          userRole={userRole}
         />
       )
     }
@@ -71,5 +74,12 @@ export async function Header() {
     showProfileWarning = false
   }
 
-  return <HeaderClient isAuthenticated={isAuthenticated} showProfileWarning={showProfileWarning} avatarUrl={null} />
+  return (
+    <HeaderClient
+      isAuthenticated={isAuthenticated}
+      showProfileWarning={showProfileWarning}
+      avatarUrl={null}
+      userRole={userRole}
+    />
+  )
 }

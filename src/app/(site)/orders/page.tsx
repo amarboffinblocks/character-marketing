@@ -1,19 +1,10 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import pg from "pg"
-import { CalendarClock, FolderSearch, UserRound } from "lucide-react"
+import { Activity, CalendarClock, CheckCircle2, FolderSearch, Timer } from "lucide-react"
 
-import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { OrdersClientTable } from "./orders-client-table"
@@ -34,98 +25,6 @@ type BuyerRequestRow = {
   created_at: string
   request_payload: unknown
   creator_profile_data: unknown | null
-}
-
-function formatCurrency(amount: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(amount)
-}
-
-function formatCreatedAt(value: string) {
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) return "—"
-  return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
-}
-
-const requestTypeLabel: Record<RequestType, string> = {
-  custom_package: "Custom package",
-  preselect_package: "Pre-select",
-}
-
-const requestStatusLabel: Record<RequestStatus, string> = {
-  pending: "Pending",
-  processing: "Processing",
-  accepted: "Accepted",
-  rejected: "Rejected",
-  completed: "Completed",
-}
-
-const requestStatusClass: Record<RequestStatus, string> = {
-  pending: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  processing: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  rejected: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
-  completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
-}
-
-function safeCreatorSummary(profileData: unknown) {
-  const root = profileData && typeof profileData === "object" ? (profileData as Record<string, unknown>) : null
-  const creator =
-    root && root.creator && typeof root.creator === "object" ? (root.creator as Record<string, unknown>) : null
-
-  const displayName =
-    (creator && typeof creator.displayName === "string" && creator.displayName.trim()) ||
-    (creator && typeof creator.name === "string" && creator.name.trim()) ||
-    ""
-
-  const handle = creator && typeof creator.handle === "string" ? creator.handle.trim() : ""
-  const avatarUrl = creator && typeof creator.avatarUrl === "string" ? creator.avatarUrl.trim() : ""
-
-  return {
-    displayName,
-    handle: handle.startsWith("@") || handle.length === 0 ? handle : `@${handle}`,
-    avatarUrl: avatarUrl.length > 0 ? avatarUrl : null,
-  }
-}
-
-function getRequestCategoryLabel(request: BuyerRequestRow) {
-  const payload = request.request_payload
-  if (!payload || typeof payload !== "object") return "—"
-
-  // Custom requests store details under `details`, preselect stores counts under `requestedAssets`.
-  if (request.request_type === "custom_package") {
-    const details = (payload as Record<string, unknown>).details
-    if (!details || typeof details !== "object") return "Custom assets"
-
-    const detailObj = details as Record<string, unknown>
-    const keys = ["character", "persona", "lorebook", "background", "avatar"] as const
-    const counts = keys
-      .map((k) => {
-        const v = detailObj[k]
-        const n = Array.isArray(v) ? v.length : 0
-        return n > 0 ? `${k}:${n}` : null
-      })
-      .filter(Boolean)
-      .slice(0, 3)
-
-    return counts.length > 0 ? counts.join(" · ") : "Custom assets"
-  }
-
-  const requestedAssets = (payload as Record<string, unknown>).requestedAssets
-  if (!requestedAssets || typeof requestedAssets !== "object") return "—"
-  const ra = requestedAssets as Record<string, unknown>
-  const keys = ["character", "persona", "lorebook", "background", "avatar"] as const
-  const counts = keys
-    .map((k) => {
-      const n = typeof ra[k] === "number" ? ra[k] : 0
-      return n > 0 ? `${k}:${n}` : null
-    })
-    .filter(Boolean)
-    .slice(0, 3)
-  return counts.length > 0 ? counts.join(" · ") : "—"
 }
 
 async function fetchBuyerRequests(userId: string): Promise<BuyerRequestRow[]> {
@@ -175,6 +74,40 @@ export default async function OrdersPage() {
   }
 
   const requests = await fetchBuyerRequests(user.id)
+  const openCount = requests.filter((r) => r.status === "pending" || r.status === "processing").length
+  const completedCount = requests.filter((r) => r.status === "completed").length
+  const summaryCards = [
+    {
+      key: "total",
+      title: "Total requests",
+      value: requests.length,
+      note: "All orders you've submitted",
+      icon: Activity,
+      accent: "text-violet-600",
+      ring: "ring-violet-500/20",
+      bg: "from-violet-500/10 via-violet-500/5 to-transparent",
+    },
+    {
+      key: "open",
+      title: "Open",
+      value: openCount,
+      note: "Pending or processing requests",
+      icon: Timer,
+      accent: "text-amber-600",
+      ring: "ring-amber-500/20",
+      bg: "from-amber-500/10 via-amber-500/5 to-transparent",
+    },
+    {
+      key: "completed",
+      title: "Completed",
+      value: completedCount,
+      note: "Delivered and closed requests",
+      icon: CheckCircle2,
+      accent: "text-emerald-600",
+      ring: "ring-emerald-500/20",
+      bg: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+    },
+  ] as const
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pt-24 pb-10 sm:px-6 lg:px-8">
@@ -201,22 +134,35 @@ export default async function OrdersPage() {
       </section>
 
       <section className="mt-6 grid gap-4 sm:grid-cols-3">
-        <Card className="rounded-2xl border-border/70 bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Total requests</p>
-          <p className="mt-1 text-2xl font-semibold text-foreground">{requests.length}</p>
-        </Card>
-        <Card className="rounded-2xl border-border/70 bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Open</p>
-          <p className="mt-1 text-2xl font-semibold text-foreground">
-            {requests.filter((r) => r.status === "pending" || r.status === "processing").length}
-          </p>
-        </Card>
-        <Card className="rounded-2xl border-border/70 bg-card p-4 shadow-sm">
-          <p className="text-sm text-muted-foreground">Completed</p>
-          <p className="mt-1 text-2xl font-semibold text-foreground">
-            {requests.filter((r) => r.status === "completed").length}
-          </p>
-        </Card>
+        {summaryCards.map((card) => {
+          const Icon = card.icon
+          return (
+            <Card
+              key={card.key}
+              className={cn(
+                "relative overflow-hidden rounded-2xl border-border/70 bg-card p-4 shadow-sm",
+                "bg-linear-to-br",
+                card.bg
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">{card.title}</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">{card.value}</p>
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex size-9 items-center justify-center rounded-lg bg-background/80 ring-1 shadow-xs",
+                    card.ring
+                  )}
+                >
+                  <Icon className={cn("size-4.5", card.accent)} />
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{card.note}</p>
+            </Card>
+          )
+        })}
       </section>
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">

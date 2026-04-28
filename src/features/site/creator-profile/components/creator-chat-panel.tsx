@@ -19,6 +19,15 @@ type ChatMessage = {
   timeLabel: string
 }
 
+function createWelcomeMessage(creatorId: string, creatorName: string): ChatMessage {
+  return {
+    id: `welcome-${creatorId}`,
+    role: "creator",
+    text: `Hi — I'm ${creatorName}. Tell me about your project and I'll reply here when I'm available.`,
+    timeLabel: formatMessageTime(new Date().toISOString()),
+  }
+}
+
 type CreatorChatPanelProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -43,14 +52,7 @@ export function CreatorChatPanel({
   const [isInitializing, setIsInitializing] = useState(false)
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState("")
-  const [messages, setMessages] = useState<ChatMessage[]>(() => [
-    {
-      id: `welcome-${creatorId}`,
-      role: "creator",
-      text: `Hi — I'm ${creatorName}. Tell me about your project and I'll reply here when I'm available.`,
-      timeLabel: formatMessageTime(new Date().toISOString()),
-    },
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [createWelcomeMessage(creatorId, creatorName)])
   const endRef = useRef<HTMLDivElement>(null)
   const initPromiseRef = useRef<Promise<void> | null>(null)
 
@@ -86,9 +88,16 @@ export function CreatorChatPanel({
   }, [])
 
   useEffect(() => {
+    setThreadId("")
+    setInput("")
+    setError("")
+    setMessages([createWelcomeMessage(creatorId, creatorName)])
+    initPromiseRef.current = null
+  }, [creatorId, creatorName])
+
+  useEffect(() => {
     if (!open) return
     if (initPromiseRef.current) return
-    if (threadId) return
 
     const initChat = async () => {
       setIsInitializing(true)
@@ -112,8 +121,8 @@ export function CreatorChatPanel({
         })
         setThreadId(thread.id)
         const apiMessages = await fetchThreadMessages(thread.id)
-        setMessages((current) => {
-          if (apiMessages.length === 0) return current
+        setMessages(() => {
+          if (apiMessages.length === 0) return [createWelcomeMessage(creatorId, creatorName)]
           return apiMessages.map(mapMessage)
         })
       } catch (initError) {
@@ -125,7 +134,7 @@ export function CreatorChatPanel({
     }
 
     initPromiseRef.current = initChat()
-  }, [creatorId, creatorName, mapMessage, open, supabase, threadId])
+  }, [creatorId, creatorName, mapMessage, open, supabase])
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
@@ -151,7 +160,7 @@ export function CreatorChatPanel({
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[90] "
+        className="fixed inset-0 z-90 "
         aria-label="Close chat"
         onClick={() => onOpenChange(false)}
       />
@@ -161,7 +170,7 @@ export function CreatorChatPanel({
         aria-modal="true"
         aria-labelledby={titleId}
         className={cn(
-          "fixed bottom-4 right-4 z-[100] flex h-[min(560px,calc(100vh-2rem))] w-[min(calc(100vw-2rem),420px)] flex-col overflow-hidden",
+          "fixed bottom-4 right-4 z-100 flex h-[min(560px,calc(100vh-2rem))] w-[min(calc(100vw-2rem),420px)] flex-col overflow-hidden",
           "rounded-2xl border border-border bg-card text-card-foreground shadow-2xl",
           "animate-in fade-in-0 zoom-in-95 slide-in-from-bottom-2 duration-200"
         )}

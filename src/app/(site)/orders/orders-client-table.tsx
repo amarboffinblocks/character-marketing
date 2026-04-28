@@ -1,8 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, UserRound, X } from "lucide-react"
+import { ChevronLeft, LoaderCircle, Trash2, UserRound } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -22,11 +22,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 
 type RequestType = "custom_package" | "preselect_package"
@@ -61,11 +63,6 @@ function formatCreatedAt(value: string) {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
 }
 
-const requestTypeLabel: Record<RequestType, string> = {
-  custom_package: "Custom package",
-  preselect_package: "Pre-select",
-}
-
 const requestStatusLabel: Record<RequestStatus, string> = {
   pending: "Pending",
   processing: "Processing",
@@ -80,6 +77,11 @@ const requestStatusClass: Record<RequestStatus, string> = {
   accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   rejected: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
   completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+}
+
+const requestTypeLabel: Record<RequestType, string> = {
+  custom_package: "Custom package",
+  preselect_package: "Pre-select",
 }
 
 function safeCreatorSummary(profileData: unknown) {
@@ -107,9 +109,13 @@ function safeCreatorSummary(profileData: unknown) {
     handle: handle.startsWith("@") || handle.length === 0 ? handle : `@${handle}`,
     avatarUrl: avatarUrl.length > 0 ? avatarUrl : null,
   }
-}interface OrdersClientTableProps {
+}
+
+interface OrdersClientTableProps {
   requests: BuyerRequestRow[]
 }
+
+const ORDERS_PER_PAGE = 12
 
 function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
@@ -117,11 +123,11 @@ function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
   if (typeof payload === "string") {
     try {
       payload = JSON.parse(payload)
-    } catch (e) {
+    } catch {
       payload = undefined
     }
   }
-  const parsedPayload = payload as Record<string, any> | undefined
+  const parsedPayload = payload as Record<string, unknown> | undefined
   if (!parsedPayload) return null
 
   const details = parsedPayload.details || {}
@@ -142,10 +148,15 @@ function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
                 if (items.length === 0) return null
 
                 const firstNames = items
-                  .map((item: any) => 
+                  .map((item: unknown) => 
                     typeof item === "string" 
                       ? item 
-                      : item?.characterName || item?.personaName || item?.lorebookName || item?.backgroundName || item?.avatarName || `Custom ${key}`
+                      : (item as Record<string, unknown>)?.characterName ||
+                          (item as Record<string, unknown>)?.personaName ||
+                          (item as Record<string, unknown>)?.lorebookName ||
+                          (item as Record<string, unknown>)?.backgroundName ||
+                          (item as Record<string, unknown>)?.avatarName ||
+                          `Custom ${key}`
                   )
                   .slice(0, 2)
                   .join(", ")
@@ -188,10 +199,15 @@ function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
               </div>
 
               <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1 pt-1">
-                {Array.isArray(details[activeCategory]) && details[activeCategory].map((item: any, idx: number) => {
+                {Array.isArray(details[activeCategory]) && details[activeCategory].map((item: unknown, idx: number) => {
                   const name = typeof item === "string" 
                     ? item 
-                    : item?.characterName || item?.personaName || item?.lorebookName || item?.backgroundName || item?.avatarName || `Custom ${activeCategory} #${idx + 1}`
+                    : (item as Record<string, unknown>)?.characterName ||
+                        (item as Record<string, unknown>)?.personaName ||
+                        (item as Record<string, unknown>)?.lorebookName ||
+                        (item as Record<string, unknown>)?.backgroundName ||
+                        (item as Record<string, unknown>)?.avatarName ||
+                        `Custom ${activeCategory} #${idx + 1}`
 
                   return (
                     <div key={idx} className="rounded-xl border border-border bg-background/50 p-4 space-y-3 shadow-2xs">
@@ -275,12 +291,54 @@ function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
 }
 
 export function OrdersClientTable({ requests }: OrdersClientTableProps) {
+  const [rows, setRows] = useState<BuyerRequestRow[]>(requests)
+  const [currentPage, setCurrentPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState<BuyerRequestRow | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
+  const [error, setError] = useState("")
+  const totalPages = Math.max(1, Math.ceil(rows.length / ORDERS_PER_PAGE))
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * ORDERS_PER_PAGE
+    return rows.slice(start, start + ORDERS_PER_PAGE)
+  }, [currentPage, rows])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
 
   const openDialog = (order: BuyerRequestRow) => {
     setSelectedOrder(order)
     setIsDialogOpen(true)
+  }
+
+  async function handleDelete(order: BuyerRequestRow) {
+    const confirmed = window.confirm("Delete this order request?")
+    if (!confirmed) return
+
+    setDeletingOrderId(order.id)
+    setError("")
+    try {
+      const response = await fetch(`/api/site/orders/${encodeURIComponent(order.id)}`, {
+        method: "DELETE",
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to delete order request.")
+      }
+
+      setRows((current) => current.filter((item) => item.id !== order.id))
+      if (selectedOrder?.id === order.id) {
+        setIsDialogOpen(false)
+        setSelectedOrder(null)
+      }
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "Unable to delete order request.")
+    } finally {
+      setDeletingOrderId(null)
+    }
   }
 
   return (
@@ -290,6 +348,7 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             <TableHead className="py-4">Creator</TableHead>
             <TableHead>Request</TableHead>
+            <TableHead>Category</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-center">Price</TableHead>
@@ -297,11 +356,12 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {requests.map((req) => {
+          {paginatedRows.map((req) => {
             const creator = safeCreatorSummary(req.creator_profile_data)
             const creatorName = creator.displayName || "Creator"
             const creatorHandle = creator.handle
             const creatorSlug = req.creator_id
+            const isDeleting = deletingOrderId === req.id
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
@@ -341,6 +401,11 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                   </div>
                 </TableCell>
                 <TableCell>
+                  <Badge variant="outline" className="py-3  px-2 text-xs bg-primary/10">
+                    {requestTypeLabel[req.request_type]}
+                  </Badge>
+                </TableCell>
+                <TableCell>
                   <Badge
                     variant="secondary"
                     className={cn("font-medium px-2.5 py-0.5 rounded-md", requestStatusClass[req.status])}
@@ -359,10 +424,20 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="h-8 font-medium px-4 cursor-pointer"
+                      className="h-8 cursor-pointer px-4 font-medium"
                       onClick={() => openDialog(req)}
                     >
                       View
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-8 cursor-pointer px-3"
+                      onClick={() => void handleDelete(req)}
+                      disabled={isDeleting}
+                    >
+                      {isDeleting ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                      Delete
                     </Button>
                   </div>
                 </TableCell>
@@ -371,6 +446,41 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
           })}
         </TableBody>
       </Table>
+      {rows.length > ORDERS_PER_PAGE ? (
+        <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3">
+          <p className="text-xs text-muted-foreground">
+            Showing {(currentPage - 1) * ORDERS_PER_PAGE + 1}-
+            {Math.min(currentPage * ORDERS_PER_PAGE, rows.length)} of {rows.length}
+          </p>
+          <Pagination className="mx-0 w-auto justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }).map((_, index) => {
+                const page = index + 1
+                return (
+                  <PaginationItem key={`buyer-orders-page-${page}`}>
+                    <PaginationLink isActive={page === currentPage} onClick={() => setCurrentPage(page)}>
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+              <PaginationItem>
+                <PaginationNext
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      ) : null}
+      {error ? <p className="px-4 py-2 text-xs text-destructive">{error}</p> : null}
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-xl">

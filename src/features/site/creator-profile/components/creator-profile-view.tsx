@@ -346,13 +346,13 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                                     Recommended
                                   </Badge>
                                 ) : null}
-                                <CardHeader className="space-y-3 pb-3 md:min-h-[160px]">
+                                <CardHeader className="space-y-3 ">
                                   <div className="flex flex-col gap-2">
-                                    <CardTitle className="text-xl font-bold">{pkg.title}</CardTitle>
+                                    <CardTitle className="text-2xl font-bold">{pkg.title}</CardTitle>
                                     <div>
                                       {hasDiscount ? (
-                                        <div className="flex flex-col ">
-                                          <span className="text-xs text-muted-foreground  line-through">
+                                        <div className="flex gap-2 ">
+                                          <span className="text-sm text-red-700 font-semibold  line-through">
                                             {priceFormatter.format(pkg.price)}
                                           </span>
                                           <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
@@ -368,7 +368,9 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                                       )}
                                     </div>
                                   </div>
-                                  <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
+                                  <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2 min-h-[3.25em]">
+                                    {pkg.description}
+                                  </p>
                                 </CardHeader>
                                 <CardContent className="space-y-4">
                                   <Link
@@ -378,7 +380,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                                     Purchase Package
                                   </Link>
                                   <div className="space-y-3">
-                                    <p className="text-xs text-muted-foreground">{pkg.tokensLabel}</p>
+                                    <p className="text-xs text-muted-foreground">{pkg.tokensLabel} Tokens</p>
                                     <div className="relative border-t border-border/60 pt-3">
                                       <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] font-semibold tracking-wider text-muted-foreground">
                                         FEATURES
