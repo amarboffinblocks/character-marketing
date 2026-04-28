@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { OrdersClientTable } from "./orders-client-table"
 
 type RequestType = "custom_package" | "preselect_package"
 type RequestStatus = "pending" | "processing" | "accepted" | "rejected" | "completed"
@@ -244,91 +245,7 @@ export default async function OrdersPage() {
             </div>
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead>Creator</TableHead>
-                <TableHead>Request</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="w-[140px] text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.map((req) => {
-                const creator = safeCreatorSummary(req.creator_profile_data)
-                const creatorName = creator.displayName || "Creator"
-                const creatorHandle = creator.handle
-                const creatorSlug = req.creator_id
-                return (
-                  <TableRow key={req.id}>
-                       <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span
-                          className="inline-flex size-8 items-center justify-center rounded-full bg-muted text-muted-foreground"
-                          aria-hidden
-                        >
-                          <UserRound className="size-4" />
-                        </span>
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-foreground">{creatorName}</span>
-                          {creatorHandle ? (
-                            <span className="text-xs text-muted-foreground">{creatorHandle}</span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">
-                              {creatorSlug.slice(0, 8)}…
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <div className="flex flex-col gap-0.5">
-                        <span className="font-medium text-foreground">{req.package_title}</span>
-                        <span className="text-xs text-muted-foreground">#{req.id}</span>
-                      </div>
-                    </TableCell>
-                 
-                    <TableCell>
-                      <Badge variant="secondary" className="font-medium">
-                        {requestTypeLabel[req.request_type]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {getRequestCategoryLabel(req)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="secondary"
-                        className={cn("font-medium", requestStatusClass[req.status])}
-                      >
-                        {requestStatusLabel[req.status]}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {formatCreatedAt(req.created_at)}
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatCurrency(req.package_price)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Link
-                          href={`/creators/${req.creator_id}`}
-                          className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}
-                        >
-                          View
-                        </Link>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
+          <OrdersClientTable requests={requests} />
         )}
       </section>
 
