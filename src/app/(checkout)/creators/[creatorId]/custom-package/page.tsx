@@ -29,7 +29,7 @@ export default async function CustomPackageRequestPage({
     notFound()
   }
 
-  const customPackages = getCustomPackages(profile.packages)
+  const customPackages = getCustomPackages(profile.packages, { includeFallback: false })
   const selectedPackage = customPackages.find((pkg) => pkg.id === packageId) ?? customPackages[0]
 
   if (!selectedPackage) {

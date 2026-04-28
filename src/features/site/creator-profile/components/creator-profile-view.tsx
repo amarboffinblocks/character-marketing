@@ -1,3 +1,4 @@
+"use client"
 import { Container } from "@/components/shared"
 import { CreatorProfileHeader } from "@/features/site/creator-profile/components/creator-profile-header"
 import { CreatorProfileStatBar } from "@/features/site/creator-profile/components/creator-profile-stat-bar"
@@ -18,7 +19,7 @@ import Link from "next/link"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle2, Circle } from "lucide-react"
+import { CheckCircle2, XCircle } from "lucide-react"
 type CreatorProfileViewProps = {
   profile: CreatorProfile
   isAuthenticated: boolean
@@ -64,8 +65,11 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileViewProps) {
   const profilePath = `/creators/${profile.id}`
   const preselectPackage = profile.packages[0]
-  const customPackages = profile.packages.slice(1)
-  const displayedCustomPackages = getCustomPackages(profile.packages)
+  const displayedCustomPackages = getCustomPackages(profile.packages, { includeFallback: false })
+  console.log(displayedCustomPackages)
+  const preselectHighlights = preselectPackage
+    ? preselectPackage.includedItems.map((item) => item.trim()).filter(Boolean)
+    : []
 
   return (
     <main className="bg-linear-to-b from-background via-background to-muted/15">
@@ -253,22 +257,24 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                               </p>
                             </div>
                           </div>
-                          <div>
-                            <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-                              {preselectPackage.includedHeading}
-                            </p>
-                            <ul className="mt-2 grid gap-2 sm:grid-cols-2">
-                              {preselectPackage.includedItems.map((item) => (
-                                <li
-                                  key={item}
-                                  className="flex items-center gap-2 rounded-md border border-border/50 bg-background/70 px-2.5 py-2 text-sm text-foreground"
-                                >
-                                  <CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden />
-                                  <span>{item}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                          {preselectHighlights.length > 0 ? (
+                            <div>
+                              <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {preselectPackage.includedHeading}
+                              </p>
+                              <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                                {preselectHighlights.map((item) => (
+                                  <li
+                                    key={item}
+                                    className="flex items-center gap-2 rounded-md border border-border/50 bg-background/70 px-2.5 py-2 text-sm text-foreground"
+                                  >
+                                    <CheckCircle2 className="size-4 shrink-0 text-emerald-600" aria-hidden />
+                                    <span>{item}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          ) : null}
                           <div className="border-t border-border/60 pt-4">
                             <Link
                               href={`/creators/${profile.id}/purchase-preselect?packageId=${encodeURIComponent(preselectPackage.id)}`}
@@ -294,95 +300,136 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                     <h3 id="custom-package-heading" className="sr-only">
                       Custom package cards
                     </h3>
-                    <div className="grid gap-4 md:grid-cols-3">
-                      {displayedCustomPackages.map((pkg, index) => {
-                        const purchaseCustomHref = `/creators/${profile.id}/custom-package?packageId=${encodeURIComponent(
-                          pkg.id
-                        )}`
-                        return (
-                          <Card
-                            key={pkg.id}
-                            className={cn(
-                              "relative overflow-hidden border shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg",
-                              index === 0
-                                ? "border-amber-400/70 bg-linear-to-br from-amber-50/70 via-card to-card dark:from-amber-950/20"
-                                : "border-border/70 bg-card"
-                            )}
-                          >
-                            {index === 0 ? (
-                              <Badge className="absolute top-4 right-4 bg-amber-500 text-white hover:bg-amber-500/90">
-                                Recommended
-                              </Badge>
-                            ) : null}
-                            <CardHeader className="space-y-2 pb-3">
-                              <CardTitle className="text-base">{pkg.title}</CardTitle>
-                              <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
-                            </CardHeader>
-                            <CardContent className="space-y-4">
-                              <dl className="divide-y divide-border/60 rounded-lg border border-border/60 bg-muted/20">
-                                <div className="grid grid-cols-2 gap-3 px-3 py-2.5 text-sm">
-                                  <dt className="font-medium text-foreground">Price</dt>
-                                  <dd className="text-right font-semibold tabular-nums text-amber-600 dark:text-amber-400">
-                                    {priceFormatter.format(pkg.price)}
-                                  </dd>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3 px-3 py-2.5 text-sm">
-                                  <dt className="font-medium text-foreground">Tokens</dt>
-                                  <dd className="text-right text-muted-foreground">{pkg.tokensLabel}</dd>
-                                </div>
-                                {CUSTOM_PACKAGE_FEATURES.map((feature) => {
-                                  const included = isFeatureIncluded(pkg.includedItems, feature.keywords)
-                                  const count = getFeatureCount(pkg.includedItems, feature.keywords)
-                                  return (
-                                    <div key={feature.label} className="grid grid-cols-2 gap-3 px-3 py-2.5 text-sm">
-                                      <dt className="font-medium text-foreground">{feature.label}</dt>
-                                      <dd className="flex items-center justify-end gap-1.5 text-muted-foreground">
-                                        {included ? (
-                                          <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
-                                        ) : (
-                                          <Circle className="size-4" aria-hidden />
-                                        )}
-                                        <span>
-                                          {included
-                                            ? `${count} item${count === 1 ? "" : "s"} included`
-                                            : "Available on request"}
+                    {displayedCustomPackages.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-3">
+                        {displayedCustomPackages.map((pkg, index) => {
+                          const purchaseCustomHref = `/creators/${profile.id}/custom-package?packageId=${encodeURIComponent(
+                            pkg.id
+                          )}`
+                          const highlights = (pkg.packageHighlights ?? pkg.includedItems)
+                            .map((item) => item.trim())
+                            .filter(Boolean)
+                          const hasDiscount =
+                            typeof pkg.discountedPrice === "number" &&
+                            pkg.discountedPrice > 0 &&
+                            pkg.discountedPrice < pkg.price
+                          return (
+                            <Card
+                              key={pkg.id}
+                              className="relative overflow-hidden border border-border/70 bg-card shadow-sm transition-all hover:shadow-md"
+                            >
+                              {index === 0 ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                                >
+                                  Most Popular
+                                </Badge>
+                              ) : null}
+                              <CardHeader className="space-y-3 pb-3">
+                                <div className="flex items-start justify-between gap-3">
+                                  <CardTitle className="text-base">{pkg.title}</CardTitle>
+                                  <div className="text-right">
+                                    {hasDiscount ? (
+                                      <div className="flex flex-col items-end">
+                                        <span className="text-xs text-muted-foreground line-through">
+                                          {priceFormatter.format(pkg.price)}
                                         </span>
-                                      </dd>
-                                    </div>
-                                  )
-                                })}
-                              </dl>
-                              <div>
-                                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                  Package highlights
-                                </p>
-                                <ul className="mt-2 space-y-1.5">
-                                  {pkg.includedItems.map((item) => (
-                                    <li key={item} className="flex items-center gap-2 text-sm text-foreground">
-                                      <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
-                                      <span>{item}</span>
-                                    </li>
-                                  ))}
-                                </ul>
-                              </div>
-                              <div className="border-t border-border/60 pt-4">
+                                        <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                                          {priceFormatter.format(pkg.discountedPrice!)}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="inline-block text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                                        {priceFormatter.format(pkg.price)}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
+                              </CardHeader>
+                              <CardContent className="space-y-4">
                                 <Link
                                   href={purchaseCustomHref}
                                   className={cn(buttonVariants({ size: "lg" }), "w-full")}
                                 >
                                   Purchase Package
                                 </Link>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        )
-                      })}
-                    </div>
-                    {customPackages.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
-                        Showing professional sample custom packages. Replace these with creator-defined custom packages when available.
-                      </p>
-                    ) : null}
+                                <div className="space-y-3">
+                                  <p className="text-xs text-muted-foreground">{pkg.tokensLabel}</p>
+                                  <div className="relative border-t border-border/60 pt-3">
+                                    <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] font-semibold tracking-wider text-muted-foreground">
+                                      FEATURES
+                                    </span>
+                                    <ul className="space-y-2">
+                                      {CUSTOM_PACKAGE_FEATURES.map((feature) => {
+                                        const included = isFeatureIncluded(pkg.includedItems, feature.keywords)
+                                        const count = getFeatureCount(pkg.includedItems, feature.keywords)
+                                        return (
+                                          <li
+                                            key={feature.label}
+                                            className="flex items-center justify-between gap-3 text-sm"
+                                          >
+                                            <span className="font-medium text-foreground">{feature.label}</span>
+                                            <span className="flex items-center gap-1.5 text-muted-foreground">
+                                              {included ? (
+                                                <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
+                                              ) : (
+                                                <XCircle className="size-4 text-rose-500" aria-hidden />
+                                              )}
+                                              {included
+                                                ? `${count} item${count === 1 ? "" : "s"} included`
+                                                : "Not included"}
+                                            </span>
+                                          </li>
+                                        )
+                                      })}
+                                      {pkg.deliveryDays > 0 ? (
+                                        <li className="flex items-center justify-between gap-3 text-sm">
+                                          <span className="font-medium text-foreground">Delivery</span>
+                                          <span className="text-muted-foreground">
+                                            {pkg.deliveryDays} day{pkg.deliveryDays === 1 ? "" : "s"}
+                                          </span>
+                                        </li>
+                                      ) : null}
+                                      {pkg.revisionCount > 0 ? (
+                                        <li className="flex items-center justify-between gap-3 text-sm">
+                                          <span className="font-medium text-foreground">Revisions</span>
+                                          <span className="text-muted-foreground">
+                                            {pkg.revisionCount} revision{pkg.revisionCount === 1 ? "" : "s"}
+                                          </span>
+                                        </li>
+                                      ) : null}
+                                    </ul>
+                                  </div>
+                                </div>
+                                {highlights.length > 0 ? (
+                                  <div>
+                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                      Package highlights
+                                    </p>
+                                    <ul className="mt-2 space-y-1.5">
+                                      {highlights.map((item) => (
+                                        <li key={item} className="flex items-center gap-2 text-sm text-foreground">
+                                          <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
+                                          <span>{item}</span>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                ) : null}
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <Card className="border-border/70 bg-card shadow-sm">
+                        <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                          No custom packages available for this creator yet.
+                        </CardContent>
+                      </Card>
+                    )}
                   </section>
                 </div>
               </TabsContent>

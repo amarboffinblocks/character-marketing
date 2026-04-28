@@ -5,6 +5,7 @@ export type CreatorServicePackage = {
   id: string
   title: string
   price: number
+  discountedPrice?: number | null
   description: string
   scopeLabel: string
   tokensLabel: string
@@ -12,6 +13,7 @@ export type CreatorServicePackage = {
   revisionCount: number
   includedHeading: string
   includedItems: string[]
+  packageHighlights?: string[]
 }
 
 export type CreatorProfileReview = {

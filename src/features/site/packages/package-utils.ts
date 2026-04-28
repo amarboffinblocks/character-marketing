@@ -79,9 +79,14 @@ export function getFeatureCount(items: readonly string[], keywords: readonly str
   return explicitCount > 0 ? explicitCount : matchingItems.length
 }
 
-export function getCustomPackages(packages: readonly CreatorServicePackage[]) {
+export function getCustomPackages(
+  packages: readonly CreatorServicePackage[],
+  options?: { includeFallback?: boolean }
+) {
   const customPackages = packages.slice(1)
-  return customPackages.length > 0 ? customPackages : DUMMY_CUSTOM_PACKAGES
+  const includeFallback = options?.includeFallback ?? true
+  if (customPackages.length > 0) return customPackages
+  return includeFallback ? DUMMY_CUSTOM_PACKAGES : []
 }
 
 export function getPackageAssetLimits(pkg: CreatorServicePackage): Record<CustomAssetType, number> {

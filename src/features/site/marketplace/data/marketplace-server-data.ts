@@ -1,5 +1,5 @@
 import { buildCreatorProfile } from "@/features/site/creator-profile/profile"
-import type { CreatorProfile } from "@/features/site/creator-profile/types"
+import type { CreatorProfile, CreatorServicePackage } from "@/features/site/creator-profile/types"
 import type { Creator, CreatorMarketplaceCategory } from "@/features/site/marketplace/types"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
@@ -20,6 +20,23 @@ type CreatorProfileData = {
   niche?: unknown
 }
 
+type CreatorServiceRow = {
+  id: unknown
+  service_name: unknown
+  description: unknown
+  price: unknown
+  discounted_price: unknown
+  tokens_label: unknown
+  persona_count: unknown
+  lorebook_count: unknown
+  background_count: unknown
+  avatar_count: unknown
+  character_count: unknown
+  highlights: unknown
+  is_recommended: unknown
+  updated_at: unknown
+}
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value.trim() : ""
 }
@@ -30,6 +47,11 @@ function asStringArray(value: unknown): string[] {
     .filter((item): item is string => typeof item === "string")
     .map((item) => item.trim())
     .filter(Boolean)
+}
+
+function asNumber(value: unknown, fallback = 0): number {
+  const parsed = typeof value === "number" ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
 }
 
 function toHandle(userId: string): string {
@@ -75,6 +97,45 @@ function toTagId(tag: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+}
+
+function buildIncludedItemsFromService(row: CreatorServiceRow): string[] {
+  const counts = [
+    { label: "persona", value: asNumber(row.persona_count, 0) },
+    { label: "lorebook", value: asNumber(row.lorebook_count, 0) },
+    { label: "background", value: asNumber(row.background_count, 0) },
+    { label: "avatar", value: asNumber(row.avatar_count, 0) },
+    { label: "character", value: asNumber(row.character_count, 0) },
+  ].filter((item) => item.value > 0)
+
+  return counts.map((item) => `${item.value} ${item.label}${item.value === 1 ? "" : "s"} included`)
+}
+
+
+
+function mapCreatorServiceToCustomPackage(row: CreatorServiceRow): CreatorServicePackage {
+  const basePrice = asNumber(row.price, 0)
+  const discountedPrice = row.discounted_price === null ? null : asNumber(row.discounted_price, 0)
+  const validDiscountedPrice =
+    discountedPrice && discountedPrice > 0 && discountedPrice < basePrice
+      ? discountedPrice
+      : null
+
+  return {
+    id: asString(row.id),
+    title: asString(row.service_name) || "Custom Package",
+    price: basePrice,
+    discountedPrice: validDiscountedPrice,
+    description: asString(row.description),
+    scopeLabel: "",
+    tokensLabel: asString(row.tokens_label),
+    // Keep these unset-like (0) unless records actually provide these fields.
+    deliveryDays: 0,
+    revisionCount: 0,
+    includedHeading: "WHAT'S INCLUDED",
+    includedItems: buildIncludedItemsFromService(row),
+    packageHighlights: asStringArray(row.highlights),
+  }
 }
 
 export async function getMarketplaceCreators(): Promise<Creator[]> {
@@ -124,5 +185,42 @@ export async function getMarketplaceCreatorProfileById(creatorId: string): Promi
   if (error || !data) return null
   const creator = toCreator(data)
   if (!creator) return null
-  return buildCreatorProfile(creator)
+
+  const { data: serviceRows } = await supabase
+    .from("creator_services")
+    .select(
+      [
+        "id",
+        "service_name",
+        "description",
+        "price",
+        "discounted_price",
+        "tokens_label",
+        "persona_count",
+        "lorebook_count",
+        "background_count",
+        "avatar_count",
+        "character_count",
+        "highlights",
+        "is_recommended",
+        "updated_at",
+      ].join(",")
+    )
+    .eq("creator_id", creatorId)
+    .order("is_recommended", { ascending: false })
+    .order("updated_at", { ascending: false })
+    .returns<CreatorServiceRow[]>()
+
+  const profile = buildCreatorProfile(creator)
+  const preselectPackage = profile.packages[0]
+  const dbCustomPackages = (serviceRows ?? [])
+    .map(mapCreatorServiceToCustomPackage)
+    .filter((pkg) => pkg.id.length > 0)
+
+  return {
+    ...profile,
+    packages: preselectPackage
+      ? [preselectPackage, ...dbCustomPackages]
+      : dbCustomPackages,
+  }
 }
