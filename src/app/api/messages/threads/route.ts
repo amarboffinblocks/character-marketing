@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server"
 
-import { buildThreadsForUser, getMySenderRole, requireAuthUser } from "@/app/api/messages/shared"
+import {
+  buildThreadsForUser,
+  getMySenderRole,
+  requireAuthUser,
+  resolveAvatarUrlByUserId,
+  resolveAvatarUrlForUser,
+} from "@/app/api/messages/shared"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 type OpenThreadPayload = {
@@ -49,9 +55,7 @@ export async function POST(request: Request) {
     const fullName =
       (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
       (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "")
-    const myAvatarUrl =
-      (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : "") ||
-      (typeof user.user_metadata?.picture === "string" ? user.user_metadata.picture : "")
+    const myAvatarUrl = await resolveAvatarUrlForUser(supabase, user)
     const creatorName = myRole === "creator" ? fullName : otherUserName
     const buyerName = myRole === "buyer" ? fullName : otherUserName
 
@@ -61,10 +65,15 @@ export async function POST(request: Request) {
       .eq("order_id", orderId)
       .maybeSingle()
 
+    const otherAvatarUrl = await resolveAvatarUrlByUserId(supabase, otherUserId)
     const creatorAvatarUrl =
-      myRole === "creator" ? myAvatarUrl : (existingThread?.creator_avatar_url as string | undefined) ?? ""
+      myRole === "creator"
+        ? myAvatarUrl
+        : ((existingThread?.creator_avatar_url as string | undefined) ?? otherAvatarUrl ?? "")
     const buyerAvatarUrl =
-      myRole === "buyer" ? myAvatarUrl : (existingThread?.buyer_avatar_url as string | undefined) ?? ""
+      myRole === "buyer"
+        ? myAvatarUrl
+        : ((existingThread?.buyer_avatar_url as string | undefined) ?? otherAvatarUrl ?? "")
 
     const { data, error } = await supabase
       .from("conversation_threads")

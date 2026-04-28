@@ -29,6 +29,32 @@ type ReadRow = {
   last_read_at: string
 }
 
+type ProfileRow = {
+  profile_data: Record<string, unknown> | null
+}
+
+function asString(value: unknown) {
+  return typeof value === "string" ? value.trim() : ""
+}
+
+function asObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : {}
+}
+
+function extractAvatarFromProfileData(profileData: Record<string, unknown> | null) {
+  const root = asObject(profileData)
+  const creator = asObject(root.creator)
+  const user = asObject(root.user)
+  const admin = asObject(root.admin)
+
+  return (
+    asString(creator.avatarUrl) ||
+    asString(user.avatarUrl) ||
+    asString(admin.avatarUrl) ||
+    asString(root.avatarUrl)
+  )
+}
+
 export async function requireAuthUser(supabase: SupabaseClient): Promise<User> {
   const {
     data: { user },
@@ -77,6 +103,31 @@ export async function getMySenderRole(supabase: SupabaseClient, user: User): Pro
   const role = await resolvePersistedRole(supabase, user)
   if (role === "creator") return "creator"
   return "buyer"
+}
+
+export async function resolveAvatarUrlForUser(supabase: SupabaseClient, user: User) {
+  const fromMetadata =
+    asString(user.user_metadata?.avatar_url) ||
+    asString(user.user_metadata?.picture)
+
+  const { data } = await supabase
+    .from("profiles")
+    .select("profile_data")
+    .eq("id", user.id)
+    .maybeSingle()
+
+  const profileAvatar = extractAvatarFromProfileData((data as ProfileRow | null)?.profile_data ?? null)
+  return profileAvatar || fromMetadata
+}
+
+export async function resolveAvatarUrlByUserId(supabase: SupabaseClient, userId: string) {
+  const { data } = await supabase
+    .from("profiles")
+    .select("profile_data")
+    .eq("id", userId)
+    .maybeSingle()
+
+  return extractAvatarFromProfileData((data as ProfileRow | null)?.profile_data ?? null)
 }
 
 export async function assertThreadParticipant(

@@ -6,6 +6,7 @@ import {
   mapMessageRow,
   markRead,
   requireAuthUser,
+  resolveAvatarUrlForUser,
 } from "@/app/api/messages/shared"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
@@ -70,6 +71,17 @@ export async function POST(request: Request, context: { params: Promise<{ thread
 
     await assertThreadParticipant(supabase, normalizedThreadId, user.id)
     const senderRole = await getMySenderRole(supabase, user)
+    const senderAvatarUrl = await resolveAvatarUrlForUser(supabase, user)
+
+    const avatarUpdateField =
+      senderRole === "creator" ? { creator_avatar_url: senderAvatarUrl } : { buyer_avatar_url: senderAvatarUrl }
+    const { error: threadUpdateError } = await supabase
+      .from("conversation_threads")
+      .update(avatarUpdateField)
+      .eq("id", normalizedThreadId)
+    if (threadUpdateError) {
+      return NextResponse.json({ error: "Unable to sync sender avatar.", details: threadUpdateError.message }, { status: 400 })
+    }
 
     const { data, error } = await supabase
       .from("conversation_messages")
