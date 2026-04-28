@@ -10,6 +10,8 @@ type ThreadRow = {
   buyer_id: string
   creator_name: string
   buyer_name: string
+  creator_avatar_url: string
+  buyer_avatar_url: string
   last_message_at: string
 }
 
@@ -56,12 +58,14 @@ export function mapThreadRow(
 ): MessageThread {
   const isCreator = row.creator_id === currentUserId
   const counterpartName = isCreator ? row.buyer_name || "Buyer" : row.creator_name || "Creator"
+  const counterpartAvatarUrl = isCreator ? row.buyer_avatar_url || "" : row.creator_avatar_url || ""
   return {
     id: row.id,
     orderId: row.order_id,
     buyerName: row.buyer_name || "Buyer",
     creatorName: row.creator_name || "Creator",
     counterpartName,
+    counterpartAvatarUrl,
     status: unreadCount > 0 ? "needs_response" : "active",
     unreadCount,
     lastMessageAt: row.last_message_at,
@@ -82,7 +86,7 @@ export async function assertThreadParticipant(
 ): Promise<ThreadRow> {
   const { data, error } = await supabase
     .from("conversation_threads")
-    .select("id, order_id, creator_id, buyer_id, creator_name, buyer_name, last_message_at")
+    .select("id, order_id, creator_id, buyer_id, creator_name, buyer_name, creator_avatar_url, buyer_avatar_url, last_message_at")
     .eq("id", threadId)
     .single()
 
@@ -113,7 +117,7 @@ export async function markRead(supabase: SupabaseClient, threadId: string, userI
 export async function buildThreadsForUser(supabase: SupabaseClient, userId: string, orderId?: string) {
   let threadsQuery = supabase
     .from("conversation_threads")
-    .select("id, order_id, creator_id, buyer_id, creator_name, buyer_name, last_message_at")
+    .select("id, order_id, creator_id, buyer_id, creator_name, buyer_name, creator_avatar_url, buyer_avatar_url, last_message_at")
     .or(`creator_id.eq.${userId},buyer_id.eq.${userId}`)
     .order("last_message_at", { ascending: false })
 
@@ -128,7 +132,6 @@ export async function buildThreadsForUser(supabase: SupabaseClient, userId: stri
   if (threads.length === 0) return []
 
   const threadIds = threads.map((thread) => thread.id)
-
   const [{ data: messageRows, error: messageError }, { data: readRows, error: readError }] = await Promise.all([
     supabase
       .from("conversation_messages")

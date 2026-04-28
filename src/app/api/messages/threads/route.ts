@@ -49,8 +49,22 @@ export async function POST(request: Request) {
     const fullName =
       (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
       (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "")
+    const myAvatarUrl =
+      (typeof user.user_metadata?.avatar_url === "string" ? user.user_metadata.avatar_url : "") ||
+      (typeof user.user_metadata?.picture === "string" ? user.user_metadata.picture : "")
     const creatorName = myRole === "creator" ? fullName : otherUserName
     const buyerName = myRole === "buyer" ? fullName : otherUserName
+
+    const { data: existingThread } = await supabase
+      .from("conversation_threads")
+      .select("creator_name, buyer_name, creator_avatar_url, buyer_avatar_url")
+      .eq("order_id", orderId)
+      .maybeSingle()
+
+    const creatorAvatarUrl =
+      myRole === "creator" ? myAvatarUrl : (existingThread?.creator_avatar_url as string | undefined) ?? ""
+    const buyerAvatarUrl =
+      myRole === "buyer" ? myAvatarUrl : (existingThread?.buyer_avatar_url as string | undefined) ?? ""
 
     const { data, error } = await supabase
       .from("conversation_threads")
@@ -59,8 +73,10 @@ export async function POST(request: Request) {
           order_id: orderId,
           creator_id: creatorId,
           buyer_id: buyerId,
-          creator_name: creatorName,
-          buyer_name: buyerName,
+          creator_name: creatorName || (existingThread?.creator_name as string | undefined) || "Creator",
+          buyer_name: buyerName || (existingThread?.buyer_name as string | undefined) || "Buyer",
+          creator_avatar_url: creatorAvatarUrl,
+          buyer_avatar_url: buyerAvatarUrl,
         },
         { onConflict: "order_id" }
       )

@@ -8,12 +8,19 @@ import { AnimatePresence, motion } from "motion/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   clearThreadMessages,
-  deleteThread,
   fetchMessageThreads,
   fetchThreadMessages,
   markThreadRead,
@@ -41,6 +48,8 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const [isLoadingThreads, setIsLoadingThreads] = useState(true)
   const [isLoadingMessages, setIsLoadingMessages] = useState(false)
   const [isSending, setIsSending] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
+  const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
   const [error, setError] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -141,28 +150,17 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   const handleClearChat = async () => {
     if (!activeThread) return
-    if (!window.confirm("Clear all messages in this chat?")) return
+    setIsClearing(true)
     try {
       setError("")
       await clearThreadMessages(activeThread.id)
       setMessages([])
       await loadThreads({ silent: true })
+      setIsClearDialogOpen(false)
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Unable to clear chat.")
-    }
-  }
-
-  const handleDeleteChat = async () => {
-    if (!activeThread) return
-    if (!window.confirm("Delete this chat? This removes this conversation from your inbox.")) return
-    try {
-      setError("")
-      await deleteThread(activeThread.id)
-      setMessages([])
-      setActiveThreadId("")
-      await loadThreads({ silent: true })
-    } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Unable to delete chat.")
+    } finally {
+      setIsClearing(false)
     }
   }
 
@@ -207,7 +205,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                     >
                       <div className="relative shrink-0">
                         <Avatar className="size-12 shadow-md">
-                          <AvatarImage src={`https://i.pravatar.cc/150?u=${thread.counterpartName}`} />
+                          <AvatarImage src={thread.counterpartAvatarUrl || undefined} />
                           <AvatarFallback className="bg-primary/10 font-bold text-primary">
                             {thread.counterpartName[0]}
                           </AvatarFallback>
@@ -253,7 +251,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       <Avatar className="size-12 shadow-sm">
-                        <AvatarImage src={`https://i.pravatar.cc/150?u=${activeThread.counterpartName}`} />
+                        <AvatarImage src={activeThread.counterpartAvatarUrl || undefined} />
                         <AvatarFallback>{activeThread.counterpartName[0]}</AvatarFallback>
                       </Avatar>
                       <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-green-500" />
@@ -280,10 +278,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                       }
                     />
                     <DropdownMenuContent align="end" className="min-w-40">
-                      <DropdownMenuItem onClick={() => void handleClearChat()}>Clear chat</DropdownMenuItem>
-                      <DropdownMenuItem variant="destructive" onClick={() => void handleDeleteChat()}>
-                        Delete chat
-                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setIsClearDialogOpen(true)}>Clear chat</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </header>
@@ -395,6 +390,25 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
           </main>
         </div>
       </div>
+
+      <Dialog open={isClearDialogOpen} onOpenChange={setIsClearDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clear chat?</DialogTitle>
+            <DialogDescription>
+              This will remove all messages from this conversation. The user/contact will still remain in your chat list.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsClearDialogOpen(false)} disabled={isClearing}>
+              Cancel
+            </Button>
+            <Button type="button" variant="destructive" onClick={() => void handleClearChat()} disabled={isClearing}>
+              {isClearing ? "Clearing..." : "Clear chat"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </TooltipProvider>
   )
 }

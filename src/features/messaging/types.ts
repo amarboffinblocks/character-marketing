@@ -8,6 +8,7 @@ export type MessageThread = {
   buyerName: string
   creatorName: string
   counterpartName: string
+  counterpartAvatarUrl: string
   status: MessageThreadStatus
   unreadCount: number
   lastMessageAt: string
