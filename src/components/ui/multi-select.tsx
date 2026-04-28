@@ -68,7 +68,7 @@ const multiSelectVariants = cva("m-1 transition-all duration-300 ease-in-out", {
 	},
 	defaultVariants: {
 		variant: "default",
-		badgeAnimation: "bounce",
+		badgeAnimation: "none",
 	},
 });
 
@@ -322,7 +322,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 			searchable = true,
 			emptyIndicator,
 			autoSize = false,
-			singleLine = false,
+			singleLine = true,
 			popoverClassName,
 			disabled = false,
 			responsive,

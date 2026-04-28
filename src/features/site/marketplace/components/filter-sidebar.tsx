@@ -1,56 +1,41 @@
 "use client"
 
-import { useMemo } from "react"
-import type { CreatorMarketplaceCategory } from "@/features/site/marketplace/types"
+import type { CreatorMarketplaceSortOption } from "@/features/site/marketplace/types"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { MultiSelect } from "@/components/ui/multi-select"
+import { useMemo } from "react"
 
 type CreatorMarketplaceFilterSidebarProps = {
-  tags: CreatorMarketplaceCategory[]
+  sort: string
+  sortOptions: CreatorMarketplaceSortOption[]
   maxPrice: number
-  selectedTagIds: string[]
-  verifiedOnly: boolean
-  availableOnly: boolean
+  availableLanguages: string[]
+  selectedLanguages: string[]
+  onSortChange: (sort: string) => void
   onMaxPriceChange: (maxPrice: number) => void
-  onToggleTag: (tagId: string) => void
-  onVerifiedOnlyChange: (checked: boolean) => void
-  onAvailableOnlyChange: (checked: boolean) => void
+  onLanguagesChange: (languages: string[]) => void
   onClearFilters: () => void
 }
 
 export function CreatorMarketplaceFilterSidebar({
-  tags,
+  sort,
+  sortOptions,
   maxPrice,
-  selectedTagIds,
-  verifiedOnly,
-  availableOnly,
+  availableLanguages,
+  selectedLanguages,
+  onSortChange,
   onMaxPriceChange,
-  onToggleTag,
-  onVerifiedOnlyChange,
-  onAvailableOnlyChange,
+  onLanguagesChange,
   onClearFilters,
 }: CreatorMarketplaceFilterSidebarProps) {
-  const tagOptions = useMemo(
+  const languageOptions = useMemo(
     () =>
-      tags.map((tag) => ({
-        value: tag.id,
-        label: tag.name,
+      availableLanguages.map((lang) => ({
+        value: lang,
+        label: lang,
       })),
-    [tags]
+    [availableLanguages]
   )
-
-  const handleTagSelectionChange = (nextSelectedTagIds: string[]) => {
-    const currentSet = new Set(selectedTagIds)
-    const nextSet = new Set(nextSelectedTagIds)
-
-    tags.forEach((tag) => {
-      const isCurrentlySelected = currentSet.has(tag.id)
-      const shouldBeSelected = nextSet.has(tag.id)
-
-      if (isCurrentlySelected !== shouldBeSelected) {
-        onToggleTag(tag.id)
-      }
-    })
-  }
 
   return (
     <aside className="rounded-xl border border-border/70 bg-card p-5">
@@ -67,19 +52,20 @@ export function CreatorMarketplaceFilterSidebar({
 
       <div className="mt-6 space-y-7">
         <section>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Tags</h3>
-          <div className="mt-3 space-y-2.5">
-            <MultiSelect
-              options={tagOptions}
-              defaultValue={selectedTagIds}
-              onValueChange={handleTagSelectionChange}
-              placeholder="Select tags"
-              hideSelectAll
-              maxCount={2}
-              searchable
-              className="w-full"
-              popoverClassName="w-[var(--anchor-width)]"
-            />
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Sort by</h3>
+          <div className="mt-3">
+            <Select value={sort} onValueChange={(value) => onSortChange(String(value ?? ""))}>
+              <SelectTrigger aria-label="Sort creators" className="w-full bg-background">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.id} value={option.id}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </section>
 
@@ -106,24 +92,27 @@ export function CreatorMarketplaceFilterSidebar({
         <section>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</h3>
           <div className="mt-3 space-y-2.5">
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-border"
-                checked={verifiedOnly}
-                onChange={(event) => onVerifiedOnlyChange(event.currentTarget.checked)}
-              />
-              Verified creators only
-            </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-border"
-                checked={availableOnly}
-                onChange={(event) => onAvailableOnlyChange(event.currentTarget.checked)}
-              />
-              Available now
-            </label>
+            {availableLanguages.map((lang) => (
+              <label key={lang} className="flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded border-border accent-primary"
+                  checked={selectedLanguages.includes(lang)}
+                  onChange={(event) => {
+                    const isChecked = event.currentTarget.checked
+                    if (isChecked) {
+                      onLanguagesChange([...selectedLanguages, lang])
+                    } else {
+                      onLanguagesChange(selectedLanguages.filter((l) => l !== lang))
+                    }
+                  }}
+                />
+                {lang}
+              </label>
+            ))}
+            {availableLanguages.length === 0 && (
+              <span className="text-xs text-muted-foreground">No languages found</span>
+            )}
           </div>
         </section>
       </div>

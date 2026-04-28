@@ -14,6 +14,7 @@ export type CreatorServicePackage = {
   includedHeading: string
   includedItems: string[]
   packageHighlights?: string[]
+  isRecommended?: boolean
 }
 
 export type CreatorProfileReview = {

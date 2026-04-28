@@ -1,7 +1,7 @@
 "use client"
 
 import { Heart, MessageSquare, Share2 } from "lucide-react"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { CreatorChatPanel } from "@/features/site/creator-profile/components/creator-chat-panel"
@@ -31,6 +31,42 @@ export function CreatorProfileToolbar({
   className,
 }: CreatorProfileToolbarProps) {
   const [chatOpen, setChatOpen] = useState(false)
+  const [isSaved, setIsSaved] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    fetch("/api/profile/save-creator")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.savedCreators)) {
+          setIsSaved(data.savedCreators.includes(creatorId))
+        }
+      })
+      .catch((err) => console.error("Error fetching saved creators:", err))
+  }, [creatorId, isAuthenticated])
+
+  const toggleSave = useCallback(async () => {
+    if (!isAuthenticated || isLoading) return
+    setIsLoading(true)
+    try {
+      const method = isSaved ? "DELETE" : "POST"
+      const res = await fetch("/api/profile/save-creator", {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ creatorId }),
+      })
+      if (res.ok) {
+        setIsSaved(!isSaved)
+      }
+    } catch (err) {
+      console.error("Error toggling bookmark:", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [creatorId, isAuthenticated, isSaved, isLoading])
 
   const share = useCallback(async () => {
     const url =
@@ -56,10 +92,16 @@ export function CreatorProfileToolbar({
         <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
           <button
             type="button"
-            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
-            aria-label={`Save ${creatorName} to favorites`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "size-10",
+              isSaved && "text-rose-500 border-rose-200 hover:bg-rose-50 bg-rose-50/50"
+            )}
+            aria-label={isSaved ? `Remove ${creatorName} from favorites` : `Save ${creatorName} to favorites`}
+            onClick={toggleSave}
+            disabled={isLoading}
           >
-            <Heart className="size-4" aria-hidden />
+            <Heart className={cn("size-4", isSaved && "fill-rose-500")} aria-hidden />
           </button>
           <button
             type="button"

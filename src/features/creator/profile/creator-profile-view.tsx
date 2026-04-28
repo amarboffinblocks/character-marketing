@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   BadgeCheck,
@@ -102,13 +102,40 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
   const [isProfileLoading, setIsProfileLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [tab, setTab] = useState<ProfileTab>("basic")
+  const [effectiveRole, setEffectiveRole] = useState<string>(role)
   const [skillInput, setSkillInput] = useState("")
   const [languageInput, setLanguageInput] = useState("")
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [pendingHref, setPendingHref] = useState<string | null>(null)
 
-  const completion = computeCompletion(form)
+  const completion = useMemo(() => {
+    if (effectiveRole === "user" || effectiveRole === "admin") {
+      const checks = [
+        form.displayName.trim().length > 0,
+        form.email.trim().length > 0,
+        form.tagline.trim().length > 0,
+        form.shortBio.trim().length > 0,
+        form.longBio.trim().length > 0,
+      ]
+      const done = checks.filter(Boolean).length
+      return {
+        completed: done,
+        total: checks.length,
+        percent: checks.length > 0 ? Math.round((done / checks.length) * 100) : 0,
+      }
+    }
+    return computeCompletion(form)
+  }, [form, effectiveRole])
   const hasUnsavedChanges = JSON.stringify(form) !== saved
+
+  const tabs = useMemo(() => {
+    if (effectiveRole === "user" || effectiveRole === "admin") {
+      return profileTabs.filter((t) => t.value === "basic")
+    }
+    return profileTabs
+  }, [effectiveRole])
+
+  const activeTab = tabs.some((t) => t.value === tab) ? tab : "basic"
 
   useEffect(() => {
     let isMounted = true
@@ -117,12 +144,21 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
       try {
         const response = await fetch(`/api/profile/me?role=${role}`)
         if (!response.ok) return
-        const result = (await response.json()) as { data?: Partial<CreatorProfileForm> | null }
-        if (!isMounted || !result.data) return
+        const result = (await response.json()) as {
+          data?: Partial<CreatorProfileForm> | null
+          role?: string
+        }
+        if (!isMounted) return
 
-        const merged = normalizeCreatorProfileForm(result.data)
-        setForm(merged)
-        setSaved(JSON.stringify(merged))
+        if (result.role) {
+          setEffectiveRole(result.role)
+        }
+
+        if (result.data) {
+          const merged = normalizeCreatorProfileForm(result.data)
+          setForm(merged)
+          setSaved(JSON.stringify(merged))
+        }
       } catch {
         // Keep local defaults when profile API is unavailable.
       } finally {
@@ -310,18 +346,20 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
 
       <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-4 xl:sticky xl:top-6 xl:h-max">
-          <ProfilePreviewCard form={form} completionPercent={completion.percent} />
-          <CompletionChecklist form={form} />
+          <ProfilePreviewCard form={form} completionPercent={completion.percent} role={effectiveRole} />
+          {effectiveRole === "creator" && <CompletionChecklist form={form} />}
         </div>
 
         <div className="space-y-4">
-          <SectionTabs value={tab} onChange={setTab} items={profileTabs} />
+          {tabs.length > 1 && (
+            <SectionTabs value={activeTab} onChange={setTab} items={tabs} />
+          )}
 
-          {tab === "basic" ? (
+          {activeTab === "basic" ? (
             <BasicInfoSection form={form} updateField={updateField} />
           ) : null}
 
-          {tab === "professional" ? (
+          {activeTab === "professional" ? (
             <ProfessionalSection
               form={form}
               updateField={updateField}
@@ -336,7 +374,7 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
             />
           ) : null}
 
-          {tab === "links" ? (
+          {activeTab === "links" ? (
             <LinksSection form={form} updateField={updateField} />
           ) : null}
         </div>
@@ -537,9 +575,11 @@ function ProfileHero({
 function ProfilePreviewCard({
   form,
   completionPercent,
+  role = "creator",
 }: {
   form: CreatorProfileForm
   completionPercent: number
+  role?: string
 }) {
   return (
     <Card>
@@ -714,22 +754,6 @@ function BasicInfoSection({
           <p className="text-[11px] text-muted-foreground">
             Short one-line description. Shown on your storefront card.
           </p>
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Avatar URL</label>
-          <Input
-            value={form.avatarUrl}
-            onChange={(event) => updateField("avatarUrl", event.target.value)}
-            placeholder="https://..."
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Banner URL</label>
-          <Input
-            value={form.bannerUrl}
-            onChange={(event) => updateField("bannerUrl", event.target.value)}
-            placeholder="https://..."
-          />
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-medium text-muted-foreground">Short bio</label>

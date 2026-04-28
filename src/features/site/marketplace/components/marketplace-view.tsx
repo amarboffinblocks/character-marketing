@@ -40,20 +40,33 @@ export function CreatorMarketplaceView({
   const [sort, setSort] = useState(sortOptions[0]?.id ?? "relevance")
   const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE)
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
-  const [verifiedOnly, setVerifiedOnly] = useState(false)
-  const [availableOnly, setAvailableOnly] = useState(false)
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState(1)
 
+  const [savedIds, setSavedIds] = useState<string[]>(() => creators.map((c) => c.id))
+  const isSavedPage = typeof window !== "undefined" && window.location.pathname.includes("saved-creators")
+
+  const availableLanguages = useMemo(() => {
+    const set = new Set<string>()
+    creators.forEach((c) => {
+      if (Array.isArray(c.languages)) {
+        c.languages.forEach((l) => set.add(l))
+      }
+    })
+    return Array.from(set).sort()
+  }, [creators])
+
   const filteredCreators = useMemo(
-    () =>
-      filterCreators(creators, categories, {
+    () => {
+      const base = isSavedPage ? creators.filter((c) => savedIds.includes(c.id)) : creators
+      return filterCreators(base, categories, {
         query,
         sort,
         maxPrice,
         selectedTagIds,
-        verifiedOnly,
-        availableOnly,
-      }),
+        selectedLanguages,
+      })
+    },
     [
       creators,
       categories,
@@ -61,8 +74,9 @@ export function CreatorMarketplaceView({
       sort,
       maxPrice,
       selectedTagIds,
-      verifiedOnly,
-      availableOnly,
+      selectedLanguages,
+      savedIds,
+      isSavedPage,
     ]
   )
 
@@ -88,13 +102,8 @@ export function CreatorMarketplaceView({
     setCurrentPage(1)
   }
 
-  const handleVerifiedOnlyChange = (checked: boolean) => {
-    setVerifiedOnly(checked)
-    setCurrentPage(1)
-  }
-
-  const handleAvailableOnlyChange = (checked: boolean) => {
-    setAvailableOnly(checked)
+  const handleLanguagesChange = (languages: string[]) => {
+    setSelectedLanguages(languages)
     setCurrentPage(1)
   }
 
@@ -112,8 +121,7 @@ export function CreatorMarketplaceView({
     setSort(sortOptions[0]?.id ?? "relevance")
     setMaxPrice(DEFAULT_MAX_PRICE)
     setSelectedTagIds([])
-    setVerifiedOnly(false)
-    setAvailableOnly(false)
+    setSelectedLanguages([])
     setCurrentPage(1)
   }
 
@@ -123,15 +131,14 @@ export function CreatorMarketplaceView({
         <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
           <div className="sticky top-20">
             <CreatorMarketplaceFilterSidebar
-              tags={categories}
+              sort={sort}
+              sortOptions={sortOptions}
               maxPrice={maxPrice}
-              selectedTagIds={selectedTagIds}
-              verifiedOnly={verifiedOnly}
-              availableOnly={availableOnly}
+              availableLanguages={availableLanguages}
+              selectedLanguages={selectedLanguages}
+              onSortChange={handleSortChange}
               onMaxPriceChange={handleMaxPriceChange}
-              onToggleTag={handleToggleTag}
-              onVerifiedOnlyChange={handleVerifiedOnlyChange}
-              onAvailableOnlyChange={handleAvailableOnlyChange}
+              onLanguagesChange={handleLanguagesChange}
               onClearFilters={handleClearFilters}
             />
           </div>
@@ -139,11 +146,11 @@ export function CreatorMarketplaceView({
           <section>
             <CreatorMarketplaceResultsToolbar
               query={query}
-              sort={sort}
               resultCount={filteredCreators.length}
-              sortOptions={sortOptions}
+              tags={categories}
+              selectedTagIds={selectedTagIds}
               onQueryChange={handleQueryChange}
-              onSortChange={handleSortChange}
+              onToggleTag={handleToggleTag}
             />
 
             <ul className="grid list-none gap-4 mt-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -152,6 +159,7 @@ export function CreatorMarketplaceView({
                   <CreatorProfileCard
                     creator={creator}
                     featured={creator.isVerified && creator.rating >= 4.8}
+                    onUnsave={() => setSavedIds((current) => current.filter((id) => id !== creator.id))}
                   />
                 </li>
               ))}

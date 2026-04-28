@@ -5,9 +5,9 @@ export type CreatorMarketplaceFilters = {
   sort: string
   maxPrice: number
   selectedTagIds: string[]
-  verifiedOnly: boolean
-  availableOnly: boolean
+  selectedLanguages: string[]
 }
+
 
 export function getPaginationRange(
   currentPage: number,
@@ -67,8 +67,10 @@ export function filterCreators(
 
   const filtered = creators.filter((creator) => {
     const inPriceRange = creator.startingPrice <= filters.maxPrice
-    const matchesVerifiedFilter = !filters.verifiedOnly || creator.isVerified
-    const matchesAvailabilityFilter = !filters.availableOnly || creator.isAvailable
+    const matchesLanguage = 
+      filters.selectedLanguages.length === 0 || 
+      (creator.languages && creator.languages.some((lang) => filters.selectedLanguages.includes(lang)))
+      
     const matchesSearch =
       normalizedQuery.length === 0 ||
       creator.name.toLowerCase().includes(normalizedQuery) ||
@@ -79,8 +81,7 @@ export function filterCreators(
 
     return (
       inPriceRange &&
-      matchesVerifiedFilter &&
-      matchesAvailabilityFilter &&
+      matchesLanguage &&
       matchesSearch &&
       matchesSelectedTags
     )

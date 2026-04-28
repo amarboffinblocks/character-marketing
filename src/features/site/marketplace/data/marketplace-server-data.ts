@@ -135,6 +135,7 @@ function mapCreatorServiceToCustomPackage(row: CreatorServiceRow): CreatorServic
     includedHeading: "WHAT'S INCLUDED",
     includedItems: buildIncludedItemsFromService(row),
     packageHighlights: asStringArray(row.highlights),
+    isRecommended: Boolean(row.is_recommended),
   }
 }
 

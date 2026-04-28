@@ -16,6 +16,7 @@ import { IconTextRow } from "./icon-text-row"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import Link from "next/link"
+import { motion } from "motion/react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -220,7 +221,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                             </Badge>
                             <p className="text-xs text-muted-foreground">Ready to purchase</p>
                           </div>
-                          <CardTitle id="preselect-package-heading" className="text-base">
+                          <CardTitle id="preselect-package-heading" className="text-xl font-bold">
                             {preselectPackage.title}
                           </CardTitle>
                           <p className="text-sm text-muted-foreground">{preselectPackage.description}</p>
@@ -314,112 +315,119 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                             pkg.discountedPrice > 0 &&
                             pkg.discountedPrice < pkg.price
                           return (
-                            <Card
+                            <motion.div
                               key={pkg.id}
-                              className="relative overflow-hidden border border-border/70 bg-card shadow-sm transition-all hover:shadow-md"
+                              className="rounded-xl h-full"
+                              animate={pkg.isRecommended ? {
+                                boxShadow: [
+                                  "0 0 15px -3px rgba(245, 158, 11, 0.15)",
+                                  "0 0 30px 0px rgba(245, 158, 11, 0.35)",
+                                  "0 0 15px -3px rgba(245, 158, 11, 0.15)"
+                                ]
+                              } : {}}
+                              transition={{
+                                duration: 3,
+                                repeat: Infinity,
+                                ease: "easeInOut"
+                              }}
                             >
-                              {index === 0 ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-medium"
-                                >
-                                  Most Popular
-                                </Badge>
-                              ) : null}
-                              <CardHeader className="space-y-3 pb-3">
-                                <div className="flex items-start justify-between gap-3">
-                                  <CardTitle className="text-base">{pkg.title}</CardTitle>
-                                  <div className="text-right">
-                                    {hasDiscount ? (
-                                      <div className="flex flex-col items-end">
-                                        <span className="text-xs text-muted-foreground line-through">
-                                          {priceFormatter.format(pkg.price)}
-                                        </span>
-                                        <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
-                                          {priceFormatter.format(pkg.discountedPrice!)}
-                                        </span>
-                                      </div>
-                                    ) : (
-                                      <span className="inline-block text-3xl font-bold tracking-tight tabular-nums text-foreground">
-                                        {priceFormatter.format(pkg.price)}
-                                      </span>
-                                    )}
+                              <Card
+                                className={cn(
+                                  "relative overflow-hidden border h-full transition-all duration-300",
+                                  pkg.isRecommended
+                                    ? "border-amber-400/60 bg-linear-to-br from-amber-500/5 via-card to-card dark:from-amber-500/10"
+                                    : "border-border/70 bg-card shadow-sm hover:shadow-md"
+                                )}
+                              >
+                                {pkg.isRecommended ? (
+                                  <Badge
+                                    className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-400/50 hover:bg-amber-500/90"
+                                  >
+                                    Recommended
+                                  </Badge>
+                                ) : null}
+                                <CardHeader className="space-y-3 pb-3 md:min-h-[160px]">
+                                  <div className="flex flex-col gap-2">
+                                    <CardTitle className="text-xl font-bold">{pkg.title}</CardTitle>
+                                    <div>
+                                      {hasDiscount ? (
+                                        <div className="flex flex-col ">
+                                          <span className="text-xs text-muted-foreground  line-through">
+                                            {priceFormatter.format(pkg.price)}
+                                          </span>
+                                          <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                                            {priceFormatter.format(pkg.discountedPrice!)}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-col">
+                                          <span className="inline-block text-3xl font-bold tracking-tight tabular-nums">
+                                            {priceFormatter.format(pkg.price)}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                                <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                <Link
-                                  href={purchaseCustomHref}
-                                  className={cn(buttonVariants({ size: "lg" }), "w-full")}
-                                >
-                                  Purchase Package
-                                </Link>
-                                <div className="space-y-3">
-                                  <p className="text-xs text-muted-foreground">{pkg.tokensLabel}</p>
-                                  <div className="relative border-t border-border/60 pt-3">
-                                    <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] font-semibold tracking-wider text-muted-foreground">
-                                      FEATURES
-                                    </span>
-                                    <ul className="space-y-2">
-                                      {CUSTOM_PACKAGE_FEATURES.map((feature) => {
-                                        const included = isFeatureIncluded(pkg.includedItems, feature.keywords)
-                                        const count = getFeatureCount(pkg.includedItems, feature.keywords)
-                                        return (
-                                          <li
-                                            key={feature.label}
-                                            className="flex items-center justify-between gap-3 text-sm"
-                                          >
-                                            <span className="font-medium text-foreground">{feature.label}</span>
-                                            <span className="flex items-center gap-1.5 text-muted-foreground">
-                                              {included ? (
-                                                <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
-                                              ) : (
-                                                <XCircle className="size-4 text-rose-500" aria-hidden />
-                                              )}
-                                              {included
-                                                ? `${count} item${count === 1 ? "" : "s"} included`
-                                                : "Not included"}
+                                  <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  <Link
+                                    href={purchaseCustomHref}
+                                    className={cn(buttonVariants({ size: "lg" }), "w-full")}
+                                  >
+                                    Purchase Package
+                                  </Link>
+                                  <div className="space-y-3">
+                                    <p className="text-xs text-muted-foreground">{pkg.tokensLabel}</p>
+                                    <div className="relative border-t border-border/60 pt-3">
+                                      <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] font-semibold tracking-wider text-muted-foreground">
+                                        FEATURES
+                                      </span>
+                                      <ul className="space-y-2">
+                                        {CUSTOM_PACKAGE_FEATURES.map((feature) => {
+                                          const included = isFeatureIncluded(pkg.includedItems, feature.keywords)
+                                          const count = getFeatureCount(pkg.includedItems, feature.keywords)
+                                          return (
+                                            <li
+                                              key={feature.label}
+                                              className="flex items-center justify-between gap-3 text-sm"
+                                            >
+                                              <span className="font-medium text-foreground">{feature.label}</span>
+                                              <span className="flex items-center gap-1.5 text-muted-foreground">
+                                                {included ? (
+                                                  <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
+                                                ) : (
+                                                  <XCircle className="size-4 text-rose-500" aria-hidden />
+                                                )}
+                                                {included
+                                                  ? `${count} item${count === 1 ? "" : "s"} included`
+                                                  : "Not included"}
+                                              </span>
+                                            </li>
+                                          )
+                                        })}
+                                        {pkg.deliveryDays > 0 ? (
+                                          <li className="flex items-center justify-between gap-3 text-sm">
+                                            <span className="font-medium text-foreground">Delivery</span>
+                                            <span className="text-muted-foreground">
+                                              {pkg.deliveryDays} day{pkg.deliveryDays === 1 ? "" : "s"}
                                             </span>
                                           </li>
-                                        )
-                                      })}
-                                      {pkg.deliveryDays > 0 ? (
-                                        <li className="flex items-center justify-between gap-3 text-sm">
-                                          <span className="font-medium text-foreground">Delivery</span>
-                                          <span className="text-muted-foreground">
-                                            {pkg.deliveryDays} day{pkg.deliveryDays === 1 ? "" : "s"}
-                                          </span>
-                                        </li>
-                                      ) : null}
-                                      {pkg.revisionCount > 0 ? (
-                                        <li className="flex items-center justify-between gap-3 text-sm">
-                                          <span className="font-medium text-foreground">Revisions</span>
-                                          <span className="text-muted-foreground">
-                                            {pkg.revisionCount} revision{pkg.revisionCount === 1 ? "" : "s"}
-                                          </span>
-                                        </li>
-                                      ) : null}
-                                    </ul>
+                                        ) : null}
+                                        {pkg.revisionCount > 0 ? (
+                                          <li className="flex items-center justify-between gap-3 text-sm">
+                                            <span className="font-medium text-foreground">Revisions</span>
+                                            <span className="text-muted-foreground">
+                                              {pkg.revisionCount} revision{pkg.revisionCount === 1 ? "" : "s"}
+                                            </span>
+                                          </li>
+                                        ) : null}
+                                      </ul>
+                                    </div>
                                   </div>
-                                </div>
-                                {highlights.length > 0 ? (
-                                  <div>
-                                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                                      Package highlights
-                                    </p>
-                                    <ul className="mt-2 space-y-1.5">
-                                      {highlights.map((item) => (
-                                        <li key={item} className="flex items-center gap-2 text-sm text-foreground">
-                                          <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
-                                          <span>{item}</span>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  </div>
-                                ) : null}
-                              </CardContent>
-                            </Card>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
                           )
                         })}
                       </div>

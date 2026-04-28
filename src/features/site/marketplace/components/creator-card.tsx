@@ -1,4 +1,5 @@
 "use client"
+import { useEffect, useState } from "react"
 
 import Image from "next/image"
 import Link from "next/link"
@@ -13,6 +14,7 @@ import { cn } from "@/lib/utils"
 interface CreatorProfileCardProps {
   creator: Creator
   featured?: boolean
+  onUnsave?: () => void
 }
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
@@ -21,9 +23,48 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 })
 
-export function CreatorProfileCard({ creator, featured = false }: CreatorProfileCardProps) {
+export function CreatorProfileCard({ creator, featured = false, onUnsave }: CreatorProfileCardProps) {
   const profileHref = `/creators/${creator.id}`
   const ratingLabel = `${creator.rating.toFixed(1)} out of 5 stars, ${creator.reviewCount} reviews`
+
+  const [isSaved, setIsSaved] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    fetch("/api/profile/save-creator")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.savedCreators)) {
+          setIsSaved(data.savedCreators.includes(creator.id))
+        }
+      })
+      .catch((err) => console.error("Error loading saved status", err))
+  }, [creator.id])
+
+  const toggleSave = async (event: React.MouseEvent) => {
+    event.preventDefault()
+    event.stopPropagation()
+    if (isLoading) return
+    setIsLoading(true)
+    try {
+      const method = isSaved ? "DELETE" : "POST"
+      const res = await fetch("/api/profile/save-creator", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ creatorId: creator.id }),
+      })
+      if (res.ok) {
+        setIsSaved(!isSaved)
+        if (method === "DELETE") {
+          onUnsave?.()
+        }
+      }
+    } catch (err) {
+      console.error("Error toggling save", err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
     <article className="h-full">
@@ -60,14 +101,17 @@ export function CreatorProfileCard({ creator, featured = false }: CreatorProfile
 
           <button
             type="button"
-            className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-background/85 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-all hover:bg-background hover:text-primary focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover/card:opacity-100"
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            aria-label={`Save ${creator.name} to favorites`}
+            className={cn(
+              "absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full shadow-sm backdrop-blur-sm transition-all focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 group-hover/card:opacity-100",
+              isSaved 
+                ? "bg-background text-rose-500 opacity-100" 
+                : "bg-background/85 text-muted-foreground opacity-0 hover:bg-background hover:text-primary"
+            )}
+            onClick={toggleSave}
+            aria-label={isSaved ? `Remove ${creator.name} from favorites` : `Save ${creator.name} to favorites`}
+            disabled={isLoading}
           >
-            <Heart className="h-4 w-4" aria-hidden />
+            <Heart className={cn("h-4 w-4", isSaved && "fill-rose-500")} aria-hidden />
           </button>
         </div>
 

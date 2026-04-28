@@ -12,11 +12,11 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: supabaseHostname
       ? [
-          {
-            protocol: "https",
-            hostname: supabaseHostname,
-          },
-        ]
+        {
+          protocol: "https",
+          hostname: supabaseHostname,
+        },
+      ]
       : [],
   },
 };
