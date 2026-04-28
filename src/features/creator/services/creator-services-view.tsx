@@ -1,180 +1,94 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import {
-  BadgeCheck,
-  BarChart3,
-  CheckCircle2,
-  Copy,
-  ExternalLink,
-  MoreHorizontal,
-  Pencil,
-  Plus,
-  Search,
-  ShieldAlert,
-  Sparkles,
-  Trash2,
-} from "lucide-react"
+import { useEffect, useState } from "react"
+import Link from "next/link"
+import { CheckCircle2, Pencil, Plus, Trash2, XCircle } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  creatorServices,
   formatCurrency,
-  type ServicePackage,
-  type ServiceStatus,
+  type CreatorServicePackage,
 } from "@/features/creator/services/services-data"
 import { cn } from "@/lib/utils"
 
-type StatusFilter = "all" | ServiceStatus
-
-const statusLabel: Record<ServiceStatus, string> = {
-  active: "Active",
-  draft: "Draft",
-  paused: "Paused",
-}
-
-const statusClass: Record<ServiceStatus, string> = {
-  active: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
-  draft: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
-  paused: "bg-muted text-muted-foreground",
-}
-
 export function CreatorServicesView() {
-  const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [services, setServices] = useState<CreatorServicePackage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    return creatorServices.filter((service) => {
-      const matchesStatus = statusFilter === "all" ? true : service.status === statusFilter
-      const matchesSearch =
-        query.length === 0 ||
-        service.name.toLowerCase().includes(query) ||
-        service.category.toLowerCase().includes(query) ||
-        service.description.toLowerCase().includes(query)
-      return matchesStatus && matchesSearch
-    })
-  }, [search, statusFilter])
+  useEffect(() => {
+    let mounted = true
 
-  const totalActive = creatorServices.filter((item) => item.status === "active").length
-  const totalOrders = creatorServices.reduce((acc, item) => acc + item.totalOrders, 0)
-  const averageConversion = creatorServices.length
-    ? Math.round(
-        creatorServices.reduce((acc, item) => acc + item.conversionRate, 0) / creatorServices.length
-      )
-    : 0
+    async function loadServices() {
+      setIsLoading(true)
+      const response = await fetch("/api/creator/services", { cache: "no-store" })
+      const result = (await response.json()) as { items?: CreatorServicePackage[]; error?: string }
+      if (!mounted) return
+
+      if (!response.ok) {
+        setError(result.error ?? "Unable to load services.")
+        setIsLoading(false)
+        return
+      }
+
+      setServices(result.items ?? [])
+      setIsLoading(false)
+    }
+
+    void loadServices()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  async function deleteService(id: string) {
+    const confirmed = window.confirm("Delete this service?")
+    if (!confirmed) return
+
+    const response = await fetch(`/api/creator/services?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+    if (!response.ok) {
+      setError("Unable to delete service.")
+      return
+    }
+
+    setServices((current) => current.filter((item) => item.id !== id))
+  }
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-4">
-            <span className="inline-flex size-12 items-center justify-center rounded-full bg-primary/15 text-primary">
-              <BadgeCheck className="size-5" />
-            </span>
-            <div className="space-y-1.5">
-              <Badge variant="secondary" className="w-fit">Services catalog</Badge>
-              <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-                Services
-              </h2>
-              <p className="max-w-2xl text-sm text-muted-foreground">
-                Configure your package catalog, tiered pricing, delivery timelines, and add-ons.
-              </p>
-            </div>
-          </div>
-          <Button className="h-9">
-            <Plus className="size-4" />
-            New Service
-          </Button>
+      <section className="flex items-center justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Services</h1>
+          <p className="text-sm text-muted-foreground">Manage your marketplace service cards.</p>
         </div>
+        <Button className="h-9" render={<Link href="/dashboard/creator/services/new" />}>
+          <Plus className="size-4" />
+          New service
+        </Button>
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Active services</CardDescription>
-            <CardTitle className="text-2xl">{totalActive}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Out of {creatorServices.length} total packages
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Lifetime orders</CardDescription>
-            <CardTitle className="text-2xl">{totalOrders}</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Across all service packages
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Avg conversion</CardDescription>
-            <CardTitle className="text-2xl">{averageConversion}%</CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Visitors who purchase a package
-          </CardContent>
-        </Card>
-        <Card size="sm">
-          <CardHeader className="pb-2">
-            <CardDescription>Performance</CardDescription>
-            <CardTitle className="text-2xl">Healthy</CardTitle>
-          </CardHeader>
-          <CardContent className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
-            <BarChart3 className="size-3.5" />
-            Stable volume this week
-          </CardContent>
-        </Card>
-      </section>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-      <section className="rounded-2xl border border-border bg-card p-3 sm:p-4">
-        <div className="grid gap-3 md:grid-cols-[1.6fr_1fr]">
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search services by name, category, or description"
-              className="pl-8"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as StatusFilter)}>
-            <SelectTrigger aria-label="Filter by status">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="paused">Paused</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </section>
-
-      {filtered.length === 0 ? (
+      {isLoading ? (
         <Card>
-          <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No services match your filters.
+          <CardContent className="py-12 text-center text-sm text-muted-foreground">Loading services...</CardContent>
+        </Card>
+      ) : services.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
+            <Plus className="size-4" />
+            <p className="text-sm text-muted-foreground">No services yet. Create your first service package.</p>
+            <Button size="sm" render={<Link href="/dashboard/creator/services/new" />}>
+              Create service
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {filtered.map((service) => (
-            <ServiceCard key={service.id} service={service} />
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3">
+          {services.map((service) => (
+            <ServiceCard key={service.id} service={service} onDelete={deleteService} />
           ))}
         </div>
       )}
@@ -182,135 +96,128 @@ export function CreatorServicesView() {
   )
 }
 
-function ServiceCard({ service }: { service: ServicePackage }) {
-  const startingPrice = Math.min(...service.tiers.map((tier) => tier.price))
+function ServiceCard({
+  service,
+  onDelete,
+}: {
+  service: CreatorServicePackage
+  onDelete: (id: string) => void
+}) {
+  const counts = [
+    { label: "Persona", value: service.personaCount },
+    { label: "Lorebook", value: service.lorebookCount },
+    { label: "Background", value: service.backgroundCount },
+    { label: "Avatar", value: service.avatarCount },
+    { label: "Character", value: service.characterCount },
+  ]
+  const formattedUpdatedAt = formatServiceUpdatedAt(service.updatedAt)
 
   return (
-    <Card>
-      <CardHeader className="border-b pb-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant="outline">{service.category}</Badge>
-              <Badge variant="secondary" className={cn("capitalize", statusClass[service.status])}>
-                {statusLabel[service.status]}
-              </Badge>
+    <Card
+      className={cn(
+        "h-full overflow-hidden rounded-2xl border border-border/70 bg-card shadow-sm",
+        service.isRecommended && "border-amber-400/70"
+      )}
+    >
+      <CardHeader className="space-y-3 pb-3">
+        <div className="flex items-center gap-2">
+          <Badge className="rounded-full bg-amber-500 text-white hover:bg-amber-500/90">Custom Package</Badge>
+          <p className="text-sm text-muted-foreground">Flexible and tailored package options</p>
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-xl">{service.serviceName}</CardTitle>
+              {service.isRecommended ? (
+                <Badge className="rounded-full bg-amber-500 text-white hover:bg-amber-500/90">Recommended</Badge>
+              ) : null}
             </div>
-            <CardTitle className="text-lg">{service.name}</CardTitle>
             <CardDescription>{service.description}</CardDescription>
-            <div className="pt-1">
-              <p className="text-xs text-muted-foreground">Starting from</p>
-              <p className="text-lg font-semibold text-foreground">{formatCurrency(startingPrice)}</p>
-            </div>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label="Service actions"
-                  className="shrink-0"
-                >
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              }
-            />
-            <DropdownMenuContent align="end" className="w-52">
-              <DropdownMenuItem>
-                <Pencil className="size-4" />
-                Edit service
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Copy className="size-4" />
-                Duplicate
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <ExternalLink className="size-4" />
-                Preview storefront
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem variant="destructive">
-                <Trash2 className="size-4" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="text-right">
+            {service.discountedPrice ? (
+              <>
+                <p className="text-sm text-muted-foreground line-through">{formatCurrency(service.price)}</p>
+                <p className="text-2xl font-semibold tracking-tight text-amber-600">
+                  {formatCurrency(service.discountedPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="text-2xl font-semibold tracking-tight text-amber-600">{formatCurrency(service.price)}</p>
+            )}
+          </div>
         </div>
       </CardHeader>
 
-      <CardContent className="grid gap-4 py-4 lg:grid-cols-3">
-        {service.tiers.map((tier) => (
-          <div
-            key={tier.tier}
-            className={cn(
-              "rounded-xl border border-border/70 p-4 transition-colors hover:border-primary/40",
-              tier.tier === "standard" && "border-primary/40 bg-primary/5"
-            )}
-          >
-            <div className="mb-2 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="size-4 text-primary" />
-                <p className="text-sm font-semibold capitalize text-foreground">{tier.tier}</p>
-              </div>
-              {tier.tier === "standard" ? (
-                <Badge variant="secondary" className="bg-primary/15 text-primary">
-                  Popular
-                </Badge>
-              ) : null}
+      <CardContent className="space-y-4">
+        <div className="rounded-xl border border-border/70 bg-background/40">
+          <div className="grid grid-cols-[1fr_auto] items-center border-b px-4 py-2.5">
+            <p className="font-medium text-foreground">Tokens</p>
+            <p className="text-sm text-muted-foreground">{service.tokensLabel}</p>
+          </div>
+          {counts.map((item) => (
+            <div key={item.label} className="grid grid-cols-[1fr_auto] items-center border-b px-4 py-2.5 last:border-b-0">
+              <p className="font-medium text-foreground">{item.label}</p>
+              <p className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+                {item.value > 0 ? (
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                ) : (
+                  <XCircle className="size-4 text-rose-500" />
+                )}
+                {item.value} item{item.value === 1 ? "" : "s"} included
+              </p>
             </div>
-            <p className="text-2xl font-semibold tracking-tight text-foreground">
-              {formatCurrency(tier.price)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {tier.deliveryDays} day delivery · {tier.revisions} revisions
-            </p>
-            <ul className="mt-3 space-y-1.5 text-xs">
-              {tier.features.map((feature) => (
-                <li key={feature} className="flex items-center gap-1.5 text-muted-foreground">
-                  <CheckCircle2 className="size-3.5 text-emerald-500" />
-                  <span>{feature}</span>
+          ))}
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Package highlights</p>
+          {service.highlights.length > 0 ? (
+            <ul className="space-y-1.5">
+              {service.highlights.map((item) => (
+                <li key={item} className="flex items-center gap-1.5 text-sm text-foreground">
+                  <CheckCircle2 className="size-4 text-emerald-500" />
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
-          </div>
-        ))}
-      </CardContent>
-
-      {service.addOns.length > 0 ? (
-        <CardContent className="border-t pt-4">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">Add-ons</p>
-          <div className="flex flex-wrap gap-2">
-            {service.addOns.map((addOn) => (
-              <Badge key={addOn.id} variant="outline" className="h-6">
-                {addOn.label} · {formatCurrency(addOn.price)}
-              </Badge>
-            ))}
-          </div>
-        </CardContent>
-      ) : null}
-
-      <CardContent className="flex flex-wrap items-center justify-between gap-2 border-t pt-4 text-xs text-muted-foreground">
-        <div className="flex items-center gap-4">
-          <span>
-            Orders: <span className="font-medium text-foreground">{service.totalOrders}</span>
-          </span>
-          <span>
-            Conversion:{" "}
-            <span className="font-medium text-foreground">{service.conversionRate}%</span>
-          </span>
-          <span>Updated {service.updatedAt}</span>
+          ) : (
+            <p className="text-sm text-muted-foreground">No highlights added.</p>
+          )}
         </div>
-        {service.status === "draft" ? (
-          <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
-            <ShieldAlert className="size-3.5" />
-            Publish to start receiving orders
-          </span>
-        ) : null}
-        <a href="#" className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}>
-          Edit details
-        </a>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 pt-4">
+          <p className="text-xs text-muted-foreground">Updated {formattedUpdatedAt}</p>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              render={<Link href={`/dashboard/creator/services/edit?id=${service.id}`} />}
+            >
+              <Pencil className="size-3.5" />
+              Edit
+            </Button>
+            <Button type="button" size="sm" variant="destructive" onClick={() => onDelete(service.id)}>
+              <Trash2 className="size-3.5" />
+              Delete
+            </Button>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
+}
+
+function formatServiceUpdatedAt(value: string) {
+  if (!value) return "recently"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat("en-US", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }
