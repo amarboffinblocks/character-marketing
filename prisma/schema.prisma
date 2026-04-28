@@ -120,6 +120,24 @@ model Profile {
   @@schema("public")
 }
 
+model CustomPackageRequest {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  creatorId       String   @map("creator_id") @db.Uuid
+  requesterId     String   @map("requester_id") @db.Uuid
+  packageId       String   @map("package_id")
+  packageTitle    String   @map("package_title")
+  packagePrice    Int      @map("package_price")
+  tokensLabel     String   @map("tokens_label")
+  requestPayload  Json     @map("request_payload")
+  status          String   @default("submitted")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([creatorId, createdAt(sort: Desc)], map: "custom_package_requests_creator_id_created_at_idx")
+  @@index([requesterId, createdAt(sort: Desc)], map: "custom_package_requests_requester_id_created_at_idx")
+  @@map("custom_package_requests")
+  @@schema("public")
+}
+
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model audit_log_entries {

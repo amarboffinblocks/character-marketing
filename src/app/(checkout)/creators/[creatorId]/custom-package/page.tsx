@@ -4,8 +4,8 @@ import { MoveLeft } from "lucide-react"
 
 import { Container } from "@/components/shared"
 import { buttonVariants } from "@/components/ui/button"
+import { CustomPackageRequestForm } from "@/features/site/packages/components/custom-package-request-form"
 import {
-  CustomPackageRequestForm,
   getCustomPackages,
   getPackageAssetLimits,
 } from "@/features/site/packages"
@@ -55,7 +55,9 @@ export default async function CustomPackageRequestPage({
         </div>
 
         <CustomPackageRequestForm
+          creatorId={profile.id}
           creatorName={profile.name}
+          packageId={selectedPackage.id}
           packageTitle={selectedPackage.title}
           packagePrice={selectedPackage.price}
           tokensLabel={selectedPackage.tokensLabel}

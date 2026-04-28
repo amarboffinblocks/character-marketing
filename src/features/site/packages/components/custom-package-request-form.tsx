@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AlertCircle, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react"
 import { Controller, useFieldArray, useForm, useWatch } from "react-hook-form"
+import { toast } from "sonner"
 import { z } from "zod"
 
 import { Badge } from "@/components/ui/badge"
@@ -75,7 +76,9 @@ type PersonaRequest = {
 }
 
 type CustomPackageRequestFormProps = {
+  creatorId: string
   creatorName: string
+  packageId: string
   packageTitle: string
   packagePrice: number
   tokensLabel: string
@@ -318,7 +321,9 @@ function InlineError({ message }: { message?: string }) {
 }
 
 export function CustomPackageRequestForm({
+  creatorId,
   creatorName,
+  packageId,
   packageTitle,
   packagePrice,
   tokensLabel,
@@ -352,6 +357,8 @@ export function CustomPackageRequestForm({
   const { control, register, handleSubmit, trigger, formState } = form
   const { errors } = formState
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState("")
+  const [submitSuccess, setSubmitSuccess] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const currentStepId = STEPS[currentStepIndex].id
   const currentStepLabel = STEPS[currentStepIndex].label
@@ -581,10 +588,57 @@ export function CustomPackageRequestForm({
   }
 
   const onFinalSubmit = async (values: CustomRequestFormValues) => {
+    setSubmitError("")
+    setSubmitSuccess(false)
     setIsSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    console.info("Custom package request payload", values)
-    setIsSubmitting(false)
+    try {
+      const response = await fetch("/api/site/custom-package-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creatorId,
+          packageId,
+          packageTitle,
+          packagePrice,
+          tokensLabel,
+          packageDescription,
+          limits,
+          requestPayload: values,
+        }),
+      })
+
+      const result = (await response.json()) as { error?: string; details?: string }
+      if (!response.ok) {
+        const message = result.error ?? "Unable to submit request."
+        const fullMessage = result.details ? `${message} (${result.details})` : message
+        setSubmitError(fullMessage)
+        toast.error(fullMessage)
+        return
+      }
+
+      setSubmitSuccess(true)
+      toast.success("Your custom package request has been submitted successfully.")
+      form.reset({
+        character: [],
+        persona: [],
+        lorebook: [],
+        background: [],
+        avatar: [],
+      })
+      setCurrentStepIndex(0)
+      setActiveItemIndexByStep({
+        character: null,
+        persona: null,
+        lorebook: null,
+        background: null,
+        avatar: null,
+      })
+    } catch {
+      setSubmitError("Unable to submit request.")
+      toast.error("Unable to submit request.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleNext = async () => {
@@ -750,7 +804,13 @@ export function CustomPackageRequestForm({
           </Button>
         )}
       </div>
-      <p className="text-sm text-muted-foreground">Request will be sent to {creatorName} after confirmation.</p>
+      {submitError ? (
+        <p className="inline-flex items-center gap-1 text-sm text-destructive">
+          <AlertCircle className="size-4" />
+          {submitError}
+        </p>
+      ) : null}
+     
     </form>
   )
 }
