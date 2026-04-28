@@ -47,6 +47,8 @@ export default async function PurchasePreselectPage({
         </div>
 
         <PurchasePreselectForm
+          creatorId={profile.id}
+          packageId={selectedPackage.id}
           creatorName={profile.name}
           packageTitle={selectedPackage.title}
           packagePrice={selectedPackage.price}

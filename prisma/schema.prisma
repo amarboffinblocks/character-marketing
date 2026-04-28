@@ -120,21 +120,40 @@ model Profile {
   @@schema("public")
 }
 
-model CustomPackageRequest {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  creatorId       String   @map("creator_id") @db.Uuid
-  requesterId     String   @map("requester_id") @db.Uuid
-  packageId       String   @map("package_id")
-  packageTitle    String   @map("package_title")
-  packagePrice    Int      @map("package_price")
-  tokensLabel     String   @map("tokens_label")
-  requestPayload  Json     @map("request_payload")
-  status          String   @default("submitted")
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+enum RequestType {
+  custom_package
+  preselect_package
 
-  @@index([creatorId, createdAt(sort: Desc)], map: "custom_package_requests_creator_id_created_at_idx")
-  @@index([requesterId, createdAt(sort: Desc)], map: "custom_package_requests_requester_id_created_at_idx")
-  @@map("custom_package_requests")
+  @@schema("public")
+}
+
+enum RequestStatus {
+  pending
+  processing
+  accepted
+  rejected
+  completed
+
+  @@schema("public")
+}
+
+model Request {
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestType    RequestType   @map("request_type")
+  creatorId      String        @map("creator_id") @db.Uuid
+  requesterId    String        @map("requester_id") @db.Uuid
+  packageId      String        @map("package_id")
+  packageTitle   String        @map("package_title")
+  packagePrice   Int           @map("package_price")
+  tokensLabel    String        @map("tokens_label")
+  requestPayload Json          @map("request_payload")
+  status         RequestStatus @default(pending)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([creatorId, createdAt(sort: Desc)], map: "requests_creator_id_created_at_idx")
+  @@index([requesterId, createdAt(sort: Desc)], map: "requests_requester_id_created_at_idx")
+  @@index([requestType, createdAt(sort: Desc)], map: "requests_request_type_created_at_idx")
+  @@map("requests")
   @@schema("public")
 }
 

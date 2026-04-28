@@ -2,6 +2,8 @@
 
 import { useMemo, useState, type FormEvent } from "react"
 import { Minus, Plus } from "lucide-react"
+import { toast } from "sonner"
+import { z } from "zod"
 
 import { buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,6 +11,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 type PurchasePreselectFormProps = {
+  creatorId: string
+  packageId: string
   packageTitle: string
   packagePrice: number
   tokensLabel: string
@@ -16,6 +20,8 @@ type PurchasePreselectFormProps = {
 }
 
 export function PurchasePreselectForm({
+  creatorId,
+  packageId,
   packageTitle,
   packagePrice,
   tokensLabel,
@@ -29,37 +35,83 @@ export function PurchasePreselectForm({
   const [background, setBackground] = useState(0)
   const [avatar, setAvatar] = useState(0)
   const [message, setMessage] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const normalizedPrice = useMemo(() => {
     const n = Number(price)
     return Number.isFinite(n) && n > 0 ? n : packagePrice
   }, [price, packagePrice])
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const requestSchema = useMemo(
+    () =>
+      z.object({
+        price: z.number().int().positive("Price must be greater than 0"),
+        tokenCount: z.string().trim().min(1, "Token count is required"),
+        requestedAssets: z.object({
+          character: z.number().int().nonnegative(),
+          persona: z.number().int().nonnegative(),
+          lorebook: z.number().int().nonnegative(),
+          background: z.number().int().nonnegative(),
+          avatar: z.number().int().nonnegative(),
+        }),
+        messageToCreator: z.string().trim().default(""),
+      }),
+    []
+  )
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const subject = `Purchase Pre-Select: ${packageTitle} by ${creatorName}`
-    const lines = [
-      `Creator: ${creatorName}`,
-      `Package: ${packageTitle}`,
-      `Price: $${normalizedPrice}`,
-      `Token count: ${tokenCount || "Not provided"}`,
-      "",
-      "Requested assets:",
-      `- Character: ${character}`,
-      `- Persona: ${persona}`,
-      `- Lorebook: ${lorebook}`,
-      `- Background: ${background}`,
-      `- Avatar: ${avatar}`,
-      "",
-      "Message to creator:",
-      message || "No additional message",
-    ]
+    const parsed = requestSchema.safeParse({
+      price: normalizedPrice,
+      tokenCount,
+      requestedAssets: { character, persona, lorebook, background, avatar },
+      messageToCreator: message,
+    })
 
-    const href = `mailto:support@character.market?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-      lines.join("\n")
-    )}`
-    window.location.href = href
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message ?? "Please check the form values.")
+      return
+    }
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch("/api/site/purchase-preselect-requests", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          creatorId,
+          packageId,
+          packageTitle,
+          packagePrice: parsed.data.price,
+          tokensLabel,
+          tokenCount: parsed.data.tokenCount,
+          requestedAssets: parsed.data.requestedAssets,
+          messageToCreator: parsed.data.messageToCreator,
+        }),
+      })
+
+      const result = (await response.json()) as { error?: string; details?: string }
+      if (!response.ok) {
+        const messageText = result.error ?? "Unable to submit pre-select request."
+        toast.error(result.details ? `${messageText} (${result.details})` : messageText)
+        return
+      }
+
+      toast.success("Your pre-select package request has been submitted successfully.")
+      setPrice(String(packagePrice))
+      setTokenCount(tokensLabel.replace("Tokens: ", ""))
+      setCharacter(1)
+      setPersona(1)
+      setLorebook(0)
+      setBackground(0)
+      setAvatar(0)
+      setMessage("")
+    } catch {
+      toast.error("Unable to submit pre-select request.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -129,8 +181,12 @@ export function PurchasePreselectForm({
       </div>
 
       <div className="flex justify-end border-t border-border/60 pt-4">
-        <button type="submit" className={cn(buttonVariants({ size: "lg" }), "h-10")}>
-          Continue Purchase
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className={cn(buttonVariants({ size: "lg" }), "h-10")}
+        >
+          {isSubmitting ? "Submitting..." : "Send Request"}
         </button>
       </div>
     </form>

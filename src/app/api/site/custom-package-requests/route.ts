@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
 
-import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+
+import pg from "pg"
 
 const safetySchema = z.enum(["SFW", "NSFW"])
 
@@ -116,27 +117,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Request exceeds package limits." }, { status: 400 })
   }
 
-  const adminSupabase = createAdminSupabaseClient()
-  const { error } = await adminSupabase.from("custom_package_requests").insert({
-    creator_id: payload.creatorId,
-    requester_id: user.id,
-    package_id: payload.packageId,
-    package_title: payload.packageTitle,
-    package_price: payload.packagePrice,
-    tokens_label: payload.tokensLabel,
-    request_payload: {
-      packageDescription: payload.packageDescription,
-      limits: payload.limits,
-      details: payload.requestPayload,
-    },
-    status: "submitted",
-  })
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
+  if (!connectionString) {
+    return NextResponse.json({ error: "Server misconfigured." }, { status: 500 })
+  }
 
-  if (error) {
-    return NextResponse.json(
-      { error: "Unable to submit custom package request.", details: error.message },
-      { status: 400 }
+  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
+  try {
+    await client.connect()
+    await client.query(
+      `insert into public.requests
+        (request_type, creator_id, requester_id, package_id, package_title, package_price, tokens_label, request_payload, status)
+        values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [
+        "custom_package",
+        payload.creatorId,
+        user.id,
+        payload.packageId,
+        payload.packageTitle,
+        payload.packagePrice,
+        payload.tokensLabel,
+        {
+          packageDescription: payload.packageDescription,
+          limits: payload.limits,
+          details: payload.requestPayload,
+        },
+        "pending",
+      ]
     )
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error"
+    return NextResponse.json({ error: "Unable to submit custom package request.", details: message }, { status: 400 })
+  } finally {
+    await client.end().catch(() => {})
   }
 
   return NextResponse.json({ success: true })

@@ -506,7 +506,6 @@ export function CustomPackageRequestForm({
           <InlineError message={errors.background?.[index]?.referenceUrl1?.message} />
           <Input placeholder="Reference Image URL 2" {...register(`background.${index}.referenceUrl2` as const)} />
           <Input placeholder="Reference Image URL 3" {...register(`background.${index}.referenceUrl3` as const)} />
-          <Input type="file" multiple accept="image/*" />
           <Controller
             control={control}
             name={`background.${index}.safety`}
@@ -536,7 +535,6 @@ export function CustomPackageRequestForm({
           <InlineError message={errors.avatar?.[index]?.referenceUrl1?.message} />
           <Input placeholder="Reference Image URL 2" {...register(`avatar.${index}.referenceUrl2` as const)} />
           <Input placeholder="Reference Image URL 3" {...register(`avatar.${index}.referenceUrl3` as const)} />
-          <Input type="file" multiple accept="image/*" />
           <Controller
             control={control}
             name={`avatar.${index}.safety`}
