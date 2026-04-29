@@ -137,6 +137,29 @@ enum RequestStatus {
   @@schema("public")
 }
 
+enum OrderStatus {
+  pending_payment
+  funded
+  in_progress
+  delivered
+  approved
+  completed
+  cancelled
+  refunded
+
+  @@schema("public")
+}
+
+enum PaymentStatus {
+  unpaid
+  pending
+  paid
+  failed
+  refunded
+
+  @@schema("public")
+}
+
 model Request {
   id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   requestType    RequestType   @map("request_type")
@@ -149,11 +172,35 @@ model Request {
   requestPayload Json          @map("request_payload")
   status         RequestStatus @default(pending)
   createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  order          Order?
 
   @@index([creatorId, createdAt(sort: Desc)], map: "requests_creator_id_created_at_idx")
   @@index([requesterId, createdAt(sort: Desc)], map: "requests_requester_id_created_at_idx")
   @@index([requestType, createdAt(sort: Desc)], map: "requests_request_type_created_at_idx")
   @@map("requests")
+  @@schema("public")
+}
+
+model Order {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  requestId       String        @unique @map("request_id") @db.Uuid
+  buyerId         String        @map("buyer_id") @db.Uuid
+  creatorId       String        @map("creator_id") @db.Uuid
+  packageId       String        @map("package_id")
+  packageTitle    String        @map("package_title")
+  packagePrice    Int           @map("package_price")
+  tokensLabel     String        @map("tokens_label")
+  requestSnapshot Json          @map("request_snapshot")
+  status          OrderStatus   @default(pending_payment)
+  paymentStatus   PaymentStatus @default(unpaid) @map("payment_status")
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  request         Request       @relation(fields: [requestId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([buyerId, createdAt(sort: Desc)], map: "orders_buyer_id_created_at_idx")
+  @@index([creatorId, createdAt(sort: Desc)], map: "orders_creator_id_created_at_idx")
+  @@index([status, createdAt(sort: Desc)], map: "orders_status_created_at_idx")
+  @@map("orders")
   @@schema("public")
 }
 

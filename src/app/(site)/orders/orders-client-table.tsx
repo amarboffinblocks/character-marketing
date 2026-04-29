@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { ChevronLeft, LoaderCircle, Trash2, UserRound } from "lucide-react"
+import { UserRound } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -31,21 +31,30 @@ import {
 } from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 
-type RequestType = "custom_package" | "preselect_package"
-type RequestStatus = "pending" | "processing" | "accepted" | "rejected" | "completed"
+type OrderStatus =
+  | "pending_payment"
+  | "funded"
+  | "in_progress"
+  | "delivered"
+  | "approved"
+  | "completed"
+  | "cancelled"
+  | "refunded"
+type PaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "refunded"
 
-type BuyerRequestRow = {
+type BuyerOrderRow = {
   id: string
-  request_type: RequestType
+  request_id: string
   creator_id: string
-  requester_id: string
+  buyer_id: string
   package_id: string
   package_title: string
   package_price: number
   tokens_label: string
-  status: RequestStatus
+  status: OrderStatus
+  payment_status: PaymentStatus
   created_at: string
-  request_payload: unknown
+  request_snapshot: unknown
   creator_profile_data: unknown | null
 }
 
@@ -63,25 +72,34 @@ function formatCreatedAt(value: string) {
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
 }
 
-const requestStatusLabel: Record<RequestStatus, string> = {
-  pending: "Pending",
-  processing: "Processing",
-  accepted: "Accepted",
-  rejected: "Rejected",
+const orderStatusLabel: Record<OrderStatus, string> = {
+  pending_payment: "Pending payment",
+  funded: "Funded",
+  in_progress: "In progress",
+  delivered: "Delivered",
+  approved: "Approved",
   completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 }
 
-const requestStatusClass: Record<RequestStatus, string> = {
-  pending: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  processing: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
-  accepted: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
-  rejected: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+const orderStatusClass: Record<OrderStatus, string> = {
+  pending_payment: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  funded: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  in_progress: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  delivered: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+  approved: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
   completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  cancelled: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  refunded: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
 }
 
-const requestTypeLabel: Record<RequestType, string> = {
-  custom_package: "Custom package",
-  preselect_package: "Pre-select",
+const paymentStatusLabel: Record<PaymentStatus, string> = {
+  unpaid: "Unpaid",
+  pending: "Pending",
+  paid: "Paid",
+  failed: "Failed",
+  refunded: "Refunded",
 }
 
 function safeCreatorSummary(profileData: unknown) {
@@ -112,14 +130,13 @@ function safeCreatorSummary(profileData: unknown) {
 }
 
 interface OrdersClientTableProps {
-  requests: BuyerRequestRow[]
+  orders: BuyerOrderRow[]
 }
 
 const ORDERS_PER_PAGE = 12
 
-function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
-  let payload = order.request_payload
+function OrderSnapshotDetails({ order }: { order: BuyerOrderRow }) {
+  let payload = order.request_snapshot
   if (typeof payload === "string") {
     try {
       payload = JSON.parse(payload)
@@ -130,173 +147,14 @@ function PayloadDetailsView({ order }: { order: BuyerRequestRow }) {
   const parsedPayload = payload as Record<string, unknown> | undefined
   if (!parsedPayload) return null
 
-  const details = parsedPayload.details || {}
-  const notes = parsedPayload.notes || parsedPayload.instructions || ""
-
-  if (order.request_type === "custom_package") {
-    const keys = ["character", "persona", "lorebook", "background", "avatar"] as const
-    
-    return (
-      <div className="mt-4 space-y-4">
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-foreground">Requested Assets</h4>
-          
-          {!activeCategory ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {keys.map((key) => {
-                const items = Array.isArray(details[key]) ? details[key] : []
-                if (items.length === 0) return null
-
-                const firstNames = items
-                  .map((item: unknown) => 
-                    typeof item === "string" 
-                      ? item 
-                      : (item as Record<string, unknown>)?.characterName ||
-                          (item as Record<string, unknown>)?.personaName ||
-                          (item as Record<string, unknown>)?.lorebookName ||
-                          (item as Record<string, unknown>)?.backgroundName ||
-                          (item as Record<string, unknown>)?.avatarName ||
-                          `Custom ${key}`
-                  )
-                  .slice(0, 2)
-                  .join(", ")
-
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActiveCategory(key)}
-                    className="flex flex-col items-start text-left rounded-xl border border-border/60 bg-muted/20 p-4 hover:bg-muted/40 transition-all duration-200 shadow-2xs cursor-pointer w-full group"
-                  >
-                    <p className="text-xs font-semibold capitalize text-muted-foreground group-hover:text-primary transition-colors">
-                      {key}s ({items.length})
-                    </p>
-                    <p className="mt-1.5 text-sm font-medium text-foreground/90 truncate w-full">
-                      {firstNames}{items.length > 2 ? "..." : ""}
-                    </p>
-                    <span className="mt-2 text-[10px] font-medium text-primary/70 group-hover:text-primary group-hover:underline">
-                      Click to view details →
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="space-y-3 animate-in fade-in duration-200">
-              <div className="flex items-center justify-between border-b border-border/40 pb-2">
-                <h4 className="text-sm font-bold capitalize text-foreground flex items-center gap-1">
-                  <span className="text-primary">{activeCategory}s</span> Details
-                </h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs cursor-pointer hover:bg-primary/10 hover:text-primary"
-                  onClick={() => setActiveCategory(null)}
-                >
-                  <ChevronLeft className="size-3.5 mr-1" />
-                  Back
-                </Button>
-              </div>
-
-              <div className="space-y-3 max-h-[320px] overflow-y-auto pr-1 pt-1">
-                {Array.isArray(details[activeCategory]) && details[activeCategory].map((item: unknown, idx: number) => {
-                  const name = typeof item === "string" 
-                    ? item 
-                    : (item as Record<string, unknown>)?.characterName ||
-                        (item as Record<string, unknown>)?.personaName ||
-                        (item as Record<string, unknown>)?.lorebookName ||
-                        (item as Record<string, unknown>)?.backgroundName ||
-                        (item as Record<string, unknown>)?.avatarName ||
-                        `Custom ${activeCategory} #${idx + 1}`
-
-                  return (
-                    <div key={idx} className="rounded-xl border border-border bg-background/50 p-4 space-y-3 shadow-2xs">
-                      <p className="font-semibold text-sm text-primary border-b border-border/40 pb-1.5">{name}</p>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        {Object.entries(item).map(([k, v]) => {
-                          if (!v || k === "id") return null
-                          if (["characterName", "personaName", "lorebookName", "backgroundName", "avatarName"].includes(k)) return null
-                          
-                          const label = k
-                            .replace(/([A-Z])/g, ' $1')
-                            .trim()
-                            .replace(/^message To Creator$/, "Note for Creator")
-                            .replace(/^scenario Location Universe$/, "Scenario / Location / Universe")
-                            .replace(/^estimated Keyword Count$/, "Estimated Keyword Count")
-                            .replace(/^personality Summary$/, "Personality Summary")
-                            .replace(/^first Message$/, "First Message")
-                            .replace(/^alternative First Messages$/, "Alternative First Messages")
-                            .replace(/^example Dialogue Style$/, "Dialogue Style")
-                          
-                          return (
-                            <div key={k} className="sm:col-span-2 not-first:border-t border-border/20 pt-2 first:pt-0">
-                              <span className="font-semibold text-foreground/95 block text-xs capitalize mb-1">{label}</span>
-                              <p className="whitespace-pre-wrap text-muted-foreground/85 text-xs leading-relaxed">{String(v)}</p>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {notes && (
-          <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/10 p-3">
-            <h4 className="text-xs font-semibold text-muted-foreground">Instructions</h4>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{notes}</p>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  if (order.request_type === "preselect_package") {
-    const requestedAssets = parsedPayload.requestedAssets || {}
-    const keys = ["character", "persona", "lorebook", "background", "avatar"] as const
-
-    return (
-      <div className="mt-4 space-y-4">
-        <div className="space-y-2">
-          <h4 className="text-sm font-semibold text-foreground">Included Assets</h4>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {keys.map((key) => {
-              const count = typeof requestedAssets[key] === "number" ? requestedAssets[key] : 0
-              if (count === 0) return null
-
-              return (
-                <div key={key} className="rounded-lg border border-border/60 bg-muted/20 p-2 text-center">
-                  <p className="text-lg font-semibold text-foreground">{count}</p>
-                  <p className="text-xs capitalize text-muted-foreground">{key}s</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        {notes && (
-          <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/10 p-3">
-            <h4 className="text-xs font-semibold text-muted-foreground">Instructions</h4>
-            <p className="text-sm text-foreground whitespace-pre-wrap">{notes}</p>
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  return null
+  return <pre className="max-h-64 overflow-auto rounded-lg bg-muted/30 p-3 text-xs">{JSON.stringify(parsedPayload, null, 2)}</pre>
 }
 
-export function OrdersClientTable({ requests }: OrdersClientTableProps) {
-  const [rows, setRows] = useState<BuyerRequestRow[]>(requests)
+export function OrdersClientTable({ orders }: OrdersClientTableProps) {
+  const [rows] = useState<BuyerOrderRow[]>(orders)
   const [currentPage, setCurrentPage] = useState(1)
-  const [selectedOrder, setSelectedOrder] = useState<BuyerRequestRow | null>(null)
+  const [selectedOrder, setSelectedOrder] = useState<BuyerOrderRow | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
-  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null)
-  const [error, setError] = useState("")
   const totalPages = Math.max(1, Math.ceil(rows.length / ORDERS_PER_PAGE))
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * ORDERS_PER_PAGE
@@ -314,45 +172,18 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
     setIsDialogOpen(true)
   }
 
-  async function handleDelete(order: BuyerRequestRow) {
-    const confirmed = window.confirm("Delete this order request?")
-    if (!confirmed) return
-
-    setDeletingOrderId(order.id)
-    setError("")
-    try {
-      const response = await fetch(`/api/site/orders/${encodeURIComponent(order.id)}`, {
-        method: "DELETE",
-      })
-      const data = (await response.json()) as { error?: string }
-      if (!response.ok) {
-        throw new Error(data.error || "Unable to delete order request.")
-      }
-
-      setRows((current) => current.filter((item) => item.id !== order.id))
-      if (selectedOrder?.id === order.id) {
-        setIsDialogOpen(false)
-        setSelectedOrder(null)
-      }
-    } catch (deleteError) {
-      setError(deleteError instanceof Error ? deleteError.message : "Unable to delete order request.")
-    } finally {
-      setDeletingOrderId(null)
-    }
-  }
-
   return (
     <>
       <Table>
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             <TableHead className="py-4">Creator</TableHead>
-            <TableHead>Request</TableHead>
-            <TableHead>Category</TableHead>
+            <TableHead>Order</TableHead>
+            <TableHead>Payment</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-center">Price</TableHead>
-            <TableHead className="w-[120px] text-right">Action</TableHead>
+            <TableHead className="w-[100px] text-right">Action</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -361,7 +192,6 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
             const creatorName = creator.displayName || "Creator"
             const creatorHandle = creator.handle
             const creatorSlug = req.creator_id
-            const isDeleting = deletingOrderId === req.id
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
@@ -397,20 +227,20 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                 <TableCell>
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium text-foreground">{req.package_title}</span>
-                    <span className="text-xs text-muted-foreground">#{req.id}</span>
+                    <span className="text-xs text-muted-foreground">#{req.id.slice(0, 8)}...</span>
                   </div>
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="py-3  px-2 text-xs bg-primary/10">
-                    {requestTypeLabel[req.request_type]}
+                    {paymentStatusLabel[req.payment_status]}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <Badge
                     variant="secondary"
-                    className={cn("font-medium px-2.5 py-0.5 rounded-md", requestStatusClass[req.status])}
+                    className={cn("font-medium px-2.5 py-0.5 rounded-md", orderStatusClass[req.status])}
                   >
-                    {requestStatusLabel[req.status]}
+                    {orderStatusLabel[req.status]}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
@@ -420,26 +250,14 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                   {formatCurrency(req.package_price)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 cursor-pointer px-4 font-medium"
-                      onClick={() => openDialog(req)}
-                    >
-                      View
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      className="h-8 cursor-pointer px-3"
-                      onClick={() => void handleDelete(req)}
-                      disabled={isDeleting}
-                    >
-                      {isDeleting ? <LoaderCircle className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                      Delete
-                    </Button>
-                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 cursor-pointer px-4 font-medium"
+                    onClick={() => openDialog(req)}
+                  >
+                    View
+                  </Button>
                 </TableCell>
               </TableRow>
             )
@@ -480,8 +298,6 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
           </Pagination>
         </div>
       ) : null}
-      {error ? <p className="px-4 py-2 text-xs text-destructive">{error}</p> : null}
-
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-xl">
           {selectedOrder && (() => {
@@ -509,7 +325,7 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                         {selectedOrder.package_title}
                       </DialogTitle>
                       <DialogDescription className="text-xs">
-                        Order ID: #{selectedOrder.id}
+                        Order #{selectedOrder.id.slice(0, 8)}...
                       </DialogDescription>
                     </div>
                   </div>
@@ -526,9 +342,9 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                       <p className="text-xs font-semibold text-muted-foreground">Status</p>
                       <Badge
                         variant="secondary"
-                        className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", requestStatusClass[selectedOrder.status])}
+                        className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", orderStatusClass[selectedOrder.status])}
                       >
-                        {requestStatusLabel[selectedOrder.status]}
+                        {orderStatusLabel[selectedOrder.status]}
                       </Badge>
                     </div>
                   </div>
@@ -544,6 +360,12 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                       <p className="text-xs font-semibold text-muted-foreground">Tokens</p>
                       <p className="mt-0.5 text-base font-medium text-foreground">
                         {selectedOrder.tokens_label || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-muted-foreground">Payment</p>
+                      <p className="mt-0.5 text-base font-medium text-foreground">
+                        {paymentStatusLabel[selectedOrder.payment_status]}
                       </p>
                     </div>
                   </div>
@@ -562,7 +384,8 @@ export function OrdersClientTable({ requests }: OrdersClientTableProps) {
                   </div>
 
                   <div className="pt-4">
-                    <PayloadDetailsView order={selectedOrder} />
+                    <p className="mb-2 text-xs font-semibold text-muted-foreground">Request snapshot</p>
+                    <OrderSnapshotDetails order={selectedOrder} />
                   </div>
                 </div>
 

@@ -43,7 +43,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
 
     return NextResponse.json({ request: updated })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to update order status."
+    const message = error instanceof Error ? error.message : "Unable to update request status."
     const status = message === "Request not found." ? 404 : 400
     return NextResponse.json({ error: message }, { status })
   }

@@ -460,7 +460,7 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
       key: "total",
       title: "Total requests",
       value: totalRequests,
-      note: "All incoming order requests",
+      note: "All incoming buyer requests",
       icon: Activity,
       accent: "text-violet-600",
       ring: "ring-violet-500/20",
@@ -493,9 +493,9 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
       <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1.5">
-            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Creator Orders</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Creator Requests</h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Review incoming requests, accept or reject pending work, and monitor fulfillment status from one queue.
+              Review incoming buyer requests, accept or reject pending items, and create orders on acceptance.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
