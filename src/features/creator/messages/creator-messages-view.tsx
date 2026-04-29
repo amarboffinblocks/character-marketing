@@ -57,6 +57,9 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const [isCounterpartTyping, setIsCounterpartTyping] = useState(false)
   const counterpartTypingTimeoutRef = useRef<number | null>(null)
   const lastTypingSentAtRef = useRef<number>(0)
+  const previousActiveThreadIdRef = useRef<string>("")
+  const threadsLoadSeqRef = useRef(0)
+  const messagesLoadSeqRef = useRef(0)
   const currentUserSenderRole = viewerRole === "creator" ? "creator" : "buyer"
 
   useEffect(() => {
@@ -66,12 +69,14 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   const loadThreads = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false
+    const seq = ++threadsLoadSeqRef.current
     if (!silent) {
       setIsLoadingThreads(true)
     }
     setError("")
     try {
       const items = await fetchMessageThreads({ orderId: orderParam || undefined })
+      if (seq !== threadsLoadSeqRef.current) return
       setThreads(items)
       if (threadParam && items.some((item) => item.id === threadParam)) {
         setActiveThreadId(threadParam)
@@ -79,25 +84,30 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
         setActiveThreadId(items[0]?.id ?? "")
       }
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load message threads.")
-    } finally {
-      if (!silent) {
-        setIsLoadingThreads(false)
+      if (seq === threadsLoadSeqRef.current) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load message threads.")
       }
+    } finally {
+      if (!silent && seq === threadsLoadSeqRef.current) setIsLoadingThreads(false)
     }
   }, [activeThreadId, orderParam, threadParam])
 
   const loadMessages = useCallback(async (threadId: string, silent = false) => {
     if (!threadId) return
+    const seq = ++messagesLoadSeqRef.current
     if (!silent) setIsLoadingMessages(true)
     try {
       const items = await fetchThreadMessages(threadId)
-      setMessages(items)
+      if (seq === messagesLoadSeqRef.current) {
+        setMessages(items)
+      }
       await markThreadRead(threadId)
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : "Unable to load messages.")
+      if (seq === messagesLoadSeqRef.current) {
+        setError(loadError instanceof Error ? loadError.message : "Unable to load messages.")
+      }
     } finally {
-      if (!silent) setIsLoadingMessages(false)
+      if (!silent && seq === messagesLoadSeqRef.current) setIsLoadingMessages(false)
     }
   }, [])
 
@@ -107,17 +117,43 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   useEffect(() => {
     if (!activeThreadId) return
-    void loadMessages(activeThreadId)
-  }, [activeThreadId, loadMessages])
+    // Optimistically clear unread immediately for the active thread.
+    setThreads((current) =>
+      current.map((t) => (t.id === activeThreadId ? { ...t, unreadCount: 0, status: "active" } : t))
+    )
+
+    void (async () => {
+      try {
+        await loadMessages(activeThreadId)
+      } finally {
+        // Always resync threads after attempting mark-read.
+        await loadThreads({ silent: true })
+      }
+    })()
+  }, [activeThreadId, loadMessages, loadThreads])
 
   useEffect(() => {
     const channel = supabase
       .channel(`conversation-messages-${viewerRole}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_messages" }, (payload) => {
         const threadId = (payload.new as { thread_id?: string }).thread_id ?? ""
-        void loadThreads({ silent: true })
-        if (threadId && threadId === activeThreadId) {
-          void loadMessages(threadId, true)
+        if (!threadId) return
+
+        if (threadId === activeThreadId) {
+          // Avoid the unread flicker by only reloading threads *after* mark-read completes.
+          setThreads((current) =>
+            current.map((t) => (t.id === threadId ? { ...t, unreadCount: 0, status: "active" } : t))
+          )
+          void (async () => {
+            try {
+              await loadMessages(threadId, true)
+            } finally {
+              // Always resync threads after attempting mark-read.
+              await loadThreads({ silent: true })
+            }
+          })().catch(() => {})
+        } else {
+          void loadThreads({ silent: true })
         }
       })
       .subscribe()
@@ -182,10 +218,11 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? null
 
-  const emitTyping = useCallback(
-    (isTyping: boolean) => {
-      if (!activeThreadId) return
+  const emitTypingForThread = useCallback(
+    (threadId: string, isTyping: boolean) => {
+      if (!threadId) return
       const now = Date.now()
+      // Throttle only "typing=true" broadcasts to avoid spam.
       if (isTyping && now - lastTypingSentAtRef.current < 900) return
 
       lastTypingSentAtRef.current = now
@@ -196,20 +233,43 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
           type: "broadcast",
           event: "typing",
           payload: {
-            threadId: activeThreadId,
+            threadId,
             senderRole: currentUserSenderRole,
             isTyping,
           },
         })
         .catch(() => {})
     },
-    [activeThreadId, currentUserSenderRole, supabase]
+    [currentUserSenderRole, supabase]
+  )
+
+  const emitTyping = useCallback(
+    (isTyping: boolean) => emitTypingForThread(activeThreadId, isTyping),
+    [activeThreadId, emitTypingForThread]
   )
 
   useEffect(() => {
+    const previousThreadId = previousActiveThreadIdRef.current
+    if (previousThreadId && previousThreadId !== activeThreadId) {
+      // Stop typing on the old thread immediately when the user switches threads.
+      emitTypingForThread(previousThreadId, false)
+    }
+
+    if (activeThreadId) {
+      // Ensure we don't leave a stale typing state on the currently open thread.
+      emitTypingForThread(activeThreadId, false)
+    }
+
     setIsCounterpartTyping(false)
-    emitTyping(false)
-  }, [activeThreadId, emitTyping])
+    previousActiveThreadIdRef.current = activeThreadId
+  }, [activeThreadId, emitTypingForThread])
+
+  useEffect(() => {
+    return () => {
+      const threadId = previousActiveThreadIdRef.current
+      if (threadId) emitTypingForThread(threadId, false)
+    }
+  }, [emitTypingForThread])
 
   const handleSendMessage = async () => {
     if (!composer.trim() || !activeThread) return
