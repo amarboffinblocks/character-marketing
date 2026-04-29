@@ -8,6 +8,7 @@ import {
     AlertCircle,
     BarChart3,
     BriefcaseBusiness,
+    ChevronRight,
     ChevronsUpDown,
     FolderKanban,
     LayoutDashboard,
@@ -38,12 +39,16 @@ import {
     SidebarContent,
     SidebarFooter,
     SidebarGroup,
+    SidebarGroupLabel,
     SidebarGroupContent,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
     SidebarTrigger,
 } from "@/components/ui/sidebar"
 
@@ -147,7 +152,10 @@ export function AppSidebar({
     const router = useRouter()
     const [isSigningOut, setIsSigningOut] = useState(false)
     const visibleGroups = groups?.filter((group) => group.label.toLowerCase() !== "account")
-  const globalActiveHref = getGlobalActiveHref(pathname, visibleGroups)
+    const globalActiveHref = getGlobalActiveHref(pathname, visibleGroups)
+    const workspaceGroup = visibleGroups?.find((group) => group.label.toLowerCase() === "workspace")
+    const workspaceActiveHref = getActiveHref(pathname, workspaceGroup?.items ?? [])
+    const [workspaceOpen, setWorkspaceOpen] = useState(Boolean(workspaceActiveHref))
     const accountBasePath = brandHref.startsWith("/dashboard/admin") ? "/dashboard/admin" : "/dashboard/creator"
 
     const handleSignOut = async () => {
@@ -212,17 +220,48 @@ export function AppSidebar({
             </SidebarHeader>
 
             <SidebarContent>
-                <SidebarGroup>
-                    <SidebarGroupContent>
-                        <SidebarMenu>
-                            {visibleGroups?.map((group) => {
-                                const activeHref = globalActiveHref
-                                const isWorkspaceGroup = group.label.toLowerCase() === "workspace"
-
-                                if (!isWorkspaceGroup) {
-                                    return group.items.map((item) => {
+                {visibleGroups?.map((group) => (
+                    <SidebarGroup key={group.label}>
+                        {group.label.toLowerCase() !== "workspace" ? (
+                            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                        ) : null}
+                        <SidebarGroupContent>
+                            <SidebarMenu>
+                                {group.label.toLowerCase() === "workspace" ? (
+                                    <SidebarMenuItem>
+                                        <SidebarMenuButton
+                                            onClick={() => setWorkspaceOpen((current) => !current)}
+                                            isActive={Boolean(workspaceActiveHref)}
+                                            tooltip="Workspace"
+                                            className="data-active:bg-sidebar-primary/10 data-active:text-sidebar-primary"
+                                        >
+                                            <BriefcaseBusiness />
+                                            <span>Workspace</span>
+                                            <ChevronRight
+                                                className={`ml-auto size-4 transition-transform group-data-[collapsible=icon]:hidden ${workspaceOpen ? "rotate-90" : ""}`}
+                                            />
+                                        </SidebarMenuButton>
+                                        {workspaceOpen ? (
+                                            <SidebarMenuSub>
+                                                {group.items.map((item) => {
+                                                    const Icon = sidebarIcons[item.icon]
+                                                    const active = item.href === globalActiveHref
+                                                    return (
+                                                        <SidebarMenuSubItem key={item.href}>
+                                                            <SidebarMenuSubButton render={<Link href={item.href} />} isActive={active}>
+                                                                <Icon />
+                                                                <span>{item.title}</span>
+                                                            </SidebarMenuSubButton>
+                                                        </SidebarMenuSubItem>
+                                                    )
+                                                })}
+                                            </SidebarMenuSub>
+                                        ) : null}
+                                    </SidebarMenuItem>
+                                ) : (
+                                    group.items.map((item) => {
                                         const Icon = sidebarIcons[item.icon]
-                                        const active = item.href === activeHref
+                                        const active = item.href === globalActiveHref
 
                                         return (
                                             <SidebarMenuItem key={item.href}>
@@ -249,131 +288,86 @@ export function AppSidebar({
                                             </SidebarMenuItem>
                                         )
                                     })
-                                }
-
-                                return (
-                                    <SidebarMenuItem key={group.label}>
-                                        <details open={Boolean(activeHref)} className="group/workspace">
-                                            <summary className="list-none">
-                                                <div className="flex h-8 w-full cursor-pointer items-center justify-between rounded-md px-2 text-sm text-sidebar-foreground outline-none transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-                                                    <span className="flex items-center gap-2 font-medium">
-                                                        <BriefcaseBusiness className="size-4" />
-                                                        {group.label}
-                                                    </span>
-                                                    <ChevronsUpDown className="size-4 text-sidebar-foreground/70" />
-                                                </div>
-                                            </summary>
-                                            <div className="mt-1 ml-4 border-l border-sidebar-border/70 pl-2">
-                                                <SidebarMenu>
-                                                    {group.items.map((item) => {
-                                                        const Icon = sidebarIcons[item.icon]
-                                                        const active = item.href === activeHref
-
-                                                        return (
-                                                            <SidebarMenuItem key={item.href}>
-                                                                <SidebarMenuButton
-                                                                    render={<Link href={item.href} />}
-                                                                    isActive={active}
-                                                                    tooltip={item.title}
-                                                                    className="data-active:bg-sidebar-primary/10 data-active:text-sidebar-primary data-active:hover:bg-sidebar-primary/15 data-active:hover:text-sidebar-primary data-active:[&_svg]:text-sidebar-primary"
-                                                                >
-                                                                    <Icon />
-                                                                    <span>{item.title}</span>
-                                                                </SidebarMenuButton>
-                                                                {item.badge ? (
-                                                                    <SidebarMenuBadge
-                                                                        className={
-                                                                            active
-                                                                                ? "bg-sidebar-primary/10 text-sidebar-primary"
-                                                                                : "bg-sidebar-accent text-sidebar-accent-foreground"
-                                                                        }
-                                                                    >
-                                                                        {item.badge}
-                                                                    </SidebarMenuBadge>
-                                                                ) : null}
-                                                            </SidebarMenuItem>
-                                                        )
-                                                    })}
-                                                </SidebarMenu>
-                                            </div>
-                                        </details>
-                                    </SidebarMenuItem>
-                                )
-                            })}
-                        </SidebarMenu>
-                    </SidebarGroupContent>
-                </SidebarGroup>
+                                )}
+                            </SidebarMenu>
+                        </SidebarGroupContent>
+                    </SidebarGroup>
+                ))}
             </SidebarContent>
 
             <SidebarFooter className="px-2 pb-3">
-                <DropdownMenu>
-                    <DropdownMenuTrigger
-                        render={
-                            <button
-                                type="button"
-                                className="flex w-full items-center gap-2 rounded-md border border-sidebar-border/70 bg-sidebar-accent/40 p-2 text-left outline-none transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-                            >
-                                <span className="relative inline-flex">
-                                    <Avatar className="size-8">
-                                        <AvatarImage src={userAvatarUrl ?? undefined} />
-                                        <AvatarFallback>
-                                            {userDisplayName
-                                                .trim()
-                                                .split(/\s+/)
-                                                .map((part) => part.slice(0, 1))
-                                                .join("")
-                                                .slice(0, 2)
-                                                .toUpperCase() || "CM"}
-                                        </AvatarFallback>
-                                    </Avatar>
+                <SidebarMenu>
+                    <SidebarMenuItem>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger
+                                render={
+                                    <SidebarMenuButton
+                                        tooltip="Account"
+                                        className="h-auto border border-sidebar-border/70 bg-sidebar-accent/40 p-2 hover:bg-sidebar-accent group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0"
+                                    >
+                                        <span className="relative inline-flex">
+                                            <Avatar className="size-8">
+                                                <AvatarImage src={userAvatarUrl ?? undefined} />
+                                                <AvatarFallback>
+                                                    {userDisplayName
+                                                        .trim()
+                                                        .split(/\s+/)
+                                                        .map((part) => part.slice(0, 1))
+                                                        .join("")
+                                                        .slice(0, 2)
+                                                        .toUpperCase() || "CM"}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            {showProfileWarning ? (
+                                                <span className="absolute -right-1 -top-1">
+                                                    <ProfileWarningBadge />
+                                                </span>
+                                            ) : null}
+                                        </span>
+                                        <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                                            <p className="truncate text-sm font-medium text-sidebar-foreground">{userDisplayName}</p>
+                                            <p className="truncate text-xs text-sidebar-foreground/70">{userEmail}</p>
+                                        </div>
+                                        <ChevronsUpDown className="size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
+                                    </SidebarMenuButton>
+                                }
+                            />
+                            <DropdownMenuContent align="start" className="min-w-56">
+                                <DropdownMenuItem
+                                    className="flex items-center justify-between"
+                                    render={<Link href={`${accountBasePath}/profile`} className="cursor-pointer" />}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <UserRound className="size-4" />
+                                        Profile
+                                    </span>
                                     {showProfileWarning ? (
-                                        <span className="absolute -right-1 -top-1">
+                                        <span>
                                             <ProfileWarningBadge />
                                         </span>
                                     ) : null}
-                                </span>
-                                <div className="min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
-                                    <p className="truncate text-sm font-medium text-sidebar-foreground">{userDisplayName}</p>
-                                    <p className="truncate text-xs text-sidebar-foreground/70">{userEmail}</p>
-                                </div>
-                                <ChevronsUpDown className="size-4 text-sidebar-foreground/60 group-data-[collapsible=icon]:hidden" />
-                            </button>
-                        }
-                    />
-                    <DropdownMenuContent align="start" className="min-w-56">
-                        <DropdownMenuItem
-                            className="flex items-center justify-between"
-                            render={<Link href={`${accountBasePath}/profile`} className="cursor-pointer" />}
-                        >
-                            <span className="flex items-center gap-2">
-                                <UserRound className="size-4" />
-                                Profile
-                            </span>
-                            {showProfileWarning ? (
-                                <span>
-                                    <ProfileWarningBadge />
-                                </span>
-                            ) : null}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem render={<Link href={`${accountBasePath}/settings`} className="cursor-pointer" />}>
-                            <Settings className="size-4" />
-                            Settings
-                        </DropdownMenuItem>
-                        <DropdownMenuItem render={<Link href={supportHref} className="cursor-pointer" />}>
-                            <LifeBuoy className="size-4" />
-                            Help
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                            variant="destructive"
-                            onClick={handleSignOut}
-                            disabled={isSigningOut}
-                        >
-                            <LogOut className="size-4" />
-                            {isSigningOut ? "Logging out..." : "Logout"}
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem render={<Link href={`${accountBasePath}/settings`} className="cursor-pointer" />}>
+                                    <Settings className="size-4" />
+                                    Settings
+                                </DropdownMenuItem>
+                                <DropdownMenuItem render={<Link href={supportHref} className="cursor-pointer" />}>
+                                    <LifeBuoy className="size-4" />
+                                    Help
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                    variant="destructive"
+                                    onClick={handleSignOut}
+                                    disabled={isSigningOut}
+                                >
+                                    <LogOut className="size-4" />
+                                    {isSigningOut ? "Logging out..." : "Logout"}
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </SidebarMenuItem>
+                </SidebarMenu>
             </SidebarFooter>
         </Sidebar>
     )
