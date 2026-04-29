@@ -22,6 +22,7 @@ const marketplaceLinks = [
 
 const activityLinks = [
   { href: "/orders", label: "Orders" },
+  { href:"/requests", label: "Requests" },
   { href: "/post-a-bid", label: "Bids & Requests" },
   { href: "/inventory", label: "Inventory" },
 ] as const

@@ -23,7 +23,8 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
     items: [
       { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
       { title: "Services", href: "/dashboard/creator/services", icon: "services" },
-      { title: "Orders", href: "/dashboard/creator/orders", icon: "orders", badge: "12" },
+      { title: "Requests", href: "/dashboard/creator/requests", icon: "orders" },
+      { title: "Orders", href: "/dashboard/creator/orders", icon: "orders" },
       { title: "Global Bids", href: "/dashboard/creator/global-bids", icon: "store" },
 
     ],

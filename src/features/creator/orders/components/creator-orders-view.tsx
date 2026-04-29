@@ -416,12 +416,18 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
       if (!response.ok) {
         throw new Error(json.error || "Unable to update request status.")
       }
-      setRequests((current) =>
-        current.map((item) => (item.id === requestId ? { ...item, status: nextStatus } : item))
-      )
-      setSelectedRequest((current) =>
-        current && current.id === requestId ? { ...current, status: nextStatus } : current
-      )
+      if (nextStatus === "accepted") {
+        // Move accepted item out of requests queue; it appears under creator orders route.
+        setRequests((current) => current.filter((item) => item.id !== requestId))
+        setSelectedRequest((current) => (current && current.id === requestId ? null : current))
+      } else {
+        setRequests((current) =>
+          current.map((item) => (item.id === requestId ? { ...item, status: nextStatus } : item))
+        )
+        setSelectedRequest((current) =>
+          current && current.id === requestId ? { ...current, status: nextStatus } : current
+        )
+      }
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update request status.")
     } finally {

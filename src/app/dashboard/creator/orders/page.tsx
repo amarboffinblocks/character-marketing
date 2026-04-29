@@ -1,5 +1,5 @@
-import { CreatorOrdersView } from "@/features/creator/orders"
-import { fetchCreatorRequests } from "@/features/creator/orders/creator-requests"
+import { CreatorAcceptedOrdersView } from "@/features/creator/orders"
+import { fetchCreatorOrders } from "@/features/creator/orders/creator-orders"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 
@@ -13,6 +13,6 @@ export default async function CreatorOrdersPage() {
     redirect("/sign-in")
   }
 
-  const requests = await fetchCreatorRequests(user.id)
-  return <CreatorOrdersView initialRequests={requests} />
+  const orders = await fetchCreatorOrders(user.id)
+  return <CreatorAcceptedOrdersView initialOrders={orders} />
 }
