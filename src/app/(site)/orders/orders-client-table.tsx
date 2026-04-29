@@ -156,16 +156,11 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
   const [selectedOrder, setSelectedOrder] = useState<BuyerOrderRow | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const totalPages = Math.max(1, Math.ceil(rows.length / ORDERS_PER_PAGE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
   const paginatedRows = useMemo(() => {
-    const start = (currentPage - 1) * ORDERS_PER_PAGE
+    const start = (safeCurrentPage - 1) * ORDERS_PER_PAGE
     return rows.slice(start, start + ORDERS_PER_PAGE)
-  }, [currentPage, rows])
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages)
-    }
-  }, [currentPage, totalPages])
+  }, [safeCurrentPage, rows])
 
   const openDialog = (order: BuyerRequestRow) => {
     setSelectedOrder(order)
@@ -267,14 +262,14 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
       {rows.length > ORDERS_PER_PAGE ? (
         <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3">
           <p className="text-xs text-muted-foreground">
-            Showing {(currentPage - 1) * ORDERS_PER_PAGE + 1}-
-            {Math.min(currentPage * ORDERS_PER_PAGE, rows.length)} of {rows.length}
+            Showing {(safeCurrentPage - 1) * ORDERS_PER_PAGE + 1}-
+            {Math.min(safeCurrentPage * ORDERS_PER_PAGE, rows.length)} of {rows.length}
           </p>
           <Pagination className="mx-0 w-auto justify-end">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
-                  disabled={currentPage <= 1}
+                  disabled={safeCurrentPage <= 1}
                   onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
                 />
               </PaginationItem>
@@ -282,7 +277,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                 const page = index + 1
                 return (
                   <PaginationItem key={`buyer-orders-page-${page}`}>
-                    <PaginationLink isActive={page === currentPage} onClick={() => setCurrentPage(page)}>
+                    <PaginationLink isActive={page === safeCurrentPage} onClick={() => setCurrentPage(page)}>
                       {page}
                     </PaginationLink>
                   </PaginationItem>
@@ -290,7 +285,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
               })}
               <PaginationItem>
                 <PaginationNext
-                  disabled={currentPage >= totalPages}
+                  disabled={safeCurrentPage >= totalPages}
                   onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
                 />
               </PaginationItem>

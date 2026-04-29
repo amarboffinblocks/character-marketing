@@ -8,6 +8,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -18,7 +19,8 @@ import {
 } from "@/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Textarea } from "@/components/ui/textarea"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import {
   clearThreadMessages,
   fetchMessageThreads,
@@ -52,6 +54,10 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
   const [error, setError] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [isCounterpartTyping, setIsCounterpartTyping] = useState(false)
+  const counterpartTypingTimeoutRef = useRef<number | null>(null)
+  const lastTypingSentAtRef = useRef<number>(0)
+  const currentUserSenderRole = viewerRole === "creator" ? "creator" : "buyer"
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -121,6 +127,51 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     }
   }, [activeThreadId, loadMessages, loadThreads, supabase, viewerRole])
 
+  // Typing indicator (WhatsApp-like) over Supabase realtime "broadcast" events.
+  useEffect(() => {
+    const typingChannel = supabase
+      .channel("conversation-typing")
+      .on("broadcast", { event: "typing" }, (payload) => {
+        const data = payload as {
+          threadId?: string
+          senderRole?: "creator" | "buyer"
+          isTyping?: boolean
+        }
+
+        if (!data?.threadId || data.threadId !== activeThreadId) return
+        if (!data?.senderRole) return
+
+        // Only show when the other side is typing.
+        if (data.senderRole === currentUserSenderRole) return
+
+        const isTyping = data.isTyping ?? true
+        if (!isTyping) {
+          setIsCounterpartTyping(false)
+          if (counterpartTypingTimeoutRef.current) {
+            window.clearTimeout(counterpartTypingTimeoutRef.current)
+            counterpartTypingTimeoutRef.current = null
+          }
+          return
+        }
+
+        setIsCounterpartTyping(true)
+        if (counterpartTypingTimeoutRef.current) window.clearTimeout(counterpartTypingTimeoutRef.current)
+
+        counterpartTypingTimeoutRef.current = window.setTimeout(() => {
+          setIsCounterpartTyping(false)
+        }, 2500)
+      })
+      .subscribe()
+
+    return () => {
+      if (counterpartTypingTimeoutRef.current) {
+        window.clearTimeout(counterpartTypingTimeoutRef.current)
+        counterpartTypingTimeoutRef.current = null
+      }
+      void supabase.removeChannel(typingChannel)
+    }
+  }, [activeThreadId, currentUserSenderRole, supabase])
+
   const filteredThreads = useMemo(() => {
     const query = search.trim().toLowerCase()
     return threads.filter((thread) => {
@@ -130,7 +181,35 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   }, [search, threads])
 
   const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? null
-  const currentUserSenderRole = viewerRole === "creator" ? "creator" : "buyer"
+
+  const emitTyping = useCallback(
+    (isTyping: boolean) => {
+      if (!activeThreadId) return
+      const now = Date.now()
+      if (isTyping && now - lastTypingSentAtRef.current < 900) return
+
+      lastTypingSentAtRef.current = now
+
+      supabase
+        .channel("conversation-typing")
+        .send({
+          type: "broadcast",
+          event: "typing",
+          payload: {
+            threadId: activeThreadId,
+            senderRole: currentUserSenderRole,
+            isTyping,
+          },
+        })
+        .catch(() => {})
+    },
+    [activeThreadId, currentUserSenderRole, supabase]
+  )
+
+  useEffect(() => {
+    setIsCounterpartTyping(false)
+    emitTyping(false)
+  }, [activeThreadId, emitTyping])
 
   const handleSendMessage = async () => {
     if (!composer.trim() || !activeThread) return
@@ -140,6 +219,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
       const message = await sendThreadMessage(activeThread.id, composer.trim())
       setMessages((current) => [...current, message])
       setComposer("")
+      emitTyping(false)
       await loadThreads({ silent: true })
     } catch (sendError) {
       setError(sendError instanceof Error ? sendError.message : "Unable to send message.")
@@ -155,6 +235,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
       setError("")
       await clearThreadMessages(activeThread.id)
       setMessages([])
+      emitTyping(false)
       await loadThreads({ silent: true })
       setIsClearDialogOpen(false)
     } catch (actionError) {
@@ -166,14 +247,14 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   return (
     <TooltipProvider>
-      <div className="flex h-[calc(100vh-48px)] flex-1 overflow-hidden rounded-3xl border border-border/60 bg-background/50">
-        <div className="flex flex-1 overflow-hidden">
-          <aside className="flex w-full flex-col border-r border-border/40 bg-muted/5 sm:w-[380px]">
+      <div className="flex min-h-0 h-full overflow-hidden rounded-2xl border border-border/60 bg-background/50">
+        <div className="flex min-h-0 w-full h-full overflow-hidden">
+          <aside className="flex min-h-0 w-full flex-col border-r border-border/40 bg-muted/5 sm:w-[380px]">
             <div className="p-6 pb-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Search here..."
+                  placeholder="Search conversations..."
                   className="h-11 border-border/40 bg-background/50 pl-10 focus:ring-primary/20"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -181,9 +262,9 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
               </div>
             </div>
 
-            <div className="scrollbar-thin flex-1 space-y-1 overflow-y-auto px-2 pb-6 pt-2">
+            <div className="scrollbar-thin min-h-0 flex-1 space-y-1 overflow-y-auto px-2 pb-6 pt-2">
               {isLoadingThreads ? (
-                <div className="p-4 text-sm text-muted-foreground">Loading conversations...</div>
+                <div className="p-4 text-sm text-muted-foreground">Loading conversations…</div>
               ) : filteredThreads.length === 0 ? (
                 <div className="p-4 text-sm text-muted-foreground">
                   {orderParam ? `No conversation found for order ${orderParam}.` : "No conversations yet."}
@@ -199,8 +280,8 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                       key={thread.id}
                       onClick={() => setActiveThreadId(thread.id)}
                       className={cn(
-                        "flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-all hover:bg-accent/40",
-                        activeThreadId === thread.id ? "bg-accent shadow-sm" : "transparent"
+                        "flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-colors hover:bg-accent/35",
+                        activeThreadId === thread.id ? "bg-accent ring-1 ring-border/60" : "bg-transparent"
                       )}
                     >
                       <div className="relative shrink-0">
@@ -211,7 +292,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                           </AvatarFallback>
                         </Avatar>
                         {thread.status === "needs_response" ? (
-                          <span className="absolute -bottom-1 -right-1 size-3.5 rounded-full border-2 border-background bg-red-500" />
+                          <span className="absolute -bottom-1 -right-1 size-3.5 rounded-full border-2 border-background " />
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -244,10 +325,10 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
             </div>
           </aside>
 
-          <main className="flex flex-1 flex-col bg-background/30">
+          <main className="flex min-h-0 flex-1 flex-col bg-background/20  ">
             {activeThread ? (
               <>
-                <header className="flex h-[88px] items-center justify-between border-b border-border/40 px-8 py-4 backdrop-blur-md">
+                <header className="flex h-16 items-center justify-between border-b border-border/40 bg-background/60 px-6 py-4 backdrop-blur-md">
                   <div className="flex items-center gap-4">
                     <div className="relative">
                       <Avatar className="size-12 shadow-sm">
@@ -266,6 +347,12 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                           {activeThread.orderId}
                         </Badge>
                       </div>
+                      {isCounterpartTyping ? (
+                        <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="inline-flex h-1.5 w-1.5 rounded-full bg-primary animate-pulse" aria-hidden />
+                          <span className="font-medium">Typing…</span>
+                        </div>
+                      ) : null}
                     </div>
                   </div>
 
@@ -285,7 +372,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
                 <div
                   ref={scrollRef}
-                  className="scrollbar-thin flex-1 space-y-6 overflow-y-auto bg-black/5 p-8 dark:bg-white/5"
+                  className="scrollbar-thin min-h-0 flex-1 space-y-5 overflow-y-auto bg-muted/10 p-6 "
                 >
                   <div className="my-4 flex justify-center">
                     <span className="rounded-full bg-background/80 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
@@ -302,38 +389,48 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                         <div key={message.id} className={cn("flex w-full group", isMine ? "justify-end" : "justify-start")}>
                           <div className={cn("flex max-w-[70%] items-end gap-3", isMine && "flex-row-reverse")}>
                             <div className="space-y-1">
-                              {!isMine ? (
-                                <p className="ml-1 text-[11px] font-semibold text-muted-foreground">{activeThread.counterpartName}</p>
-                              ) : null}
                               <div
                                 className={cn(
-                                  "relative px-4 py-3 shadow-sm",
+                                  "relative flex flex-col gap-1 px-4 py-3 ",
                                   isMine
-                                    ? "rounded-2xl rounded-tr-none bg-primary text-primary-foreground"
-                                    : "rounded-2xl rounded-tl-none border border-border/40 bg-background text-foreground"
+                                    ? "rounded-2xl rounded-tr-sm bg-primary text-primary-foreground"
+                                    : "rounded-2xl rounded-tl-sm border border-border/60 bg-accent text-foreground"
                                 )}
                               >
                                 {message.text.includes(".pdf") ? (
                                   <div className="flex cursor-pointer items-center gap-3 rounded-lg bg-black/10 p-2 transition-colors hover:bg-black/20">
-                                    <div className="flex size-10 items-center justify-center rounded-md bg-red-500 text-white">
+                                    <div className="flex size-10 items-center justify-center rounded-md  text-white">
                                       <FileText className="size-5" />
                                     </div>
                                     <div className="pr-4">
                                       <p className="text-xs font-bold leading-none">{message.text.split("\n")[0]}</p>
                                     </div>
+                                    <div
+                                      className={cn(
+                                        "mt-auto flex items-center justify-end gap-1 whitespace-nowrap leading-none opacity-80",
+                                        isMine ? "text-primary-foreground/80" : "text-muted-foreground"
+                                      )}
+                                    >
+                                      <span className="text-[11px] font-medium tabular-nums">{formatMessageTime(message.createdAt)}</span>
+                                      {isMine ? <CheckCheck className="size-3" /> : null}
+                                    </div>
                                   </div>
                                 ) : (
-                                  <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.text}</p>
+                                  <div className="flex gap-2">
+
+                                    <p className="whitespace-pre-wrap text-sm leading-relaxed ">{message.text}</p>
+                                    <div
+                                      className={cn(
+                                        "mt-auto flex items-center justify-end gap-1 whitespace-nowrap leading-none opacity-80",
+                                        isMine ? "text-primary-foreground/80" : "text-muted-foreground"
+                                      )}
+                                    >
+                                      <span className="text-[11px] font-medium tabular-nums">{formatMessageTime(message.createdAt)}</span>
+                                      {isMine ? <CheckCheck className="size-3" /> : null}
+                                    </div>
+                                  </div>
                                 )}
-                                <div
-                                  className={cn(
-                                    "mt-2 flex items-center justify-end gap-1 opacity-60",
-                                    isMine ? "text-primary-foreground/80" : "text-muted-foreground"
-                                  )}
-                                >
-                                  <span className="text-[10px] font-medium">{formatMessageTime(message.createdAt)}</span>
-                                  {isMine ? <CheckCheck className="size-3" /> : null}
-                                </div>
+
                               </div>
                             </div>
                           </div>
@@ -344,12 +441,12 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                   {error ? <div className="text-center text-xs text-destructive">{error}</div> : null}
                 </div>
 
-                <footer className="bg-background/40 p-6">
-                  <div className="group relative mx-auto w-full">
-                    <div className="ring-offset-background flex items-center gap-2 rounded-2xl border border-border/60 bg-background/80 p-2 pl-4 transition-all group-within:ring-2 group-within:ring-primary/20">
-                      <Input
-                        placeholder="Type message..."
-                        className="h-12 flex-1 border-none bg-transparent text-sm shadow-none focus-visible:ring-0"
+                <footer className="flex-none border-t border-border/40 bg-background/60 p-4 backdrop-blur">
+                  <div className="mx-auto w-full">
+                    <div className="ring-offset-background flex items-end gap-2 rounded-2xl border border-border/60 bg-background/85 p-2 pl-4 transition-all group-within:ring-2 group-within:ring-primary/20">
+                      <Textarea
+                        placeholder="Type a message..."
+                        className="min-h-[46px] max-h-28 flex-1 resize-none border-none bg-transparent px-0 py-2 text-sm shadow-none focus-visible:ring-0"
                         value={composer}
                         disabled={isSending}
                         onKeyDown={(event) => {
@@ -358,33 +455,41 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                             void handleSendMessage()
                           }
                         }}
-                        onChange={(event) => setComposer(event.target.value)}
+                        onChange={(event) => {
+                          const next = event.target.value
+                          setComposer(next)
+                          emitTyping(next.trim().length > 0)
+                        }}
                       />
-                      <div className="shrink-0 border-l border-border/40 px-2">
+                      <div className="mb-1 shrink-0">
                         <Button
                           onClick={() => void handleSendMessage()}
                           size="icon"
                           disabled={isSending || !composer.trim()}
-                          className="ml-2 size-11 rounded-xl bg-primary text-primary-foreground transition-all active:scale-95"
+                          className="size-11 rounded-xl bg-primary text-primary-foreground transition-all active:scale-95"
+                          aria-label="Send message"
                         >
                           <Send className="size-5" />
                         </Button>
                       </div>
                     </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Press <span className="font-medium">Enter</span> to send, <span className="font-medium">Shift+Enter</span> for a new line.
+                    </p>
                   </div>
                 </footer>
               </>
             ) : (
-              <div className="flex h-full items-center justify-center p-8 text-center">
-                <div className="max-w-sm space-y-4">
-                  <div className="mx-auto flex size-20 items-center justify-center rounded-3xl bg-primary/5">
+              <div className="flex min-h-0 flex-1 items-center justify-center p-8 text-center">
+                <Card className="w-full max-w-sm p-6" size="default">
+                  <div className="mx-auto flex size-20 items-center justify-center rounded-2xl bg-primary/5">
                     <MessageSquare className="size-10 text-primary/40" />
                   </div>
-                  <h3 className="text-xl font-bold">Pick up where you left off</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Select a conversation from the sidebar to view messages and details about your active orders.
+                  <h3 className="mt-4 text-xl font-bold">Select a conversation</h3>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Choose a thread from the left panel to view full message history and details.
                   </p>
-                </div>
+                </Card>
               </div>
             )}
           </main>
