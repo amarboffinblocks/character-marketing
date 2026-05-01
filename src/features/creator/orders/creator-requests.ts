@@ -151,12 +151,19 @@ export async function updateCreatorRequestStatus(input: {
       throw new Error("Request not found.")
     }
 
-    if (requestRow.status !== "pending") {
+    if (requestRow.status === "completed") {
       await client.query("rollback")
-      throw new Error("Only pending requests can be updated.")
+      throw new Error("Completed requests cannot be updated.")
     }
 
     if (input.status === "rejected") {
+      if (requestRow.status === "rejected") {
+        await client.query("commit")
+        return {
+          id: requestRow.id,
+          status: "rejected",
+        }
+      }
       const result = await client.query(
         `update public.requests
          set status = 'rejected'
@@ -169,6 +176,18 @@ export async function updateCreatorRequestStatus(input: {
         id: string
         status: "accepted" | "rejected"
         orderId?: string
+      }
+    }
+
+    if (requestRow.status === "accepted" || requestRow.status === "processing") {
+      const existingOrderResult = await client.query(`select id from public.orders where request_id = $1`, [
+        requestRow.id,
+      ])
+      await client.query("commit")
+      return {
+        id: requestRow.id,
+        status: "accepted",
+        orderId: existingOrderResult.rows[0]?.id as string | undefined,
       }
     }
 

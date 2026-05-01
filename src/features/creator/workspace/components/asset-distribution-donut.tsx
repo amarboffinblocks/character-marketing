@@ -8,6 +8,7 @@ export type AssetDistributionSlice = {
   value: number
   href: string
   colorClass: string
+  dotColorClass?: string
 }
 
 type AssetDistributionDonutProps = {
@@ -106,7 +107,7 @@ export function AssetDistributionDonut({ slices }: AssetDistributionDonutProps) 
                 className="flex items-center justify-between gap-3 rounded-lg border border-border/70 px-3 py-2 text-sm transition-colors hover:bg-accent/30"
               >
                 <div className="flex items-center gap-2">
-                  <span className={cn("inline-block size-2.5 rounded-full", arc.colorClass.replace("text-", "bg-"))} />
+                  <span className={cn("inline-block size-2.5 rounded-full", arc.dotColorClass)} />
                   <span className="font-medium text-foreground">{arc.label}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">

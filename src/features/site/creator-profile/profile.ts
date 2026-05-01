@@ -2,6 +2,7 @@ import { creatorProfileOverrides } from "@/features/site/creator-profile/data/cr
 import type {
   CreatorProfile,
   CreatorProfileFaqItem,
+  CreatorProfilePortfolioItem,
   CreatorProfileReview,
   CreatorServicePackage,
 } from "@/features/site/creator-profile/types"
@@ -48,17 +49,29 @@ function defaultReviews(creator: Creator): CreatorProfileReview[] {
   return [
     {
       id: `${creator.id}-r1`,
+      reviewerName: "Ava Thompson",
+      reviewerInitials: "AT",
+      reviewerAvatar: null,
       authorName: "Buyer",
       rating: Math.min(5, Math.round(creator.rating * 2) / 2),
+      title: "Excellent delivery and communication",
       body: `${creator.name} nailed the tone and delivered ahead of schedule. Revisions were easy and on-scope.`,
       dateLabel: "2 weeks ago",
+      createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      status: "published",
     },
     {
       id: `${creator.id}-r2`,
+      reviewerName: "Marcus Lee",
+      reviewerInitials: "ML",
+      reviewerAvatar: null,
       authorName: "Buyer",
       rating: 5,
+      title: "Super clean output quality",
       body: "Clear structure, great communication, and the card worked immediately in my workflow.",
       dateLabel: "1 month ago",
+      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: "published",
     },
   ]
 }
@@ -104,6 +117,17 @@ function defaultPortfolioUrls(creator: Creator): string[] {
   return [creator.coverImage, creator.avatar].filter(Boolean)
 }
 
+function defaultPortfolioItems(creator: Creator): CreatorProfilePortfolioItem[] {
+  return defaultPortfolioUrls(creator).map((imageUrl, index) => ({
+    id: `${creator.id}-portfolio-${index + 1}`,
+    title: `Portfolio piece ${index + 1}`,
+    category: "character",
+    skills: creator.specialties.slice(0, 3),
+    description: creator.tagline,
+    imageUrl,
+  }))
+}
+
 /**
  * Merges marketplace creator data with optional per-id overrides and sensible defaults.
  */
@@ -124,6 +148,7 @@ export function buildCreatorProfile(creator: Creator): CreatorProfile {
     displaySpecialties,
     packages,
     portfolioImageUrls: o.portfolioImageUrls ?? defaultPortfolioUrls(creator),
+    portfolioItems: defaultPortfolioItems(creator),
     reviews: defaultReviews(creator),
     faqItems,
   }

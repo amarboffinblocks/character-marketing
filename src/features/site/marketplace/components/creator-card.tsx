@@ -8,6 +8,7 @@ import { CheckCircle2, Clock, Heart, Package, Star } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { useCreatorReviewAggregate } from "@/features/reviews/use-creator-reviews"
 import type { Creator } from "@/features/site/marketplace/types"
 import { cn } from "@/lib/utils"
 
@@ -25,7 +26,13 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
 
 export function CreatorProfileCard({ creator, featured = false, onUnsave }: CreatorProfileCardProps) {
   const profileHref = `/creators/${creator.id}`
-  const ratingLabel = `${creator.rating.toFixed(1)} out of 5 stars, ${creator.reviewCount} reviews`
+  const { averageRating, reviewCount } = useCreatorReviewAggregate({
+    creatorId: creator.id,
+    baseRating: creator.rating,
+    baseCount: creator.reviewCount,
+  })
+  const displayRating = averageRating || creator.rating
+  const ratingLabel = `${displayRating.toFixed(1)} out of 5 stars, ${reviewCount} reviews`
 
   const [isSaved, setIsSaved] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -82,7 +89,7 @@ export function CreatorProfileCard({ creator, featured = false, onUnsave }: Crea
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
             className="object-cover transition-transform duration-300 group-hover/card:scale-[1.03]"
           />
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-background/40 to-transparent opacity-0 transition-opacity duration-300 group-hover/card:opacity-100" />
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-background/40 to-transparent opacity-0 transition-opacity duration-300 group-hover/card:opacity-100" />
 
           <div className="absolute left-3 top-3 flex flex-wrap gap-2">
             {creator.isAvailable ? (
@@ -143,8 +150,8 @@ export function CreatorProfileCard({ creator, featured = false, onUnsave }: Crea
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <div role="group" aria-label={ratingLabel} className="flex items-center gap-1">
               <Star className="size-4 fill-accent text-accent" aria-hidden />
-              <span className="font-medium tabular-nums">{creator.rating.toFixed(1)}</span>
-              <span className="text-muted-foreground">({creator.reviewCount})</span>
+              <span className="font-medium tabular-nums">{displayRating.toFixed(1)}</span>
+              <span className="text-muted-foreground">({reviewCount})</span>
             </div>
             <div className="flex items-center gap-1 text-muted-foreground">
               <Clock className="size-3.5 shrink-0" aria-hidden />

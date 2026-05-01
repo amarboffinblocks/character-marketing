@@ -43,7 +43,7 @@ export async function Header() {
               : user.email ?? "",
       }
       const completion = computeCompletion(normalized)
-      showProfileWarning = roleKey === "creator" && completion.percent < 70
+      showProfileWarning = roleKey === "creator" && completion.percent < 80
 
       let avatarUrlCandidate: string | null = null
       if (normalized.avatarUrl && typeof normalized.avatarUrl === "string" && normalized.avatarUrl.trim().length > 0) {

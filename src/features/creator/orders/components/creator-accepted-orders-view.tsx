@@ -1,20 +1,31 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { PackageCheck, UserRound } from "lucide-react"
+import { Activity, CheckCircle2, LoaderCircle, PackageCheck, Timer, UserRound } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { CreatorOrderRow, CreatorOrderStatus, CreatorPaymentStatus } from "@/features/creator/orders/creator-orders"
 import { cn } from "@/lib/utils"
 
 const orderStatusLabel: Record<CreatorOrderStatus, string> = {
-  pending_payment: "Pending payment",
+  pending_payment: "Pending",
   funded: "Funded",
-  in_progress: "In progress",
+  in_progress: "Processing",
+  on_hold: "On hold",
   delivered: "Delivered",
-  approved: "Approved",
+  approved: "On hold",
   completed: "Completed",
   cancelled: "Cancelled",
   refunded: "Refunded",
@@ -24,8 +35,9 @@ const orderStatusClass: Record<CreatorOrderStatus, string> = {
   pending_payment: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   funded: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   in_progress: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  on_hold: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
   delivered: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
-  approved: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
+  approved: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
   completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   cancelled: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
   refunded: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
@@ -75,7 +87,60 @@ function safeBuyerSummary(profileData: unknown) {
 }
 
 export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: CreatorOrderRow[] }) {
-  const [orders] = useState(initialOrders)
+  const [orders, setOrders] = useState(initialOrders)
+  const [selectedOrder, setSelectedOrder] = useState<CreatorOrderRow | null>(null)
+  const [nextStatus, setNextStatus] = useState<"pending" | "processing" | "on_hold" | "completed">("pending")
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [error, setError] = useState("")
+
+  function toStatusOption(status: CreatorOrderStatus): "pending" | "processing" | "on_hold" | "completed" {
+    if (status === "pending_payment") return "pending"
+    if (status === "in_progress") return "processing"
+    if (status === "on_hold" || status === "approved") return "on_hold"
+    if (status === "completed") return "completed"
+    return "processing"
+  }
+
+  function openStatusModal(order: CreatorOrderRow) {
+    setSelectedOrder(order)
+    setNextStatus(toStatusOption(order.status))
+    setError("")
+  }
+
+  async function confirmStatusUpdate() {
+    if (!selectedOrder) return
+    setIsUpdatingStatus(true)
+    setError("")
+    try {
+      const response = await fetch(`/api/creator/orders/${encodeURIComponent(selectedOrder.id)}/order-status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: nextStatus }),
+      })
+      const json = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(json.error || "Unable to update order status.")
+      }
+      const nextLocalStatus: CreatorOrderStatus =
+        nextStatus === "pending"
+          ? "pending_payment"
+          : nextStatus === "processing"
+            ? "in_progress"
+            : nextStatus === "on_hold"
+              ? "on_hold"
+              : "completed"
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === selectedOrder.id ? { ...order, status: nextLocalStatus } : order
+        )
+      )
+      setSelectedOrder(null)
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Unable to update order status.")
+    } finally {
+      setIsUpdatingStatus(false)
+    }
+  }
 
   const openCount = useMemo(
     () =>
@@ -84,6 +149,43 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
       ).length,
     [orders]
   )
+
+  const completedCount = useMemo(
+    () => orders.filter((o) => o.status === "completed").length,
+    [orders]
+  )
+  const summaryCards = [
+    {
+      key: "total",
+      title: "Total orders",
+      value: orders.length,
+      note: "All assigned and accepted work items",
+      icon: Activity,
+      accent: "text-violet-600",
+      ring: "ring-violet-500/20",
+      bg: "from-violet-500/10 via-violet-500/5 to-transparent",
+    },
+    {
+      key: "active",
+      title: "Active orders",
+      value: openCount,
+      note: "In progress or waiting for next action",
+      icon: Timer,
+      accent: "text-amber-600",
+      ring: "ring-amber-500/20",
+      bg: "from-amber-500/10 via-amber-500/5 to-transparent",
+    },
+    {
+      key: "completed",
+      title: "Completed",
+      value: completedCount,
+      note: "Successfully finished deliveries",
+      icon: CheckCircle2,
+      accent: "text-emerald-600",
+      ring: "ring-emerald-500/20",
+      bg: "from-emerald-500/10 via-emerald-500/5 to-transparent",
+    },
+  ] as const
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 pt-6 pb-10 sm:px-6 lg:px-8">
@@ -95,20 +197,35 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
       </section>
 
       <section className="mt-6 grid gap-4 sm:grid-cols-3">
-        <Card className="rounded-2xl border-border/70 p-4">
-          <p className="text-sm text-muted-foreground">Total orders</p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">{orders.length}</p>
-        </Card>
-        <Card className="rounded-2xl border-border/70 p-4">
-          <p className="text-sm text-muted-foreground">Active orders</p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">{openCount}</p>
-        </Card>
-        <Card className="rounded-2xl border-border/70 p-4">
-          <p className="text-sm text-muted-foreground">Completed</p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">
-            {orders.filter((o) => o.status === "completed").length}
-          </p>
-        </Card>
+        {summaryCards.map((card) => {
+          const Icon = card.icon
+          return (
+            <Card
+              key={card.key}
+              className={cn(
+                "relative overflow-hidden rounded-2xl border-border/70 bg-card p-4 shadow-sm",
+                "bg-linear-to-br",
+                card.bg
+              )}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">{card.title}</p>
+                  <p className="mt-1 text-3xl font-semibold tracking-tight text-foreground">{card.value}</p>
+                </div>
+                <span
+                  className={cn(
+                    "inline-flex size-9 items-center justify-center rounded-lg bg-background/80 ring-1 shadow-xs",
+                    card.ring
+                  )}
+                >
+                  <Icon className={cn("size-4.5", card.accent)} />
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">{card.note}</p>
+            </Card>
+          )
+        })}
       </section>
 
       <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
@@ -132,6 +249,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-center">Price</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -169,6 +287,11 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCreatedAt(order.created_at)}</TableCell>
                     <TableCell className="text-center font-semibold text-foreground">{formatCurrency(order.package_price)}</TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm" onClick={() => openStatusModal(order)}>
+                        Update status
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 )
               })}
@@ -176,6 +299,40 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
           </Table>
         )}
       </section>
+      <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => (!open ? setSelectedOrder(null) : null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Update order status</DialogTitle>
+            <DialogDescription>
+              Confirm status update for <span className="font-medium text-foreground">{selectedOrder?.package_title ?? "order"}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Next status</p>
+            <Select value={nextStatus} onValueChange={(value) => setNextStatus(value as "pending" | "processing" | "on_hold" | "completed")}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="processing">Processing</SelectItem>
+                <SelectItem value="on_hold">On hold</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
+            {error ? <p className="text-xs text-rose-600">{error}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedOrder(null)} disabled={isUpdatingStatus}>
+              Cancel
+            </Button>
+            <Button onClick={() => void confirmStatusUpdate()} disabled={isUpdatingStatus}>
+              {isUpdatingStatus ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              Confirm update
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

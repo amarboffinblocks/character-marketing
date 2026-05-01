@@ -11,30 +11,15 @@ import { cn } from "@/lib/utils"
 export default function NewPostABidPage() {
   const router = useRouter()
 
-  function handleSubmit(values: PostABidFormValues) {
-    const lines = [
-      `Bid title: ${values.title}`,
-      `Duration: ${values.duration}`,
-      `Budget: ${values.budget}`,
-      `Token count: ${values.tokenCount || "Not provided"}`,
-      "",
-      "Requested assets:",
-      `- Character: ${values.character}`,
-      `- Persona: ${values.persona}`,
-      `- Lorebook: ${values.lorebook}`,
-      `- Background: ${values.background}`,
-      `- Avatar: ${values.avatar}`,
-      "",
-      `Skills needed: ${values.skillsNeeded}`,
-      `Price negotiable: ${values.isPriceNegotiable ? "Yes" : "No"}`,
-      "",
-      "Description:",
-      values.description,
-    ]
-
-    const href = `mailto:support@character.market?subject=${encodeURIComponent(`Post a Bid: ${values.title}`)}&body=${encodeURIComponent(lines.join("\n"))}`
-    window.location.href = href
+  async function handleSubmit(values: PostABidFormValues) {
+    const response = await fetch("/api/site/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    })
+    if (!response.ok) return
     router.push("/post-a-bid")
+    router.refresh()
   }
 
   return (

@@ -1,8 +1,7 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
-import { Bell } from "lucide-react"
+import { Bell, MessageSquare, Sparkles } from "lucide-react"
 
 import { buttonVariants } from "@/components/ui/button"
 import {
@@ -12,11 +11,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { headerNotifications } from "@/components/layout/header-notifications-data"
+import { useInboxFeed } from "@/features/inbox/use-inbox-feed"
 import { cn } from "@/lib/utils"
 
-export function HeaderNotifications() {
-  const count = headerNotifications.length
+type HeaderNotificationsProps = {
+  userRole: "creator" | "buyer"
+}
+
+export function HeaderNotifications({ userRole }: HeaderNotificationsProps) {
+  const { unreadCount, unreadPreview, markItemRead } = useInboxFeed(userRole)
+  const inboxHref = userRole === "creator" ? "/dashboard/creator/inbox" : "/inbox"
 
   return (
     <DropdownMenu>
@@ -28,12 +32,12 @@ export function HeaderNotifications() {
               buttonVariants({ variant: "outline", size: "icon" }),
               "relative size-9 shrink-0 rounded-full"
             )}
-            aria-label={count > 0 ? `Notifications, ${count} new` : "Notifications"}
+            aria-label={unreadCount > 0 ? `Inbox, ${unreadCount} unread` : "Inbox"}
           >
             <Bell className="size-4" aria-hidden />
-            {count > 0 ? (
+            {unreadCount > 0 ? (
               <span className="absolute -top-0.5 -right-0.5 flex min-w-4 justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-4 text-primary-foreground">
-                {count > 9 ? "9+" : count}
+                {unreadCount > 9 ? "9+" : unreadCount}
               </span>
             ) : null}
           </button>
@@ -41,48 +45,41 @@ export function HeaderNotifications() {
       />
       <DropdownMenuContent align="end" className="w-[min(calc(100vw-2rem),380px)] p-0">
         <div className="border-b border-border/60 px-3 py-2">
-          <p className="text-sm font-semibold text-foreground">Notifications</p>
+          <p className="text-sm font-semibold text-foreground">Inbox</p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Messages from creators you follow or order from
+            Unified chat and activity updates
           </p>
         </div>
         <div className="max-h-72 overflow-y-auto py-1">
-          {headerNotifications.map((n) => (
-            <DropdownMenuItem
-              key={n.id}
-              className="h-auto cursor-pointer items-start gap-3 rounded-none px-3 py-2.5 data-[highlighted]:bg-accent"
-              render={
-                <Link
-                  href={`/creators/${n.creatorId}`}
-                  className="flex w-full min-w-0 gap-3 outline-none"
-                />
-              }
-            >
-              <span className="relative mt-0.5 size-10 shrink-0 overflow-hidden rounded-lg bg-muted ring-1 ring-border/60">
-                <Image
-                  src={n.creatorAvatar}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="40px"
-                />
-              </span>
-              <span className="min-w-0 flex-1 text-left">
-                <span className="block text-sm font-medium text-foreground">{n.creatorName}</span>
-                <span className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
-                  {n.message}
+          {unreadPreview.length === 0 ? (
+            <div className="px-3 py-6 text-center text-xs text-muted-foreground">No unread updates.</div>
+          ) : (
+            unreadPreview.map((item) => (
+              <DropdownMenuItem
+                key={item.id}
+                onClick={() => markItemRead(item.id)}
+                className="h-auto cursor-pointer items-start gap-3 rounded-none px-3 py-2.5 data-highlighted:bg-accent"
+                render={<Link href={item.actionUrl} className="flex w-full min-w-0 gap-3 outline-none" />}
+              >
+                <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted ring-1 ring-border/60">
+                  {item.type === "chat" ? <MessageSquare className="size-4 text-sky-600" /> : <Sparkles className="size-4 text-primary" />}
                 </span>
-                <span className="mt-1 block text-[10px] text-muted-foreground">{n.timeLabel}</span>
-              </span>
-            </DropdownMenuItem>
-          ))}
+                <span className="min-w-0 flex-1 text-left">
+                  <span className="block text-sm font-medium text-foreground">{item.title}</span>
+                  <span className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
+                    {item.body}
+                  </span>
+                </span>
+              </DropdownMenuItem>
+            ))
+          )}
         </div>
         <DropdownMenuSeparator className="m-0" />
         <DropdownMenuItem
           className="cursor-pointer justify-center py-2 text-xs font-medium text-primary"
-          render={<Link href="/creators" className="w-full text-center" />}
+          render={<Link href={inboxHref} className="w-full text-center" />}
         >
-          View all creators
+          Open inbox
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,9 +1,19 @@
-import { TransactionsView } from "@/features/site/transactions"
+import { redirect } from "next/navigation"
 
-export default function TransactionsPage() {
-  return (
-    <main className="mx-auto w-full max-w-7xl px-4 pt-24 pb-8 sm:px-6 lg:px-8">
-      <TransactionsView />
-    </main>
-  )
+import { TransactionsView } from "@/features/transactions/components/transactions-view"
+import { fetchBuyerTransactions } from "@/features/transactions/transactions-data"
+import { createServerSupabaseClient } from "@/lib/supabase/server"
+
+export default async function SiteTransactionsPage() {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/sign-in")
+  }
+
+  const transactions = await fetchBuyerTransactions(user.id)
+  return <TransactionsView role="buyer" initialTransactions={transactions} />
 }

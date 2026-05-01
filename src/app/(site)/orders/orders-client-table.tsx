@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { UserRound } from "lucide-react"
+import { LoaderCircle, UserRound } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -151,10 +151,11 @@ function OrderSnapshotDetails({ order }: { order: BuyerOrderRow }) {
 }
 
 export function OrdersClientTable({ orders }: OrdersClientTableProps) {
-  const [rows] = useState<BuyerOrderRow[]>(orders)
+  const [rows, setRows] = useState<BuyerOrderRow[]>(orders)
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedOrder, setSelectedOrder] = useState<BuyerOrderRow | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [payingOrderId, setPayingOrderId] = useState<string | null>(null)
   const totalPages = Math.max(1, Math.ceil(rows.length / ORDERS_PER_PAGE))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const paginatedRows = useMemo(() => {
@@ -162,14 +163,56 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
     return rows.slice(start, start + ORDERS_PER_PAGE)
   }, [safeCurrentPage, rows])
 
-  const openDialog = (order: BuyerRequestRow) => {
+  const openDialog = (order: BuyerOrderRow) => {
     setSelectedOrder(order)
     setIsDialogOpen(true)
   }
 
+  const handlePayNow = async (order: BuyerOrderRow) => {
+    if (payingOrderId) return
+    setPayingOrderId(order.id)
+    try {
+      const response = await fetch(`/api/site/orders/${encodeURIComponent(order.id)}`, {
+        method: "POST",
+      })
+      const json = (await response.json()) as {
+        error?: string
+        order?: { id: string; paymentStatus: PaymentStatus; status: OrderStatus }
+      }
+      if (!response.ok || !json.order) {
+        throw new Error(json.error || "Unable to process payment.")
+      }
+      setRows((current) =>
+        current.map((item) =>
+          item.id === order.id
+            ? {
+                ...item,
+                payment_status: json.order?.paymentStatus ?? item.payment_status,
+                status: json.order?.status ?? item.status,
+              }
+            : item
+        )
+      )
+      setSelectedOrder((current) =>
+        current && current.id === order.id
+          ? {
+              ...current,
+              payment_status: json.order?.paymentStatus ?? current.payment_status,
+              status: json.order?.status ?? current.status,
+            }
+          : current
+      )
+    } catch {
+      // Silent fail for now; parent page does not provide toast system.
+    } finally {
+      setPayingOrderId(null)
+    }
+  }
+
   return (
     <>
-      <Table>
+      <div className="w-full overflow-x-auto">
+        <Table className="min-w-[980px]">
         <TableHeader>
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             <TableHead className="py-4">Creator</TableHead>
@@ -187,6 +230,11 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const creatorName = creator.displayName || "Creator"
             const creatorHandle = creator.handle
             const creatorSlug = req.creator_id
+            const canPay =
+              req.payment_status === "unpaid" ||
+              req.payment_status === "pending" ||
+              req.payment_status === "failed"
+            const isPaying = payingOrderId === req.id
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
@@ -245,20 +293,34 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                   {formatCurrency(req.package_price)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 cursor-pointer px-4 font-medium"
-                    onClick={() => openDialog(req)}
-                  >
-                    View
-                  </Button>
+                  <div className="flex justify-end gap-2">
+                    {canPay ? (
+                      <Button
+                        size="sm"
+                        className="h-8 cursor-pointer px-3 font-medium"
+                        disabled={isPaying}
+                        onClick={() => void handlePayNow(req)}
+                      >
+                        {isPaying ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
+                        Pay now
+                      </Button>
+                    ) : null}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 cursor-pointer px-4 font-medium"
+                      onClick={() => openDialog(req)}
+                    >
+                      View
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             )
           })}
         </TableBody>
-      </Table>
+        </Table>
+      </div>
       {rows.length > ORDERS_PER_PAGE ? (
         <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3">
           <p className="text-xs text-muted-foreground">

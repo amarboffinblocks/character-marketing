@@ -1,6 +1,15 @@
 import { buildCreatorProfile } from "@/features/site/creator-profile/profile"
-import type { CreatorProfile, CreatorServicePackage } from "@/features/site/creator-profile/types"
+import type {
+  CreatorProfile,
+  CreatorProfilePortfolioItem,
+  CreatorServicePackage,
+} from "@/features/site/creator-profile/types"
 import type { Creator, CreatorMarketplaceCategory } from "@/features/site/marketplace/types"
+import {
+  computeCompletion,
+  defaultProfileForm,
+  type CreatorProfileForm,
+} from "@/features/creator/profile/profile-data"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 
 type ProfilesRow = {
@@ -58,11 +67,52 @@ function toHandle(userId: string): string {
   return `creator-${userId.slice(0, 8)}`
 }
 
+function toCreatorCompletionForm(creatorData: Record<string, unknown>): CreatorProfileForm {
+  const portfolio = Array.isArray(creatorData.portfolio) ? creatorData.portfolio : []
+  const socialLinks = Array.isArray(creatorData.socialLinks) ? creatorData.socialLinks : []
+
+  return {
+    ...defaultProfileForm,
+    displayName: asString(creatorData.displayName),
+    tagline: asString(creatorData.tagline),
+    avatarUrl: asString(creatorData.avatarUrl),
+    bannerUrl: asString(creatorData.bannerUrl),
+    shortBio: asString(creatorData.shortBio),
+    longBio: asString(creatorData.longBio),
+    timezone: asString(creatorData.timezone),
+    responseTime: asString(creatorData.responseTime),
+    languages: asStringArray(creatorData.languages),
+    skills: asStringArray(creatorData.skills),
+    niche: asString(creatorData.niche),
+    contentPreference:
+      asString(creatorData.contentPreference) === "SFW" ||
+      asString(creatorData.contentPreference) === "NSFW" ||
+      asString(creatorData.contentPreference) === "Both"
+        ? (asString(creatorData.contentPreference) as CreatorProfileForm["contentPreference"])
+        : defaultProfileForm.contentPreference,
+    profileVisibility:
+      asString(creatorData.profileVisibility) === "private" ? "private" : "public",
+    responseRate: asNumber(creatorData.responseRate, 0),
+    onTimeDelivery: asNumber(creatorData.onTimeDelivery, 0),
+    repeatBuyerRate: asNumber(creatorData.repeatBuyerRate, 0),
+    socialLinks: socialLinks as CreatorProfileForm["socialLinks"],
+    portfolio: portfolio as CreatorProfileForm["portfolio"],
+    buyerRequirements: asString(creatorData.buyerRequirements),
+    revisionPolicy: asString(creatorData.revisionPolicy),
+    refundPolicy: asString(creatorData.refundPolicy),
+    email: asString(creatorData.email),
+  }
+}
+
 function toCreator(row: ProfilesRow): Creator | null {
   const profileData = row.profile_data ?? {}
   const creatorData = (profileData.creator ?? {}) as CreatorProfileData
   const visibility = asString(creatorData.profileVisibility).toLowerCase()
   if (visibility && visibility !== "public") return null
+  const completion = computeCompletion(
+    toCreatorCompletionForm(profileData.creator && typeof profileData.creator === "object" ? profileData.creator as Record<string, unknown> : {})
+  )
+  if (completion.percent < 80) return null
 
   const skills = asStringArray(creatorData.skills)
   const languages = asStringArray(creatorData.languages)
@@ -139,6 +189,31 @@ function mapCreatorServiceToCustomPackage(row: CreatorServiceRow): CreatorServic
   }
 }
 
+function mapPortfolioItems(value: unknown): CreatorProfilePortfolioItem[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null
+      const record = item as Record<string, unknown>
+      const imageUrl = asString(record.imageUrl)
+      if (!imageUrl) return null
+
+      const skills = asStringArray(record.skills)
+      const category = asString(record.type) || "character"
+
+      return {
+        id: asString(record.id) || `portfolio-${index + 1}`,
+        title: asString(record.title) || `Portfolio piece ${index + 1}`,
+        category,
+        skills,
+        description: asString(record.summary),
+        imageUrl,
+      } satisfies CreatorProfilePortfolioItem
+    })
+    .filter((item): item is CreatorProfilePortfolioItem => item !== null)
+}
+
 export async function getMarketplaceCreators(): Promise<Creator[]> {
   const supabase = createAdminSupabaseClient()
   const { data, error } = await supabase
@@ -213,6 +288,15 @@ export async function getMarketplaceCreatorProfileById(creatorId: string): Promi
     .returns<CreatorServiceRow[]>()
 
   const profile = buildCreatorProfile(creator)
+  const creatorData =
+    data.profile_data &&
+    typeof data.profile_data === "object" &&
+    data.profile_data.creator &&
+    typeof data.profile_data.creator === "object"
+      ? (data.profile_data.creator as Record<string, unknown>)
+      : {}
+  const dbPortfolioItems = mapPortfolioItems(creatorData.portfolio)
+  const dbPortfolioUrls = dbPortfolioItems.map((item) => item.imageUrl)
   const preselectPackage = profile.packages[0]
   const dbCustomPackages = (serviceRows ?? [])
     .map(mapCreatorServiceToCustomPackage)
@@ -220,6 +304,8 @@ export async function getMarketplaceCreatorProfileById(creatorId: string): Promi
 
   return {
     ...profile,
+    portfolioImageUrls: dbPortfolioUrls.length > 0 ? dbPortfolioUrls : profile.portfolioImageUrls,
+    portfolioItems: dbPortfolioItems.length > 0 ? dbPortfolioItems : profile.portfolioItems,
     packages: preselectPackage
       ? [preselectPackage, ...dbCustomPackages]
       : dbCustomPackages,

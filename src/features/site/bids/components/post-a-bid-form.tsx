@@ -21,6 +21,7 @@ export type PostABidFormValues = {
   skillsNeeded: string
   description: string
   isPriceNegotiable: boolean
+  visibility: "open" | "closed"
 }
 
 const defaultValues: PostABidFormValues = {
@@ -36,6 +37,7 @@ const defaultValues: PostABidFormValues = {
   skillsNeeded: "",
   description: "",
   isPriceNegotiable: false,
+  visibility: "open",
 }
 
 type PostABidFormProps = {
@@ -63,6 +65,7 @@ export function PostABidForm({
   const [skillsNeeded, setSkillsNeeded] = useState(initialValues.skillsNeeded)
   const [description, setDescription] = useState(initialValues.description)
   const [isPriceNegotiable, setIsPriceNegotiable] = useState(initialValues.isPriceNegotiable)
+  const [visibility, setVisibility] = useState<"open" | "closed">(initialValues.visibility)
 
   useEffect(() => {
     setTitle(initialValues.title)
@@ -77,6 +80,7 @@ export function PostABidForm({
     setSkillsNeeded(initialValues.skillsNeeded)
     setDescription(initialValues.description)
     setIsPriceNegotiable(initialValues.isPriceNegotiable)
+    setVisibility(initialValues.visibility)
   }, [initialValues])
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -95,6 +99,7 @@ export function PostABidForm({
       skillsNeeded,
       description,
       isPriceNegotiable,
+      visibility,
     })
   }
 
@@ -213,6 +218,21 @@ export function PostABidForm({
         />
         <span className="text-sm text-foreground">Price negotiable</span>
       </label>
+
+      <div className="space-y-1.5">
+        <label htmlFor="bid-visibility" className="text-sm font-medium text-foreground">
+          Visibility
+        </label>
+        <select
+          id="bid-visibility"
+          value={visibility}
+          onChange={(event) => setVisibility(event.target.value as "open" | "closed")}
+          className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+        </select>
+      </div>
 
       <div className="flex justify-end gap-2 border-t border-border/60 pt-4">
         {onCancel ? (

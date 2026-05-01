@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   const file = formData.get("file")
   const kind = formData.get("kind")
 
-  if (!(file instanceof File) || (kind !== "avatar" && kind !== "banner")) {
+  if (!(file instanceof File) || (kind !== "avatar" && kind !== "banner" && kind !== "portfolio")) {
     return NextResponse.json({ error: "Invalid upload payload" }, { status: 400 })
   }
 

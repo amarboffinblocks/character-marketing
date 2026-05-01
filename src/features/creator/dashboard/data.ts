@@ -58,8 +58,8 @@ export const creatorDashboardActivity: CreatorDashboardActivity[] = [
   },
 ]
 
-export const creatorQuickActions: CreatorQuickAction[] = [
+export const creatorDashboardQuickActions: CreatorQuickAction[] = [
   { href: "/dashboard/creator/orders", label: "Review pending orders" },
-  { href: "/dashboard/creator", label: "Create a new listing" },
-  { href: "/dashboard/creator", label: "Update availability" },
+  { href: "/dashboard/creator/workspace/characters/new", label: "Create a new listing" },
+  { href: "/dashboard/creator/profile", label: "Update profile details" },
 ]

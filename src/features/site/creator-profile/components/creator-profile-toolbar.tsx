@@ -1,6 +1,7 @@
 "use client"
 
-import { Heart, MessageSquare, Share2 } from "lucide-react"
+import Link from "next/link"
+import { Heart, MessageSquare, Share2, Star } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { buttonVariants } from "@/components/ui/button"
@@ -111,6 +112,14 @@ export function CreatorProfileToolbar({
           >
             <Share2 className="size-4" aria-hidden />
           </button>
+          <Link
+            href={`/creators/${creatorId}/review`}
+            className={cn(buttonVariants({ variant: "outline", size: "default" }), "h-10 gap-2 px-4")}
+            aria-label={`Leave a review for ${creatorName}`}
+          >
+            <Star className="size-4" aria-hidden />
+            Leave Review
+          </Link>
           <button
             type="button"
             className={cn(buttonVariants({ size: "default" }), "h-10 gap-2 px-5")}

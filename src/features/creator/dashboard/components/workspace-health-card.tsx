@@ -3,6 +3,7 @@ import { BookOpenText, ImageIcon, MessageSquareText, UserSquare2, Users } from "
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 export type WorkspaceHealthItem = {
   label: string
@@ -33,7 +34,7 @@ export function WorkspaceHealthCard({ items }: WorkspaceHealthCardProps) {
         <CardTitle>Workspace health</CardTitle>
         <CardDescription>Your reusable creator assets across all categories.</CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-2 py-4 sm:grid-cols-2 xl:grid-cols-5">
+      <CardContent className="grid gap-2 py-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
         {items.map((item) => {
           const Icon = icons[item.icon]
           const percentage = total > 0 ? Math.round((item.count / total) * 100) : 0
@@ -46,20 +47,31 @@ export function WorkspaceHealthCard({ items }: WorkspaceHealthCardProps) {
               )}
             >
               {item.imageUrl ? (
-                <div className="mb-3 overflow-hidden rounded-lg border border-border/70">
-                  <img
-                    src={item.imageUrl}
-                    alt={`${item.label} preview`}
-                    className="h-20 w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    loading="lazy"
-                  />
-                </div>
+               <div className="group relative mb-4 aspect-square overflow-hidden rounded-2xl border border-border/60 bg-muted/20 shadow-sm hover:shadow-md transition-all duration-300">
+  
+               {/* Image */}
+               <img
+                 src={item.imageUrl}
+                 alt={`${item.label} preview`}
+                 className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                 loading="lazy"
+               />
+             
+               {/* Gradient overlay for better text readability */}
+               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent opacity-100" />
+             
+               {/* Optional bottom label (more premium look) */}
+               <div className="absolute bottom-0 w-full p-3">
+                 <p className="text-sm font-semibold text-white drop-shadow-sm">
+                   {item.label}
+                 </p>
+               </div>
+             </div>
               ) : null}
-              <div className="mb-2 flex items-center gap-2">
-                <Icon className="size-4 text-muted-foreground" />
-                <p className="text-sm font-medium text-foreground">{item.label}</p>
-              </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground">{item.count}</p>
+            <div className="flex text-sm  items-center gap-1">
+              <Icon className="size-4 text-muted-foreground" />
+              <p className=" font-semibold tracking-tight text-foreground">{item.count}</p>
+            </div>
               <div className="mt-2 h-1.5 rounded-full bg-muted">
                 <div className="h-1.5 rounded-full bg-primary" style={{ width: `${percentage}%` }} />
               </div>

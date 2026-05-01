@@ -19,16 +19,31 @@ export type CreatorServicePackage = {
 
 export type CreatorProfileReview = {
   id: string
+  reviewerName: string
+  reviewerInitials: string
+  reviewerAvatar: string | null
   authorName: string
   rating: number
+  title?: string
   body: string
   dateLabel: string
+  createdAt?: string
+  status?: "published" | "pending"
 }
 
 export type CreatorProfileFaqItem = {
   id: string
   question: string
   answer: string
+}
+
+export type CreatorProfilePortfolioItem = {
+  id: string
+  title: string
+  category: string
+  skills: string[]
+  description: string
+  imageUrl: string
 }
 
 export type CreatorProfileTabId = "about" | "portfolio" | "reviews" | "faq"
@@ -47,6 +62,7 @@ export type CreatorProfile = Creator & {
   displaySpecialties: string[]
   packages: CreatorServicePackage[]
   portfolioImageUrls: string[]
+  portfolioItems: CreatorProfilePortfolioItem[]
   reviews: CreatorProfileReview[]
   faqItems: CreatorProfileFaqItem[]
 }

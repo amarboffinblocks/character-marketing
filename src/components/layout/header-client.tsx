@@ -1,7 +1,22 @@
 "use client"
 
 import Link from "next/link"
-import { AlertCircle, ChevronDown, LogOut, Menu, Settings, UserRound, X } from "lucide-react"
+import {
+  AlertCircle,
+  Boxes,
+  ChevronDown,
+  ClipboardList,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  PackageSearch,
+  ReceiptText,
+  Settings,
+  Star,
+  UserRound,
+  Users,
+  X,
+} from "lucide-react"
 import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
@@ -14,17 +29,18 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils"
 
 const marketplaceLinks = [
-  { href: "/creators", label: "All Creators" },
-  { href: "/creators?sort=rating", label: "Top Creators" },
-  { href: "/saved-creators", label: "Saved Creators" },
-  { href: "/creators", label: "Hired Creators" },
+  { href: "/creators", label: "All Creators", icon: Users },
+  { href: "/creators?sort=rating", label: "Top Creators", icon: Star },
+  { href: "/saved-creators", label: "Saved Creators", icon: Boxes },
+  { href: "/creators", label: "Hired Creators", icon: UserRound },
 ] as const
 
 const activityLinks = [
-  { href: "/orders", label: "Orders" },
-  { href:"/requests", label: "Requests" },
-  { href: "/post-a-bid", label: "Bids & Requests" },
-  { href: "/inventory", label: "Inventory" },
+  { href: "/orders", label: "Orders", icon: PackageSearch },
+  { href:"/requests", label: "Requests", icon: ClipboardList },
+  { href: "/post-a-bid", label: "Global Bids", icon: LayoutGrid },
+  { href: "/transactions", label: "Transactions", icon: ReceiptText },
+  { href: "/inventory", label: "Inventory", icon: Boxes },
 ] as const
 
 type HeaderClientProps = {
@@ -47,7 +63,7 @@ function ProfileWarningBadge() {
       <TooltipContent className="border border-border bg-card text-card-foreground shadow-lg">
         <span className="inline-flex items-center gap-1.5">
           <AlertCircle className="size-3 text-yellow-500" aria-hidden />
-          Profile is incomplete
+          Complete your profile to list it on marketplace
         </span>
       </TooltipContent>
     </Tooltip>
@@ -108,6 +124,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
               <DropdownMenuContent align="center" className="min-w-48">
                 {marketplaceLinks.map((link) => (
                   <DropdownMenuItem key={`${link.label}-${link.href}`} render={<Link href={link.href} className="cursor-pointer" />}>
+                    <link.icon className="size-4" />
                     {link.label}
                   </DropdownMenuItem>
                 ))}
@@ -125,12 +142,13 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
               <DropdownMenuContent align="center" className="min-w-48">
                 {activityLinks.map((link) => (
                   <DropdownMenuItem key={`${link.label}-${link.href}`} render={<Link href={link.href} className="cursor-pointer" />}>
+                    <link.icon className="size-4" />
                     {link.label}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="/messages" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Messages</Link>
+            <Link href="/inbox" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Inbox</Link>
             <Link href="/faq" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">FAQ</Link>
           </nav>
         ) : null}
@@ -138,7 +156,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
         <div className="flex items-center gap-2">
           {isAuthenticated ? (
             <>
-              <HeaderNotifications />
+              <HeaderNotifications userRole={userRole === "creator" ? "creator" : "buyer"} />
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
@@ -160,9 +178,9 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
                   <DropdownMenuItem className="flex justify-between" render={<Link href="/profile" className="cursor-pointer" />}>
                     <span className="flex gap-2 items-center">
                       {avatarUrl ? (
-                        <img src={avatarUrl} alt="Profile" className="size-5 rounded-full object-cover flex-shrink-0" />
+                        <img src={avatarUrl} alt="Profile" className="size-5 rounded-full object-cover shrink-0" />
                       ) : (
-                        <UserRound className="size-4 flex-shrink-0" />
+                        <UserRound className="size-4 shrink-0" />
                       )}
                       Profile
                     </span>
@@ -213,7 +231,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
               {activityLinks.map((link) => (
                 <Link key={`${link.label}-${link.href}`} href={link.href} className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>{link.label}</Link>
               ))}
-              <Link href="/messages" className="mt-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>Messages</Link>
+              <Link href="/inbox" className="mt-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>Inbox</Link>
               <Link href="/faq" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>FAQ</Link>
             </nav>
             <div className="mt-4 flex flex-col gap-1 border-t border-border/60 pt-4">

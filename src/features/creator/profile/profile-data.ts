@@ -4,6 +4,7 @@ export type PortfolioItem = {
   id: string
   title: string
   type: PortfolioType
+  skills: string[]
   imageUrl: string
   summary: string
 }
@@ -77,8 +78,6 @@ export function computeCompletion(form: CreatorProfileForm) {
     form.languages.length >= 1,
     form.portfolio.length >= 3,
     form.socialLinks.length >= 1,
-    form.buyerRequirements.trim().length > 20,
-    form.revisionPolicy.trim().length > 20,
   ]
   const done = checks.filter(Boolean).length
   return {

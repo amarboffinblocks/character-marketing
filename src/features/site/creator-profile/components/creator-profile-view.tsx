@@ -1,4 +1,5 @@
 "use client"
+import { useMemo } from "react"
 import { Container } from "@/components/shared"
 import { CreatorProfileHeader } from "@/features/site/creator-profile/components/creator-profile-header"
 import { CreatorProfileStatBar } from "@/features/site/creator-profile/components/creator-profile-stat-bar"
@@ -11,7 +12,7 @@ import {
 import type { CreatorProfile } from "@/features/site/creator-profile/types"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Calendar, MapPin, Star } from "lucide-react"
+import { BadgeCheck, Calendar, FileCheck2, MapPin, Plus, Star, UserRound } from "lucide-react"
 import { IconTextRow } from "./icon-text-row"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
@@ -21,6 +22,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, XCircle } from "lucide-react"
+import { useCreatorReviewAggregate, useCreatorReviews } from "@/features/reviews/use-creator-reviews"
 type CreatorProfileViewProps = {
   profile: CreatorProfile
   isAuthenticated: boolean
@@ -64,20 +66,57 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
  * Full creator profile layout: hero header, stats, tabbed main column, and packages sidebar.
  */
 export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileViewProps) {
+  const localReviews = useCreatorReviews(profile.id)
+  const { averageRating, reviewCount } = useCreatorReviewAggregate({
+    creatorId: profile.id,
+    baseRating: profile.rating,
+    baseCount: profile.reviewCount,
+  })
+  const mergedReviews = useMemo(() => {
+    const mappedLocal = localReviews.map((review) => ({
+      id: review.id,
+      authorName: review.reviewerName,
+      reviewerName: review.reviewerName,
+      reviewerInitials: review.reviewerInitials,
+      reviewerAvatar: review.reviewerAvatar,
+      rating: review.rating,
+      title: review.title,
+      body: review.body,
+      dateLabel: new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
+        -Math.max(1, Math.round((Date.now() - new Date(review.createdAt).getTime()) / (1000 * 60 * 60 * 24))),
+        "day"
+      ),
+      createdAt: review.createdAt,
+      status: review.status,
+    }))
+    return [...mappedLocal, ...profile.reviews]
+  }, [localReviews, profile.reviews])
+  const profileWithReviewStats = useMemo(
+    () => ({
+      ...profile,
+      rating: averageRating || profile.rating,
+      reviewCount,
+      reviews: mergedReviews,
+    }),
+    [averageRating, mergedReviews, profile, reviewCount]
+  )
   const profilePath = `/creators/${profile.id}`
-  const preselectPackage = profile.packages[0]
-  const displayedCustomPackages = getCustomPackages(profile.packages, { includeFallback: false })
-  console.log(displayedCustomPackages)
+  const preselectPackage = profileWithReviewStats.packages[0]
+  const displayedCustomPackages = getCustomPackages(profileWithReviewStats.packages, { includeFallback: false })
+  const niche = profileWithReviewStats.displaySpecialties.at(-1) ?? ""
+  const specialties = niche
+    ? profileWithReviewStats.displaySpecialties.slice(0, Math.max(0, profileWithReviewStats.displaySpecialties.length - 1))
+    : profileWithReviewStats.displaySpecialties
   const preselectHighlights = preselectPackage
     ? preselectPackage.includedItems.map((item) => item.trim()).filter(Boolean)
     : []
 
   return (
     <main className="bg-linear-to-b from-background via-background to-muted/15">
-      <CreatorProfileHeader profile={profile} profilePath={profilePath} isAuthenticated={isAuthenticated} />
+      <CreatorProfileHeader profile={profileWithReviewStats} profilePath={profilePath} isAuthenticated={isAuthenticated} />
 
       <Container size="xl" className="mt-4 pb-10">
-        <CreatorProfileStatBar profile={profile} />
+        <CreatorProfileStatBar profile={profileWithReviewStats} />
 
         <div className="grid ">
           <div className="min-w-0">
@@ -104,18 +143,18 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                       About Me
                     </h2>
                     <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-                      {profile.bio}
+                      {profileWithReviewStats.bio}
                     </p>
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8 sm:gap-y-3">
-                      <IconTextRow icon={MapPin}>{profile.location}</IconTextRow>
-                      <IconTextRow icon={Calendar}>Member since {profile.memberSinceLabel}</IconTextRow>
+                      <IconTextRow icon={MapPin}>{profileWithReviewStats.location}</IconTextRow>
+                      <IconTextRow icon={Calendar}>Member since {profileWithReviewStats.memberSinceLabel}</IconTextRow>
                     </div>
                   </div>
 
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Specialties</h3>
                     <ul className="mt-3 flex list-none flex-wrap gap-2">
-                      {profile.displaySpecialties.map((tag) => (
+                      {specialties.map((tag) => (
                         <li key={tag}>
                           <Badge
                             variant="secondary"
@@ -128,10 +167,26 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                     </ul>
                   </div>
 
+                  {niche ? (
+                    <div>
+                      <h3 className="text-lg font-semibold text-foreground">Niche</h3>
+                      <ul className="mt-3 flex list-none flex-wrap gap-2">
+                        <li>
+                          <Badge
+                            variant="secondary"
+                            className="border-primary/15 bg-primary/8 font-normal text-foreground hover:bg-primary/12"
+                          >
+                            {niche}
+                          </Badge>
+                        </li>
+                      </ul>
+                    </div>
+                  ) : null}
+
                   <div>
                     <h3 className="text-lg font-semibold text-foreground">Languages</h3>
                     <ul className="mt-3 flex list-none flex-wrap gap-2">
-                    {profile.languages.map((lang) => (
+                    {profileWithReviewStats.languages.map((lang) => (
                         <li key={lang}>
                           <Badge variant="secondary" className="font-normal">
                             {lang}
@@ -144,20 +199,42 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
               </TabsContent>
 
               <TabsContent value="portfolio">
-                {profile.portfolioImageUrls.length > 0 ? (
-                  <ul className="grid list-none grid-cols-1 gap-4 sm:grid-cols-2">
-                    {profile.portfolioImageUrls.map((src, index) => (
+                {profileWithReviewStats.portfolioItems.length > 0 ? (
+                  <ul className="grid list-none grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    {profileWithReviewStats.portfolioItems.map((item) => (
                       <li
-                        key={`${src}-${index}`}
-                        className="relative aspect-video overflow-hidden rounded-xl border border-border/60 bg-muted shadow-sm"
+                        key={item.id}
+                        className="group relative overflow-hidden rounded-4xl border border-white/10 bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                       >
-                        <Image
-                          src={src}
-                          alt={`${profile.name} portfolio piece ${index + 1}`}
-                          fill
-                          sizes="(max-width: 640px) 100vw, 50vw"
-                          className="object-cover"
-                        />
+                        <div className="relative aspect-4/5 bg-muted">
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.title}
+                            fill
+                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                            className="object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                          />
+                          <div className="pointer-events-none absolute inset-0 bg-black/20" />
+                          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/85 via-black/30 to-black/40" />
+                        </div>
+                        <div className="absolute left-5 top-5">
+                          <Badge
+                            variant="outline"
+                            className="rounded-full border-white/40 bg-white/15 px-3 py-3 text-xs font-semibold tracking-wide text-white capitalize backdrop-blur-sm"
+                          >
+                            {item.category}
+                          </Badge>
+                        </div>
+                        <div className="absolute inset-x-0 bottom-0 p-6">
+                          <div className="max-w-[90%] space-y-3">
+                            <h3 className="text-pretty text-[2rem] leading-[1.1] font-semibold text-white">
+                              {item.title}
+                            </h3>
+                            <p className=" text-[1.05rem] leading-relaxed line-clamp-3 text-white/85">
+                              {item.description || `${item.category} portfolio highlight`}
+                            </p>
+                          </div>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -168,13 +245,23 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
 
               <TabsContent value="reviews">
                 <ul className="space-y-4">
-                  {profile.reviews.map((r) => (
+                  {profileWithReviewStats.reviews.map((r) => (
                     <li
                       key={r.id}
                       className="rounded-xl border border-border/60 bg-card p-4 shadow-sm"
                     >
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="font-medium text-foreground">{r.authorName}</p>
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex items-start gap-3">
+                          <span className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+                            {r.reviewerInitials || "BY"}
+                          </span>
+                          <div>
+                            <p className="font-medium text-foreground">{r.reviewerName || r.authorName}</p>
+                            {r.title ? (
+                              <p className="text-sm text-foreground/90">{r.title}</p>
+                            ) : null}
+                          </div>
+                        </div>
                         <time className="text-xs text-muted-foreground">{r.dateLabel}</time>
                       </div>
                       <div className="mt-2 flex items-center gap-2">
@@ -189,7 +276,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
 
               <TabsContent value="faq">
                 <Accordion defaultValue={[]} className="rounded-xl border border-border/60 bg-card px-2 shadow-sm">
-                  {profile.faqItems.map((item) => (
+                  {profileWithReviewStats.faqItems.map((item) => (
                     <AccordionItem key={item.id} value={item.id}>
                       <AccordionTrigger className="px-3 text-left">{item.question}</AccordionTrigger>
                       <AccordionContent className="px-3 pb-4 text-muted-foreground">{item.answer}</AccordionContent>
@@ -278,7 +365,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                           ) : null}
                           <div className="border-t border-border/60 pt-4">
                             <Link
-                              href={`/creators/${profile.id}/purchase-preselect?packageId=${encodeURIComponent(preselectPackage.id)}`}
+                              href={`/creators/${profileWithReviewStats.id}/purchase-preselect?packageId=${encodeURIComponent(preselectPackage.id)}`}
                               className={cn(buttonVariants({ size: "lg" }), "w-full")}
                             >
                               Purchase Pre-Select Package
@@ -304,7 +391,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                     {displayedCustomPackages.length > 0 ? (
                       <div className="grid gap-4 md:grid-cols-3">
                         {displayedCustomPackages.map((pkg, index) => {
-                          const purchaseCustomHref = `/creators/${profile.id}/custom-package?packageId=${encodeURIComponent(
+                          const purchaseCustomHref = `/creators/${profileWithReviewStats.id}/custom-package?packageId=${encodeURIComponent(
                             pkg.id
                           )}`
                           const highlights = (pkg.packageHighlights ?? pkg.includedItems)

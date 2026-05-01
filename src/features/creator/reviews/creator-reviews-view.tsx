@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { MessageSquareText, Reply, Search, Star } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -9,14 +9,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  creatorReviews,
-  getReviewMetrics,
-  type CreatorReview,
-  type ReviewRating,
-} from "@/features/creator/reviews/reviews-data"
+import { useCreatorReviews } from "@/features/reviews/use-creator-reviews"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
+type ReviewRating = 1 | 2 | 3 | 4 | 5
 type RatingFilter = "all" | "5" | "4" | "3" | "2" | "1"
 type ReplyFilter = "all" | "replied" | "unreplied"
 
@@ -46,31 +43,75 @@ function RatingStars({ rating, size = "sm" }: { rating: ReviewRating; size?: "sm
   )
 }
 
-export function CreatorReviewsView() {
+export function CreatorReviewsView({ creatorId }: { creatorId: string }) {
+  const [resolvedCreatorId, setResolvedCreatorId] = useState(creatorId)
   const [search, setSearch] = useState("")
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all")
   const [replyFilter, setReplyFilter] = useState<ReplyFilter>("all")
+  const submittedReviews = useCreatorReviews(resolvedCreatorId)
+  const [replyByReviewId, setReplyByReviewId] = useState<Record<string, string>>({})
 
-  const metrics = getReviewMetrics(creatorReviews)
+  useEffect(() => {
+    if (creatorId) {
+      setResolvedCreatorId(creatorId)
+      return
+    }
+    const supabase = createClientSupabaseClient()
+    void (async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user?.id) {
+        setResolvedCreatorId(user.id)
+      }
+    })()
+  }, [creatorId])
+
+  const metrics = useMemo(() => {
+    const total = submittedReviews.length
+    const average =
+      total === 0
+        ? 0
+        : submittedReviews.reduce((acc, item) => acc + item.rating, 0) / total
+
+    const distribution = [5, 4, 3, 2, 1].map((star) => ({
+      star: star as ReviewRating,
+      count: submittedReviews.filter((review) => review.rating === star).length,
+      percentage:
+        total === 0
+          ? 0
+          : Math.round((submittedReviews.filter((review) => review.rating === star).length / total) * 100),
+    }))
+
+    const repliedCount = submittedReviews.filter((review) => Boolean(replyByReviewId[review.id])).length
+    const repliedRate = total === 0 ? 0 : Math.round((repliedCount / total) * 100)
+
+    return {
+      total,
+      average: Math.round(average * 10) / 10,
+      distribution,
+      repliedRate,
+    }
+  }, [replyByReviewId, submittedReviews])
 
   const query = search.trim().toLowerCase()
-  const filtered = creatorReviews.filter((review) => {
+  const filtered = submittedReviews.filter((review) => {
     const matchesSearch =
       query.length === 0 ||
-      review.buyerName.toLowerCase().includes(query) ||
-      review.comment.toLowerCase().includes(query) ||
-      review.packageName.toLowerCase().includes(query) ||
-      review.orderId.toLowerCase().includes(query)
+      review.reviewerName.toLowerCase().includes(query) ||
+      review.body.toLowerCase().includes(query) ||
+      review.title.toLowerCase().includes(query)
 
     const matchesRating =
       ratingFilter === "all" ? true : review.rating === Number(ratingFilter)
 
+    const submittedReply = replyByReviewId[review.id] ?? ""
     const matchesReply =
       replyFilter === "all"
         ? true
         : replyFilter === "replied"
-          ? Boolean(review.reply)
-          : !review.reply
+          ? Boolean(submittedReply)
+          : !submittedReply
 
     return matchesSearch && matchesRating && matchesReply
   })
@@ -169,7 +210,7 @@ export function CreatorReviewsView() {
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search reviews by buyer, comment, package, or order"
+              placeholder="Search reviews by buyer, headline, or comment"
               className="pl-8"
             />
           </div>
@@ -202,13 +243,22 @@ export function CreatorReviewsView() {
       {filtered.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-sm text-muted-foreground">
-            No reviews match your filters.
+            {submittedReviews.length === 0
+              ? "No customer-submitted reviews yet."
+              : "No reviews match your filters."}
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-3">
           {filtered.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+            <ReviewCard
+              key={review.id}
+              review={review}
+              submittedReply={replyByReviewId[review.id] ?? ""}
+              onSubmitReply={(nextReply) =>
+                setReplyByReviewId((current) => ({ ...current, [review.id]: nextReply }))
+              }
+            />
           ))}
         </div>
       )}
@@ -216,25 +266,44 @@ export function CreatorReviewsView() {
   )
 }
 
-function ReviewCard({ review }: { review: CreatorReview }) {
+function ReviewCard({
+  review,
+  submittedReply,
+  onSubmitReply,
+}: {
+  review: {
+    id: string
+    reviewerName: string
+    reviewerInitials: string
+    rating: number
+    title: string
+    body: string
+    createdAt: string
+  }
+  submittedReply: string
+  onSubmitReply: (reply: string) => void
+}) {
   const [replyDraft, setReplyDraft] = useState("")
-  const [submittedReply, setSubmittedReply] = useState(review.reply ?? "")
+  const submittedAtLabel = new Date(review.createdAt).toLocaleDateString("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  })
 
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-3 border-b pb-4">
         <div className="flex items-start gap-3">
           <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-            {initialsFromName(review.buyerName)}
+            {review.reviewerInitials || initialsFromName(review.reviewerName)}
           </span>
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-foreground">{review.buyerName}</p>
-              <Badge variant="outline" className="h-5 text-[10px]">{review.orderId}</Badge>
+              <p className="text-sm font-medium text-foreground">{review.reviewerName}</p>
             </div>
-            <RatingStars rating={review.rating} />
+            <RatingStars rating={review.rating as ReviewRating} />
             <p className="text-xs text-muted-foreground">
-              {review.packageName} · {review.submittedAt}
+              Submitted on {submittedAtLabel}
             </p>
           </div>
         </div>
@@ -249,16 +318,8 @@ function ReviewCard({ review }: { review: CreatorReview }) {
         )}
       </CardHeader>
       <CardContent className="space-y-3 py-4">
-        <p className="text-sm text-foreground">{review.comment}</p>
-        {review.tags.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {review.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="h-5 text-[10px]">
-                {tag}
-              </Badge>
-            ))}
-          </div>
-        ) : null}
+        {review.title ? <p className="text-sm font-medium text-foreground">{review.title}</p> : null}
+        <p className="text-sm text-foreground">{review.body}</p>
 
         {submittedReply ? (
           <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
@@ -286,7 +347,7 @@ function ReviewCard({ review }: { review: CreatorReview }) {
                 size="sm"
                 disabled={replyDraft.trim().length === 0}
                 onClick={() => {
-                  setSubmittedReply(replyDraft.trim())
+                  onSubmitReply(replyDraft.trim())
                   setReplyDraft("")
                 }}
               >

@@ -42,7 +42,7 @@ export function SmartHero({
 
         <div className="flex flex-wrap items-center gap-2">
           {needsResponse > 0 ? (
-            <Button render={<Link href="/dashboard/creator/messages" />}>
+            <Button render={<Link href="/dashboard/creator/inbox" />}>
               <MessageSquareText className="size-4" />
               Reply to {needsResponse} buyer{needsResponse > 1 ? "s" : ""}
             </Button>

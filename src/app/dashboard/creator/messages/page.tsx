@@ -1,5 +1,5 @@
-import { CreatorMessagesView } from "@/features/creator/messages/creator-messages-view"
+import { InboxView } from "@/features/inbox/components/inbox-view"
 
 export default function CreatorMessagesPage() {
-  return <CreatorMessagesView />
+  return <InboxView role="creator" />
 }

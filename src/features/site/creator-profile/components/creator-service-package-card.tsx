@@ -1,4 +1,4 @@
-import { Check, Clock, PenLine, Sparkles } from "lucide-react"
+import { CircleCheckBig, Clock, PenLine, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
@@ -80,7 +80,7 @@ export function CreatorServicePackageCard({
           <ul className="mt-3 space-y-2">
             {pkg.includedItems.map((item) => (
               <li key={item} className="flex gap-2 text-sm text-foreground">
-                <Check className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-500" aria-hidden />
+                <CircleCheckBig className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-500" aria-hidden />
                 <span>{item}</span>
               </li>
             ))}

@@ -36,6 +36,14 @@ type BuyerOrderRow = {
   creator_profile_data: unknown | null
 }
 
+function mapBidStatusToOrderStatus(
+  status: string
+): OrderStatus {
+  if (status === "completed") return "completed"
+  if (status === "rejected") return "cancelled"
+  return "in_progress"
+}
+
 function isMissingOrdersTableError(error: unknown) {
   return (
     typeof error === "object" &&
@@ -54,6 +62,50 @@ async function fetchBuyerOrders(userId: string): Promise<BuyerOrderRow[]> {
   const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
   try {
     await client.connect()
+    const assignedBidResult = await client.query(
+      `select
+        ('bid-order-' || b.id::text) as id,
+        ('bid-' || b.id::text) as request_id,
+        b.assigned_creator_id as creator_id,
+        b.requester_id as buyer_id,
+        b.id::text as package_id,
+        b.title as package_title,
+        coalesce(nullif(regexp_replace(b.budget, '[^0-9.]', '', 'g'), ''), '0')::numeric::int as package_price,
+        b.token_count as tokens_label,
+        b.status,
+        b.updated_at as created_at,
+        jsonb_build_object(
+          'source', 'bid_post',
+          'bidId', b.id,
+          'description', b.description,
+          'skillsNeeded', b.skills_needed,
+          'duration', b.duration,
+          'isPriceNegotiable', b.is_price_negotiable
+        ) as request_snapshot,
+        p.profile_data as creator_profile_data
+      from public.bid_posts b
+      left join public.profiles p on p.id = b.assigned_creator_id
+      where b.requester_id = $1
+        and b.assigned_creator_id is not null`,
+      [userId]
+    )
+
+    const assignedBidOrders = (assignedBidResult.rows ?? []).map((row) => ({
+      id: String(row.id),
+      request_id: String(row.request_id),
+      creator_id: String(row.creator_id ?? ""),
+      buyer_id: String(row.buyer_id ?? ""),
+      package_id: String(row.package_id ?? ""),
+      package_title: String(row.package_title ?? "Bid assignment"),
+      package_price: Number(row.package_price ?? 0),
+      tokens_label: String(row.tokens_label ?? ""),
+      status: mapBidStatusToOrderStatus(String(row.status ?? "")),
+      payment_status: "unpaid" as PaymentStatus,
+      created_at: String(row.created_at ?? new Date().toISOString()),
+      request_snapshot: row.request_snapshot ?? null,
+      creator_profile_data: row.creator_profile_data ?? null,
+    })) as BuyerOrderRow[]
+
     try {
       const result = await client.query(
         `select
@@ -77,10 +129,15 @@ async function fetchBuyerOrders(userId: string): Promise<BuyerOrderRow[]> {
         [userId]
       )
 
-      return (result.rows ?? []) as BuyerOrderRow[]
+      const dbOrders = (result.rows ?? []) as BuyerOrderRow[]
+      return [...dbOrders, ...assignedBidOrders].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
     } catch (error) {
       if (isMissingOrdersTableError(error)) {
-        return []
+        return assignedBidOrders.sort(
+          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
       }
       throw error
     }

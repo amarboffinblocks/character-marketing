@@ -8,7 +8,7 @@ import {
   Activity,
   AlertCircle,
   CalendarClock,
-  Check,
+  CircleCheckBig,
   ChevronLeft,
   Eye,
   FolderSearch,
@@ -448,7 +448,7 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
         thread: thread.id,
         order: request.id,
       })
-      router.push(`/dashboard/creator/messages?${search.toString()}`)
+      router.push(`/dashboard/creator/inbox?${search.toString()}`)
     } catch (chatError) {
       setError(chatError instanceof Error ? chatError.message : "Unable to open buyer chat.")
     } finally {
@@ -505,9 +505,9 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/dashboard/creator/messages" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-9")}>
+            <Link href="/dashboard/creator/inbox" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-9")}>
               <CalendarClock className="size-4" />
-              Open messages
+              Open inbox
             </Link>
           </div>
         </div>
@@ -581,7 +581,7 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
         </div>
       </section>
 
-      <section className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+      <section className="mt-6 rounded-2xl border border-border bg-card shadow-sm">
         {filteredRequests.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 px-6 py-16 text-center">
             <span className="inline-flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary" aria-hidden>
@@ -597,7 +597,8 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
             </p>
           </div>
         ) : (
-          <Table className="table-fixed">
+          <div className="w-full overflow-x-auto">
+            <Table className="min-w-[980px] table-fixed">
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead className="w-[21%]">Buyer</TableHead>
@@ -613,12 +614,14 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
               {paginatedRequests.map((request) => {
                 const buyer = safeBuyerSummary(request.requester_profile_data)
                 const buyerName = buyer.displayName || "Buyer"
-                const canDecision = request.status === "pending"
                 const isAcceptUpdating =
                   updatingAction?.requestId === request.id && updatingAction.status === "accepted"
                 const isRejectUpdating =
                   updatingAction?.requestId === request.id && updatingAction.status === "rejected"
-                const isAnyUpdating = isAcceptUpdating || isRejectUpdating
+                const isAcceptDisabled =
+                  request.status === "accepted" || request.status === "processing" || request.status === "completed" || isAcceptUpdating
+                const isRejectDisabled =
+                  request.status === "rejected" || request.status === "processing" || request.status === "completed" || isRejectUpdating
                 const isOpeningChat = openingChatRequestId === request.id
                 const categories = getRequestCategories(request)
                 return (
@@ -691,16 +694,16 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
                             Preview
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-emerald-700 focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
-                            disabled={!canDecision || isAnyUpdating}
+                            className="text-emerald-700 font-semibold focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
+                            disabled={isAcceptDisabled}
                             onClick={() => void updateStatus(request.id, "accepted")}
                           >
-                            {isAcceptUpdating ? <LoaderCircle className="size-4 animate-spin" /> : <Check className="size-4" />}
+                            {isAcceptUpdating ? <LoaderCircle className="size-4 animate-spin" /> : <CircleCheckBig className="size-4" />}
                             Accept
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="text-rose-700 focus:bg-rose-100 focus:text-rose-800 dark:focus:bg-rose-500/20 dark:focus:text-rose-300"
-                            disabled={!canDecision || isAnyUpdating}
+                            className="text-rose-700 font-semibold focus:bg-rose-100 focus:text-rose-800 dark:focus:bg-rose-500/20 dark:focus:text-rose-300"
+                            disabled={isRejectDisabled}
                             onClick={() => void updateStatus(request.id, "rejected")}
                           >
                             {isRejectUpdating ? <LoaderCircle className="size-4 animate-spin" /> : <X className="size-4" />}
@@ -720,7 +723,8 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
                 )
               })}
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         )}
       </section>
       {filteredRequests.length > ORDERS_PER_PAGE ? (

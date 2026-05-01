@@ -265,8 +265,8 @@ export function CreatorChatPanel({
           {threadId ? (
             <p className="mt-2 text-[11px] text-muted-foreground">
               Continue full conversation in{" "}
-              <Link href={`/messages?thread=${encodeURIComponent(threadId)}`} className="underline">
-                Messages
+              <Link href={`/inbox?thread=${encodeURIComponent(threadId)}`} className="underline">
+                Inbox
               </Link>
               .
             </p>

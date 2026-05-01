@@ -25,6 +25,7 @@ import {
 } from "lucide-react"
 
 import Logo from "@/components/icons/logo"
+import { useInboxFeed } from "@/features/inbox/use-inbox-feed"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     DropdownMenu,
@@ -157,6 +158,8 @@ export function AppSidebar({
     const workspaceActiveHref = getActiveHref(pathname, workspaceGroup?.items ?? [])
     const [workspaceOpen, setWorkspaceOpen] = useState(Boolean(workspaceActiveHref))
     const accountBasePath = brandHref.startsWith("/dashboard/admin") ? "/dashboard/admin" : "/dashboard/creator"
+    const isCreatorSidebar = brandHref.startsWith("/dashboard/creator")
+    const { unreadCount: inboxUnreadCount } = useInboxFeed("creator", { enabled: isCreatorSidebar })
 
     const handleSignOut = async () => {
         if (isSigningOut) return
@@ -263,6 +266,11 @@ export function AppSidebar({
                                         const Icon = sidebarIcons[item.icon]
                                         const active = item.href === globalActiveHref
 
+                                        const resolvedBadge =
+                                            isCreatorSidebar && item.href === "/dashboard/creator/inbox"
+                                                ? (inboxUnreadCount > 0 ? String(inboxUnreadCount) : undefined)
+                                                : item.badge
+
                                         return (
                                             <SidebarMenuItem key={item.href}>
                                                 <SidebarMenuButton
@@ -274,7 +282,7 @@ export function AppSidebar({
                                                     <Icon />
                                                     <span>{item.title}</span>
                                                 </SidebarMenuButton>
-                                                {item.badge ? (
+                                                {resolvedBadge ? (
                                                     <SidebarMenuBadge
                                                         className={
                                                             active
@@ -282,7 +290,7 @@ export function AppSidebar({
                                                                 : "bg-sidebar-accent text-sidebar-accent-foreground"
                                                         }
                                                     >
-                                                        {item.badge}
+                                                        {resolvedBadge}
                                                     </SidebarMenuBadge>
                                                 ) : null}
                                             </SidebarMenuItem>

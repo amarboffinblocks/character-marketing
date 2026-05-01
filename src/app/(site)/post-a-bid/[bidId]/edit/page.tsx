@@ -2,42 +2,61 @@
 
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import { MoveLeft } from "lucide-react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { PostABidForm, type PostABidFormValues } from "@/features/site/bids/components/post-a-bid-form"
-import { getBidById } from "@/features/site/bids/data/bids-data"
+import type { BidItem } from "@/features/site/bids/types"
 import { cn } from "@/lib/utils"
 
 export default function EditPostABidPage() {
   const router = useRouter()
   const params = useParams<{ bidId: string }>()
-  const bid = getBidById(params.bidId)
+  const [bid, setBid] = useState<BidItem | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  function handleSubmit(values: PostABidFormValues) {
-    const lines = [
-      `Bid title: ${values.title}`,
-      `Duration: ${values.duration}`,
-      `Budget: ${values.budget}`,
-      `Token count: ${values.tokenCount || "Not provided"}`,
-      "",
-      "Requested assets:",
-      `- Character: ${values.character}`,
-      `- Persona: ${values.persona}`,
-      `- Lorebook: ${values.lorebook}`,
-      `- Background: ${values.background}`,
-      `- Avatar: ${values.avatar}`,
-      "",
-      `Skills needed: ${values.skillsNeeded}`,
-      `Price negotiable: ${values.isPriceNegotiable ? "Yes" : "No"}`,
-      "",
-      "Description:",
-      values.description,
-    ]
+  useEffect(() => {
+    let mounted = true
+    async function loadBid() {
+      setLoading(true)
+      try {
+        const response = await fetch(`/api/site/bids/${encodeURIComponent(params.bidId)}`, { cache: "no-store" })
+        const data = (await response.json()) as { bid?: BidItem }
+        if (!response.ok || !data.bid) {
+          if (mounted) setBid(null)
+          return
+        }
+        if (mounted) setBid(data.bid)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    if (params.bidId) {
+      void loadBid()
+    }
+    return () => {
+      mounted = false
+    }
+  }, [params.bidId])
 
-    const href = `mailto:support@character.market?subject=${encodeURIComponent(`Edit Bid: ${values.title}`)}&body=${encodeURIComponent(lines.join("\n"))}`
-    window.location.href = href
+  async function handleSubmit(values: PostABidFormValues) {
+    const response = await fetch(`/api/site/bids/${encodeURIComponent(params.bidId)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(values),
+    })
+    if (!response.ok) return
     router.push("/post-a-bid")
+    router.refresh()
+  }
+
+  if (loading) {
+    return (
+      <main className="mx-auto w-full max-w-7xl space-y-4 px-4 pt-24 pb-8 sm:px-6 lg:px-8">
+        <p className="text-sm text-muted-foreground">Loading bid...</p>
+      </main>
+    )
   }
 
   if (!bid) {

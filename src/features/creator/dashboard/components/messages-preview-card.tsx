@@ -34,7 +34,7 @@ export function MessagesPreviewCard({ items }: MessagesPreviewCardProps) {
           <CardDescription>Buyer threads needing your attention.</CardDescription>
         </div>
         <Link
-          href="/dashboard/creator/messages"
+          href="/dashboard/creator/inbox"
           className="text-xs font-medium text-primary hover:underline"
         >
           Open inbox
@@ -45,7 +45,7 @@ export function MessagesPreviewCard({ items }: MessagesPreviewCardProps) {
           {items.map((item) => (
             <li key={item.id}>
               <Link
-                href="/dashboard/creator/messages"
+                href="/dashboard/creator/inbox"
                 className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-accent/30"
               >
                 <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">

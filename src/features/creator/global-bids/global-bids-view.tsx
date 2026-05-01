@@ -1,163 +1,40 @@
 "use client"
 
-import Link from "next/link"
-import { useMemo, useState } from "react"
-import { Filter, MessageCircle, Heart } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { BriefcaseBusiness, CircleCheckBig, CheckCircle2, LoaderCircle, MessageCircle, MoreVertical, Search, XCircle } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { openOrCreateThread } from "@/features/messaging/api"
 import { cn } from "@/lib/utils"
 
 type GlobalBid = {
   id: string
-  title: string
-  postedAgo: string
-  rate: string
-  experience: "Entry" | "Intermediate" | "Expert"
   duration: string
-  hours: string
+  budget: string
+  skillsNeeded: string
   description: string
-  skills: string[]
-  paymentVerified: boolean
-  rating: string
-  spent: string
-  location: string
-  proposals: string
-  persona?: {
-    tone: string
-    traits: string[]
-  }
-  lorebook?: {
-    universe: string
-    background: string
-  }
-  avatar?: string
-  background?: string
+  title: string
+  requesterId: string
+  requesterName: string
+  requesterEmail: string
+  status: string
+  isPriceNegotiable: boolean
+  createdAt: string
+  interestedCount: number
+  creatorInterestStatus: string | null
+  isOwnBid: boolean
 }
-
-const globalBids: GlobalBid[] = [
-  {
-    id: "cm-4",
-    title: "Kael Draven – Cyberpunk Fixer & Underworld Strategist",
-    postedAgo: "Added 5 hours ago",
-    rate: "$60-$90",
-    experience: "Expert",
-    duration: "Persistent Character",
-    hours: "20-30 interactions/week",
-    description:
-      "Kael Draven is a sharp-minded fixer operating in a neon-lit cyberpunk city. He helps users navigate high-stakes decisions, underground deals, and strategic planning through immersive roleplay and calculated thinking.",
-
-    skills: [
-      "Cyberpunk Worldbuilding",
-      "Strategic Thinking",
-      "Roleplay",
-      "Character Persona",
-      "Decision Making"
-    ],
-
-    paymentVerified: true,
-    rating: "4.9",
-    spent: "12K+ interactions",
-    location: "Neo-Verse City",
-    proposals: "20 to 25 users engaged",
-
-    persona: {
-      tone: "Calm, calculated, slightly intimidating",
-      traits: ["Strategic", "Cold", "Intelligent", "Resourceful"],
-    },
-
-    lorebook: {
-      universe: "Neo-Verse",
-      background:
-        "A legendary fixer known for solving impossible problems in the underground network of a futuristic dystopian city.",
-    },
-
-    avatar: "kael-draven.png",
-    background: "cyberpunk-city"
-  },
-  {
-    id: "cm-5",
-    title: "Luna Aetheris – Celestial Guide & Emotional Companion",
-    postedAgo: "Added 2 hours ago",
-    rate: "$30-$60",
-    experience: "Intermediate",
-    duration: "Persistent Character",
-    hours: "15-25 interactions/week",
-    description:
-      "Luna Aetheris is a serene celestial being who offers emotional guidance, reflective conversations, and calming interactions. Designed for users seeking comfort, clarity, and mindful dialogue.",
-
-    skills: [
-      "Emotional Support",
-      "Guided Conversations",
-      "Mindfulness",
-      "Character Persona",
-      "Companion Roleplay"
-    ],
-
-    paymentVerified: true,
-    rating: "4.7",
-    spent: "8K+ interactions",
-    location: "Astral Plane",
-    proposals: "25 to 30 users engaged",
-
-    persona: {
-      tone: "Soft, calming, empathetic",
-      traits: ["Gentle", "Wise", "Supportive", "Intuitive"],
-    },
-
-    lorebook: {
-      universe: "Celestial Realm",
-      background:
-        "A cosmic entity who observes human emotions and guides lost souls toward inner peace and understanding.",
-    },
-
-    avatar: "luna-aetheris.png",
-    background: "celestial-sky"
-  },
-  {
-    id: "cm-3",
-    title: "Nyx Shadowbane – Dark Fantasy Lorekeeper Character",
-    postedAgo: "Added 8 hours ago",
-    rate: "$40-$70",
-    experience: "Intermediate",
-    duration: "Persistent Character",
-    hours: "10-20 interactions/week",
-    description:
-      "Nyx Shadowbane is a mysterious lorekeeper from a dark fantasy universe, designed for immersive AI roleplay. This character comes with a deeply structured lorebook, consistent personality, and rich narrative depth for long-term storytelling.",
-
-    skills: [
-      "Lorebooks",
-      "Worldbuilding",
-      "Fantasy Roleplay",
-      "Character Persona",
-      "Narrative Design"
-    ],
-
-    paymentVerified: true,
-    rating: "4.8",
-    spent: "5K+ interactions",
-    location: "Shadowfall Realm",
-    proposals: "15 to 20 users engaged",
-
-    // 👇 added but structure preserved (optional extension)
-    persona: {
-      tone: "Dark, poetic, immersive",
-      traits: ["Mysterious", "Wise", "Cryptic"],
-    },
-
-    lorebook: {
-      universe: "Shadowfall Realm",
-      background:
-        "An ancient entity who preserves forbidden knowledge and guides travelers through forgotten histories.",
-    },
-
-    avatar: "nyx-shadowbane.png",
-    background: "dark-fantasy-castle"
-  }
-]
 
 const bidTabs = [
   { id: "best-matches", label: "Best Matches" },
@@ -165,29 +42,121 @@ const bidTabs = [
   { id: "saved-jobs", label: "Saved Jobs" },
 ] as const
 
+function formatAddedAgo(value: string) {
+  const createdAt = new Date(value)
+  if (Number.isNaN(createdAt.getTime())) return "Added recently"
+  const diffMs = Date.now() - createdAt.getTime()
+  const diffHours = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60)))
+  if (diffHours < 24) return `Added ${diffHours} hour${diffHours === 1 ? "" : "s"} ago`
+  const diffDays = Math.floor(diffHours / 24)
+  return `Added ${diffDays} day${diffDays === 1 ? "" : "s"} ago`
+}
+
+function formatBudget(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return "$0"
+  return trimmed.startsWith("$") ? trimmed : `$${trimmed}`
+}
+
+function formatDuration(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return "—"
+  return /day/i.test(trimmed) ? trimmed : `${trimmed} days`
+}
+
 export function GlobalBidsView() {
+  const router = useRouter()
+  const [bids, setBids] = useState<GlobalBid[]>([])
   const [activeTab, setActiveTab] = useState<(typeof bidTabs)[number]["id"]>("best-matches")
   const [query, setQuery] = useState("")
   const [sortBy, setSortBy] = useState("relevance")
-  const [maxBudget, setMaxBudget] = useState(125)
-  const [paymentVerifiedOnly, setPaymentVerifiedOnly] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+  const [openingChatBidId, setOpeningChatBidId] = useState<string | null>(null)
+  const [acceptingBidId, setAcceptingBidId] = useState<string | null>(null)
 
   const filteredBids = useMemo(() => {
     const q = query.trim().toLowerCase()
 
-    return globalBids.filter((bid) => {
-      const topRate = Number(bid.rate.split("-")[1]?.replace("$", "") ?? "0")
+    const bySearch = bids.filter((bid) => {
       const matchesQuery =
         q.length === 0 ||
         bid.title.toLowerCase().includes(q) ||
         bid.description.toLowerCase().includes(q) ||
-        bid.skills.some((skill) => skill.toLowerCase().includes(q))
-      const matchesBudget = topRate <= maxBudget
-      const matchesPayment = paymentVerifiedOnly ? bid.paymentVerified : true
-
-      return matchesQuery && matchesBudget && matchesPayment
+        bid.skillsNeeded.toLowerCase().includes(q) ||
+        bid.requesterName.toLowerCase().includes(q)
+      return matchesQuery
     })
-  }, [maxBudget, paymentVerifiedOnly, query])
+
+    return [...bySearch].sort((a, b) => {
+      if (sortBy === "latest") {
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      }
+      return a.title.localeCompare(b.title)
+    })
+  }, [bids, query, sortBy])
+
+  useEffect(() => {
+    let mounted = true
+    async function loadGlobalBids() {
+      setLoading(true)
+      setError("")
+      try {
+        const response = await fetch("/api/creator/global-bids", { cache: "no-store" })
+        const data = (await response.json()) as { bids?: GlobalBid[]; error?: string }
+        if (!response.ok) throw new Error(data.error || "Unable to load global bids.")
+        if (mounted) setBids(data.bids ?? [])
+      } catch (loadError) {
+        if (mounted) setError(loadError instanceof Error ? loadError.message : "Unable to load global bids.")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    void loadGlobalBids()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  async function handleOpenClientChat(bid: GlobalBid) {
+    setOpeningChatBidId(bid.id)
+    setError("")
+    try {
+      const thread = await openOrCreateThread({
+        orderId: `global-bid:${bid.id}`,
+        otherUserId: bid.requesterId,
+        otherUserName: bid.requesterName,
+      })
+      router.push(`/dashboard/creator/inbox?thread=${encodeURIComponent(thread.id)}`)
+    } catch (chatError) {
+      setError(chatError instanceof Error ? chatError.message : "Unable to open chat.")
+    } finally {
+      setOpeningChatBidId(null)
+    }
+  }
+
+  async function handleAcceptBid(bidId: string) {
+    setAcceptingBidId(bidId)
+    setError("")
+    try {
+      const response = await fetch(`/api/creator/global-bids/${encodeURIComponent(bidId)}/accept`, {
+        method: "POST",
+      })
+      const data = (await response.json()) as { error?: string }
+      if (!response.ok) throw new Error(data.error || "Unable to accept bid.")
+      setBids((current) =>
+        current.map((bid) =>
+          bid.id === bidId
+            ? { ...bid, creatorInterestStatus: "interested", interestedCount: bid.interestedCount + 1 }
+            : bid
+        )
+      )
+    } catch (acceptError) {
+      setError(acceptError instanceof Error ? acceptError.message : "Unable to accept bid.")
+    } finally {
+      setAcceptingBidId(null)
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -202,76 +171,23 @@ export function GlobalBidsView() {
                 </TabsTrigger>
               ))}
             </TabsList>
-            <button type="button" className={cn(buttonVariants({ variant: "outline" }), "h-8 border-green-700 text-green-700")}>
-              <Filter className="size-4" />
-              Filters
-            </button>
+            <p className="text-xs text-muted-foreground">Database records only</p>
           </div>
         </Tabs>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[280px_1fr] lg:items-start">
-        <aside className="rounded-xl border border-border/70 bg-card p-5">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Filters</h2>
-            <button
-              type="button"
-              className="text-xs font-medium text-primary hover:underline"
-              onClick={() => {
-                setQuery("")
-                setSortBy("relevance")
-                setMaxBudget(125)
-                setPaymentVerifiedOnly(false)
-              }}
-            >
-              Clear all
-            </button>
-          </div>
-          <div className="mt-6 space-y-7">
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Budget range</h3>
-              <div className="mt-4">
-                <input
-                  type="range"
-                  min={25}
-                  max={200}
-                  step={5}
-                  value={maxBudget}
-                  onChange={(event) => setMaxBudget(Number(event.currentTarget.value))}
-                  className="w-full accent-primary"
-                  aria-label="Maximum hourly budget"
-                />
-                <div className="mt-1.5 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>$25/hr</span>
-                  <span className="font-medium text-foreground">Up to ${maxBudget}/hr</span>
-                </div>
-              </div>
-            </section>
-            <section>
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quick filters</h3>
-              <div className="mt-3 space-y-2.5">
-                <label className="flex cursor-pointer items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="size-4 rounded border-border"
-                    checked={paymentVerifiedOnly}
-                    onChange={(event) => setPaymentVerifiedOnly(event.currentTarget.checked)}
-                  />
-                  Payment verified only
-                </label>
-              </div>
-            </section>
-          </div>
-        </aside>
-
-        <section className="space-y-4">
+      <section className="space-y-4">
           <div className="rounded-xl border border-border/70 bg-card p-4">
             <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search jobs, skills, clients..."
+                  className="pl-9"
               />
+              </div>
               <Select value={sortBy} onValueChange={(value) => setSortBy(value ?? "relevance")}>
                 <SelectTrigger>
                   <SelectValue />
@@ -285,55 +201,130 @@ export function GlobalBidsView() {
             <p className="mt-3 text-sm text-muted-foreground">Showing {filteredBids.length} jobs</p>
           </div>
 
+        {error ? (
+          <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-6 text-sm text-destructive">
+            {error}
+          </div>
+        ) : loading ? (
+          <div className="rounded-xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">Loading global bids...</div>
+        ) : filteredBids.length === 0 ? (
+          <div className="rounded-xl border border-border/70 bg-card p-6 text-sm text-muted-foreground">No global bids found.</div>
+        ) : (
           <ul className="space-y-3">
             {filteredBids.map((bid) => (
               <li key={bid.id} className="rounded-xl border border-border/70 bg-card p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="space-y-3">
-                    <p className="text-sm font-semibold text-primary/80">{bid.postedAgo}</p>
-                    <h2 className="text-xl font-semibold text-foreground">{bid.title}</h2>
-                    <p className="text-sm  dark:text-violet-300/80">
-                      Hourly: {bid.rate} - {bid.experience} - Est. Time: {bid.duration}, {bid.hours}
-                    </p>
-                    <p className="text-sm leading-6 text-foreground/90">{bid.description}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {bid.skills.map((skill) => (
-                        <Badge
-                          key={skill}
-                          variant="secondary"
-                          className="rounded-full bg-primary/20 text-black/70 dark:bg-sky-900/30 dark:text-sky-200"
-                        >
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                      <span className="text-emerald-700 font-semibold dark:text-emerald-300">
-                        {bid.paymentVerified ? "Payment verified" : "Payment unverified"}
+                    <p className="text-sm font-semibold text-primary/80">{formatAddedAgo(bid.createdAt)}</p>
+                    <h2 className="flex items-start gap-4 text-xl font-semibold text-foreground">
+                      <span className="mt-0.5 inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <BriefcaseBusiness className="size-5" />
                       </span>
-                      <span className="text-amber-700 font-semibold dark:text-amber-300">{bid.rating}</span>
-                      <span className="text-indigo-700 font-semibold dark:text-indigo-300">{bid.spent}</span>
-                      <span className="text-cyan-700 font-semibold dark:text-cyan-300">{bid.location}</span>
+                      <span>{bid.title}</span>
+                    </h2>
+                    <div className="space-y-3 pl-12">
+                      <p className="text-sm flex gap-2 dark:text-violet-300/80">
+                        Budget: {formatBudget(bid.budget)} -{" "}
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 font-medium",
+                            bid.isPriceNegotiable
+                              ? "text-emerald-700 dark:text-emerald-300"
+                              : "text-red-700 dark:text-red-300"
+                          )}
+                        >
+                          {bid.isPriceNegotiable ? (
+                            <CheckCircle2 className="size-4" />
+                          ) : (
+                            <XCircle className="size-4" />
+                          )}
+                          {bid.isPriceNegotiable ? "Negotiable" : "Non Negotiable"}
+                        </span>
+                        {" "} - Est. Time: {formatDuration(bid.duration)}
+                      </p>
+                      <p className="line-clamp-3 text-sm leading-6 text-foreground/90">{bid.description}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {bid.skillsNeeded
+                          .split(",")
+                          .map((skill) => skill.trim())
+                          .filter(Boolean)
+                          .map((skill) => (
+                          <Badge
+                            key={skill}
+                            variant="secondary"
+                            className="rounded-full bg-primary/20 text-primary/70 dark:bg-sky-900/30 dark:text-sky-200"
+                          >
+                            {skill}
+                          </Badge>
+                          ))}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                        <span className="text-foreground font-medium">{bid.requesterName}</span>
+                        <span>{bid.requesterEmail || "No email shared"}</span>
+                        <span className="text-indigo-700 font-medium text-xs dark:text-indigo-300">
+                          Applicants: {bid.interestedCount}
+                        </span>
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Status:{" "}
+                        <span
+                          className={cn(
+                            bid.status === "rejected" || bid.status === "completed"
+                              ? "text-rose-700 dark:text-rose-300"
+                              : "text-emerald-700 dark:text-emerald-300"
+                          )}
+                        >
+                          {bid.status === "rejected" || bid.status === "completed" ? "Closed" : "Open"}
+                        </span>
+                      </p>
                     </div>
-                    <p className="text-sm text-rose-700 font-semibold dark:text-rose-300">Proposals: {bid.proposals}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Link
-                      href="/dashboard/creator/messages"
-                      className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}
-                    >
-                      <MessageCircle className="size-4" />
-                    </Link>
-                    <button type="button" className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-8")}>
-                      <Heart className="size-4" />
-                    </button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button className="bg-primary/10 text-primary/70 hover:bg-primary/20 hover:text-primary" size="icon-sm" aria-label="Bid actions">
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          disabled={openingChatBidId === bid.id}
+                          onClick={() => void handleOpenClientChat(bid)}
+                        >
+                          {openingChatBidId === bid.id ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                          ) : (
+                            <MessageCircle className="size-4" />
+                          )}
+                          Chat with client
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-emerald-700 focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
+                          disabled={
+                            bid.isOwnBid ||
+                            acceptingBidId === bid.id ||
+                            bid.creatorInterestStatus === "interested"
+                          }
+                          onClick={() => void handleAcceptBid(bid.id)}
+                        >
+                          {acceptingBidId === bid.id ? (
+                            <LoaderCircle className="size-4 animate-spin" />
+                          ) : (
+                            <CircleCheckBig className="size-4" />
+                          )}
+                          Accept
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               </li>
             ))}
           </ul>
-        </section>
-      </div>
+        )}
+      </section>
     </div>
   )
 }

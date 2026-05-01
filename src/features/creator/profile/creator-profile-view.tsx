@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
+  AlertTriangle,
   BadgeCheck,
   Camera,
   CheckCircle2,
@@ -20,6 +21,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  Upload,
   UserRound,
 } from "lucide-react"
 
@@ -51,13 +53,16 @@ import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/sect
 import type { SignInAllowedRole } from "@/lib/auth-roles"
 import { cn } from "@/lib/utils"
 
-type ProfileTab = "basic" | "professional" | "links"
+type ProfileTab = "basic" | "professional" | "portfolio" | "links"
 
 const profileTabs: SectionTabItem<ProfileTab>[] = [
   { value: "basic", label: "Basic info", icon: UserRound },
   { value: "professional", label: "Professional", icon: BadgeCheck },
+  { value: "portfolio", label: "Portfolio", icon: Images },
   { value: "links", label: "Links & visibility", icon: LinkIcon },
 ]
+
+const MARKETPLACE_MIN_COMPLETION_PERCENT = 80
 
 function initialsFromName(name: string) {
   const trimmed = name.trim()
@@ -87,8 +92,39 @@ function normalizeCreatorProfileForm(data?: Partial<CreatorProfileForm> | null):
   return {
     ...defaultProfileForm,
     ...source,
+    portfolio: normalizePortfolio(source.portfolio),
     email: resolvedEmail,
   }
+}
+
+function normalizePortfolio(value: unknown): PortfolioItem[] {
+  if (!Array.isArray(value)) return []
+
+  return value
+    .map((item, index) => {
+      if (!item || typeof item !== "object") return null
+      const record = item as Record<string, unknown>
+      const rawSkills = Array.isArray(record.skills) ? record.skills : []
+      return {
+        id:
+          typeof record.id === "string" && record.id.trim().length > 0
+            ? record.id
+            : `portfolio-${index}`,
+        title: typeof record.title === "string" ? record.title : "",
+        type:
+          record.type === "character" ||
+          record.type === "persona" ||
+          record.type === "lorebook" ||
+          record.type === "avatar" ||
+          record.type === "background"
+            ? record.type
+            : "character",
+        skills: rawSkills.filter((skill): skill is string => typeof skill === "string"),
+        imageUrl: typeof record.imageUrl === "string" ? record.imageUrl : "",
+        summary: typeof record.summary === "string" ? record.summary : "",
+      } satisfies PortfolioItem
+    })
+    .filter((item): item is PortfolioItem => item !== null)
 }
 
 export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedRole }) {
@@ -99,6 +135,7 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isUploadingBanner, setIsUploadingBanner] = useState(false)
+  const [uploadingPortfolioItemId, setUploadingPortfolioItemId] = useState<string | null>(null)
   const [isProfileLoading, setIsProfileLoading] = useState(true)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [tab, setTab] = useState<ProfileTab>("basic")
@@ -287,6 +324,41 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
     }
   }
 
+  async function uploadPortfolioImage(itemId: string, file: File) {
+    setUploadingPortfolioItemId(itemId)
+    setSaveError(null)
+    try {
+      const payload = new FormData()
+      payload.append("kind", "portfolio")
+      payload.append("file", file)
+
+      const response = await fetch("/api/profile/upload", {
+        method: "POST",
+        body: payload,
+      })
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string; details?: string }
+        setSaveError(result.details ?? result.error ?? "Upload failed")
+        return
+      }
+
+      const result = (await response.json()) as { url?: string }
+      const uploadedUrl = typeof result.url === "string" ? result.url : ""
+      if (!uploadedUrl) return
+
+      const nextForm: CreatorProfileForm = {
+        ...form,
+        portfolio: form.portfolio.map((item) =>
+          item.id === itemId ? { ...item, imageUrl: uploadedUrl } : item
+        ),
+      }
+      setForm(nextForm)
+      await persistProfile(nextForm)
+    } finally {
+      setUploadingPortfolioItemId(null)
+    }
+  }
+
   function addSkill() {
     const nextSkills = skillInput
       .split(",")
@@ -343,6 +415,15 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
         onUploadBanner={(file) => void uploadProfileImage("banner", file)}
         onSave={saveProfile}
       />
+      {effectiveRole === "creator" && completion.percent < MARKETPLACE_MIN_COMPLETION_PERCENT ? (
+        <div className="inline-flex max-w-2xl items-start gap-2 rounded-lg border border-amber-300/70 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-400/40 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" />
+          <span>
+            To list your profile on marketplace, first complete your profile to at least{" "}
+            {MARKETPLACE_MIN_COMPLETION_PERCENT}%.
+          </span>
+        </div>
+      ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-4 xl:sticky xl:top-6 xl:h-max">
@@ -371,6 +452,15 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
               onAddLanguage={addLanguage}
               onSkillInputKeyDown={handleSkillInputKeyDown}
               onLanguageInputKeyDown={handleLanguageInputKeyDown}
+            />
+          ) : null}
+
+          {activeTab === "portfolio" ? (
+            <PortfolioSection
+              form={form}
+              updateField={updateField}
+              uploadingPortfolioItemId={uploadingPortfolioItemId}
+              onUploadPortfolioImage={(itemId, file) => void uploadPortfolioImage(itemId, file)}
             />
           ) : null}
 
@@ -542,6 +632,7 @@ function ProfileHero({
             <p className="max-w-2xl text-sm text-foreground/80">
               {fallback(form.tagline, "Add a short tagline that describes what you offer.")}
             </p>
+           
             <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
               <Badge variant="secondary" className="bg-primary/15 text-primary">
                 {completionPercent}% complete
@@ -685,7 +776,6 @@ function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
     { label: "Language", done: form.languages.length >= 1 },
     { label: "3+ portfolio items", done: form.portfolio.length >= 3 },
     { label: "Social link", done: form.socialLinks.length >= 1 },
-    { label: "Policies written", done: form.revisionPolicy.trim().length > 20 },
   ]
 
   return (
@@ -848,16 +938,21 @@ function ProfessionalSection({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {form.skills.map((skill) => (
-              <button
+              <Badge
                 key={skill}
-                type="button"
-                onClick={() =>
-                  updateField("skills", form.skills.filter((item) => item !== skill))
+                variant="outline"
+                className="cursor-pointer text-primary/80 bg-primary/10 hover:bg-muted"
+                render={
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateField("skills", form.skills.filter((item) => item !== skill))
+                    }
+                  />
                 }
-                className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
               >
                 {skill} ×
-              </button>
+              </Badge>
             ))}
           </div>
         </div>
@@ -881,16 +976,21 @@ function ProfessionalSection({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {form.languages.map((language) => (
-              <button
+              <Badge
                 key={language}
-                type="button"
-                onClick={() =>
-                  updateField("languages", form.languages.filter((item) => item !== language))
+                variant="outline"
+                className="cursor-pointer text-primary/80 bg-primary/10 hover:bg-muted"
+                render={
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateField("languages", form.languages.filter((item) => item !== language))
+                    }
+                  />
                 }
-                className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground hover:bg-muted"
               >
                 {language} ×
-              </button>
+              </Badge>
             ))}
           </div>
         </div>
@@ -914,142 +1014,198 @@ function MetricTile({ label, value }: { label: string; value: string }) {
   )
 }
 
-// function PortfolioSection({
-//   form,
-//   updateField,
-// }: {
-//   form: CreatorProfileForm
-//   updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
-// }) {
-//   return (
-//     <Card>
-//       <CardHeader className="flex-row items-start justify-between border-b pb-4">
-//         <div>
-//           <CardTitle>Portfolio highlights</CardTitle>
-//           <CardDescription>Showcase your strongest recent work.</CardDescription>
-//         </div>
-//         <Button
-//           variant="outline"
-//           size="sm"
-//           onClick={() =>
-//             updateField("portfolio", [
-//               ...form.portfolio,
-//               {
-//                 id: `port-${crypto.randomUUID()}`,
-//                 title: "",
-//                 type: "character",
-//                 imageUrl: "",
-//                 summary: "",
-//               },
-//             ])
-//           }
-//         >
-//           <Plus className="size-3.5" />
-//           Add item
-//         </Button>
-//       </CardHeader>
-//       <CardContent className="py-4">
-//         {form.portfolio.length === 0 ? (
-//           <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-//             Add portfolio items to showcase your work for buyers.
-//           </div>
-//         ) : (
-//           <div className="grid gap-3 md:grid-cols-2">
-//             {form.portfolio.map((item) => (
-//               <PortfolioItemEditor
-//                 key={item.id}
-//                 item={item}
-//                 onChange={(updated) =>
-//                   updateField(
-//                     "portfolio",
-//                     form.portfolio.map((port) => (port.id === item.id ? updated : port))
-//                   )
-//                 }
-//                 onRemove={() =>
-//                   updateField(
-//                     "portfolio",
-//                     form.portfolio.filter((port) => port.id !== item.id)
-//                   )
-//                 }
-//               />
-//             ))}
-//           </div>
-//         )}
-//       </CardContent>
-//     </Card>
-//   )
-// }
+function PortfolioSection({
+  form,
+  updateField,
+  uploadingPortfolioItemId,
+  onUploadPortfolioImage,
+}: {
+  form: CreatorProfileForm
+  updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
+  uploadingPortfolioItemId: string | null
+  onUploadPortfolioImage: (itemId: string, file: File) => void
+}) {
+  return (
+    <Card>
+      <div className="space-y-2 h-fit  flex justify-between flex-1 px-4">
+        <div>
+          <CardTitle>Portfolio</CardTitle>
+          <CardDescription>Add title, category, skills, optional description, and one image.</CardDescription>
+        </div>
+        <Button
+          size="sm"
+          onClick={() =>
+            updateField("portfolio", [
+              ...form.portfolio,
+              {
+                id: `port-${crypto.randomUUID()}`,
+                title: "",
+                type: "character",
+                skills: [],
+                imageUrl: "",
+                summary: "",
+              },
+            ])
+          }
+        >
+          <Plus className="size-3.5" />
+          Add item
+        </Button>
+      </div>
+      <CardContent className="py-4">
+        {form.portfolio.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
+            No portfolio yet. Add at least one item to showcase your work.
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {form.portfolio.map((item) => (
+              <PortfolioItemEditor
+                key={item.id}
+                item={item}
+                isUploadingImage={uploadingPortfolioItemId === item.id}
+                onUploadImage={(file) => onUploadPortfolioImage(item.id, file)}
+                onChange={(updated) =>
+                  updateField(
+                    "portfolio",
+                    form.portfolio.map((port) => (port.id === item.id ? updated : port))
+                  )
+                }
+                onRemove={() =>
+                  updateField(
+                    "portfolio",
+                    form.portfolio.filter((port) => port.id !== item.id)
+                  )
+                }
+              />
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
-// function PortfolioItemEditor({
-//   item,
-//   onChange,
-//   onRemove,
-// }: {
-//   item: PortfolioItem
-//   onChange: (updated: PortfolioItem) => void
-//   onRemove: () => void
-// }) {
-//   return (
-//     <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
-//       <div className="relative aspect-video bg-muted">
-//         {item.imageUrl ? (
-//           // eslint-disable-next-line @next/next/no-img-element
-//           <img src={item.imageUrl} alt={item.title || "Portfolio item"} className="h-full w-full object-cover" />
-//         ) : (
-//           <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
-//             <ImageLucide className="mr-1.5 size-4" />
-//             Preview image
-//           </div>
-//         )}
-//         <Button
-//           type="button"
-//           variant="ghost"
-//           size="icon-sm"
-//           onClick={onRemove}
-//           aria-label="Remove portfolio item"
-//           className="absolute top-2 right-2 bg-background/80 hover:bg-background"
-//         >
-//           <Trash2 className="size-3.5" />
-//         </Button>
-//       </div>
-//       <div className="space-y-2 p-3">
-//         <Input
-//           value={item.title}
-//           onChange={(event) => onChange({ ...item, title: event.target.value })}
-//           placeholder="Portfolio title"
-//         />
-//         <div className="grid grid-cols-2 gap-2">
-//           <Select
-//             value={item.type}
-//             onValueChange={(value) => onChange({ ...item, type: value as PortfolioType })}
-//           >
-//             <SelectTrigger>
-//               <SelectValue />
-//             </SelectTrigger>
-//             <SelectContent>
-//               <SelectItem value="character">Character</SelectItem>
-//               <SelectItem value="persona">Persona</SelectItem>
-//               <SelectItem value="lorebook">Lorebook</SelectItem>
-//               <SelectItem value="avatar">Avatar</SelectItem>
-//               <SelectItem value="background">Background</SelectItem>
-//             </SelectContent>
-//           </Select>
-//           <Input
-//             value={item.imageUrl}
-//             onChange={(event) => onChange({ ...item, imageUrl: event.target.value })}
-//             placeholder="Image URL"
-//           />
-//         </div>
-//         <Textarea
-//           value={item.summary}
-//           onChange={(event) => onChange({ ...item, summary: event.target.value })}
-//           placeholder="Short portfolio context"
-//           className="min-h-16"
-//         />
-//       </div>
-//     </div>
-//   )
-// }
+function PortfolioItemEditor({
+  item,
+  isUploadingImage,
+  onUploadImage,
+  onChange,
+  onRemove,
+}: {
+  item: PortfolioItem
+  isUploadingImage: boolean
+  onUploadImage: (file: File) => void
+  onChange: (updated: PortfolioItem) => void
+  onRemove: () => void
+}) {
+  const imageInputRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border/70 bg-card">
+      <div className="relative aspect-video bg-muted">
+        {item.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={item.imageUrl} alt={item.title || "Portfolio item"} className="h-full w-full object-cover" />
+        ) : (
+          <div className="flex h-full items-center justify-center text-xs text-muted-foreground">
+            <ImageLucide className="mr-1.5 size-4" />
+            One image preview
+          </div>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          onClick={onRemove}
+          aria-label="Remove portfolio item"
+          className="absolute right-2 top-2 bg-background/80 hover:bg-background"
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </div>
+      <div className="space-y-3 p-3">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Title</label>
+          <Input
+            value={item.title}
+            onChange={(event) => onChange({ ...item, title: event.target.value })}
+            placeholder="Portfolio title"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Category</label>
+            <Select
+              value={item.type}
+              onValueChange={(value) => onChange({ ...item, type: value as PortfolioType })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="character">Character</SelectItem>
+                <SelectItem value="persona">Persona</SelectItem>
+                <SelectItem value="lorebook">Lorebook</SelectItem>
+                <SelectItem value="avatar">Avatar</SelectItem>
+                <SelectItem value="background">Background</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Image (single)</label>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full h-10 text-gray-500 justify-start"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={isUploadingImage}
+            >
+              <Upload className="size-3" />
+              {isUploadingImage ? "Uploading image..." : item.imageUrl ? "Replace image" : "Upload image"}
+            </Button>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) onUploadImage(file)
+                event.currentTarget.value = ""
+              }}
+            />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Skills (comma separated)</label>
+          <Input
+            value={item.skills.join(", ")}
+            onChange={(event) =>
+              onChange({
+                ...item,
+                skills: event.target.value
+                  .split(",")
+                  .map((skill) => skill.trim())
+                  .filter(Boolean),
+              })
+            }
+            placeholder="Storytelling, Anime, Worldbuilding"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Description (optional)</label>
+          <Textarea
+            value={item.summary}
+            onChange={(event) => onChange({ ...item, summary: event.target.value })}
+            placeholder="Short description of this portfolio item"
+            className="min-h-16"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // function PoliciesSection({
 //   form,

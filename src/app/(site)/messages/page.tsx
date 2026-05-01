@@ -1,9 +1,5 @@
-import { CreatorMessagesView } from "@/features/creator/messages/creator-messages-view"
+import { InboxView } from "@/features/inbox/components/inbox-view"
 
 export default function SiteMessagesPage() {
-  return (
-    <main className="mx-auto w-full max-w-7xl pt-24 pb-8 ">
-      <CreatorMessagesView viewerRole="buyer" />
-    </main>
-  )
+  return <InboxView role="buyer" />
 }
