@@ -275,7 +275,7 @@ export async function replaceOrderDeliverables(input: {
       throw new Error("Order not found.")
     }
 
-    if (order.payment_status !== "pending") {
+    if (order.payment_status !== "pending" && order.payment_status !== "paid") {
       throw new Error("Order must be funded in escrow before delivery.")
     }
 
