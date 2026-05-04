@@ -2,6 +2,7 @@ import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
 import { AppSidebar } from "@/components/layout/app-sidebar"
+import { DashboardHeader } from "@/components/layout/dashboard-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { computeCompletion, defaultProfileForm, type CreatorProfileForm } from "@/features/creator/profile/profile-data"
 import { creatorSidebarGroups } from "@/features/creator/navigation"
@@ -66,7 +67,15 @@ export default async function CreatorDashboardLayout({
         userAvatarUrl={userAvatarUrl}
       />
       <SidebarInset className="bg-background">
-        {/* <DashboardHeader showSearch={false} /> */}
+        <DashboardHeader 
+          showSearch={false} 
+          user={{
+            name: userDisplayName,
+            email: userEmail,
+            avatarUrl: userAvatarUrl,
+            role: "Creator"
+          }}
+        />
         <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           {children}
         </div>
