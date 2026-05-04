@@ -398,9 +398,20 @@ export function PostABidView() {
                     .find((bid) => bid.id === assigningBidId)
                     ?.interestedCreators.map((creator) => (
                       <div key={creator.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{creator.name}</p>
-                          <p className="text-xs text-muted-foreground">Creator</p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">{creator.name}</p>
+                            {creator.proposedPrice && (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                                ${creator.proposedPrice}
+                              </Badge>
+                            )}
+                          </div>
+                          {creator.message && (
+                            <p className="mt-1 text-xs text-muted-foreground italic line-clamp-2">
+                              "{creator.message}"
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Link

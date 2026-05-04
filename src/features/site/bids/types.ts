@@ -9,6 +9,8 @@ export type BidPerson = {
   handle: string
   avatarUrl: string
   email: string
+  proposedPrice?: string
+  message?: string
 }
 
 export type BidItem = PostABidFormValues & {
