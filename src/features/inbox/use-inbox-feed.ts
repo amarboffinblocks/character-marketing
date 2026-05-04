@@ -43,7 +43,7 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
     // Realtime subscription
     const supabase = createClientSupabaseClient()
     const channel = supabase
-      .channel("inbox-notifications")
+      .channel(`inbox-notifications-${Math.random().toString(36).slice(2, 9)}`)
       .on(
         "postgres_changes",
         {
