@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { type InboxItem, type InboxRole, type InboxTab } from "@/features/inbox/types"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
 
 function sortByCreatedAtDesc(items: InboxItem[]) {
   return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -38,6 +39,56 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
       return
     }
     void refresh()
+
+    // Realtime subscription
+    const supabase = createClientSupabaseClient()
+    const channel = supabase
+      .channel("inbox-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "inbox_notifications",
+        },
+        (payload: { new: Record<string, any> }) => {
+          const newItem = payload.new
+          // Map snake_case from DB to camelCase for the UI
+          const mappedItem: InboxItem = {
+            id: newItem.id,
+            userId: newItem.user_id,
+            type: newItem.type,
+            category: newItem.category,
+            title: newItem.title,
+            body: newItem.body,
+            isRead: newItem.is_read,
+            actionUrl: newItem.action_url,
+            createdAt: newItem.created_at,
+          }
+          setItems((current) => sortByCreatedAtDesc([mappedItem, ...current]))
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "inbox_notifications",
+        },
+        (payload: { new: Record<string, any> }) => {
+          const updatedItem = payload.new
+          setItems((current) =>
+            current.map((item) =>
+              item.id === updatedItem.id ? { ...item, isRead: updatedItem.is_read } : item
+            )
+          )
+        }
+      )
+      .subscribe()
+
+    return () => {
+      void supabase.removeChannel(channel)
+    }
   }, [enabled, refresh])
 
   const filteredItems = useMemo(() => {
@@ -72,17 +123,21 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
   )
 
   const markAllRead = useCallback(
-    () => {
-      setItems((current) => {
-        const next = current.map((item) => ({ ...item, isRead: true }))
-        writeReadIds(
-          role,
-          next.map((item) => item.id)
-        )
-        return next
-      })
+    async () => {
+      // Optimistic update
+      setItems((current) => current.map((item) => ({ ...item, isRead: true })))
+
+      try {
+        await fetch("/api/inbox", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ all: true }),
+        })
+      } catch (err) {
+        console.error("Failed to mark all notifications as read:", err)
+      }
     },
-    [role]
+    []
   )
 
   useEffect(() => {

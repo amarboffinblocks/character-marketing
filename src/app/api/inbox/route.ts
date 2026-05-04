@@ -49,11 +49,12 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const payload = (await request.json().catch(() => ({}))) as { notificationId?: unknown }
+  const payload = (await request.json().catch(() => ({}))) as { notificationId?: unknown; all?: boolean }
   const notificationId = asString(payload.notificationId)
+  const all = payload.all === true
 
-  if (!notificationId) {
-    return NextResponse.json({ error: "notificationId is required." }, { status: 400 })
+  if (!notificationId && !all) {
+    return NextResponse.json({ error: "notificationId or all is required." }, { status: 400 })
   }
 
   const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
@@ -61,12 +62,21 @@ export async function PATCH(request: Request) {
 
   try {
     await client.connect()
-    await client.query(
-      `update public.inbox_notifications
-       set is_read = true
-       where id = $1 and user_id = $2`,
-      [notificationId, user.id]
-    )
+    if (all) {
+      await client.query(
+        `update public.inbox_notifications
+         set is_read = true
+         where user_id = $1`,
+        [user.id]
+      )
+    } else {
+      await client.query(
+        `update public.inbox_notifications
+         set is_read = true
+         where id = $1 and user_id = $2`,
+        [notificationId, user.id]
+      )
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {
