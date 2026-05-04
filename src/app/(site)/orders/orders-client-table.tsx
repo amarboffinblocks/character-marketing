@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { BadgeCheck, CreditCard, Eye, LoaderCircle, MessageSquareText, MoreVertical, UserRound } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -325,7 +326,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
           : current
       )
     } catch {
-      // Silent fail for now; parent page does not provide toast system.
+      toast.error("Something went wrong, contact creator")
     } finally {
       setPayingOrderId(null)
     }
@@ -372,7 +373,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
         window.location.href = `/creators/${order.creator_id}/review?orderId=${encodeURIComponent(order.id)}`
       }
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "Unable to update order.")
+      toast.error("Something went wrong, contact creator")
     } finally {
       setActingOrderId(null)
     }
@@ -401,10 +402,11 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const creatorSlug = req.creator_id
             const canPay =
               (req.payment_status === "unpaid" || req.payment_status === "failed")
-            const canApprove = (req.status === "delivered" || req.status === "funded") && req.payment_status === "pending"
-            const canRequestUpdate = req.status === "delivered"
             const isPaying = payingOrderId === req.id
             const isActing = actingOrderId === req.id
+            const hasPreview = req.status === "delivered" || req.status === "approved" || req.status === "completed"
+            const canApprove = req.status === "delivered" && req.payment_status === "pending"
+            const canRequestUpdate = req.status === "delivered"
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
@@ -473,11 +475,10 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                         }
                       />
                       <DropdownMenuContent align="end" className="w-44">
-                        {/* <DropdownMenuItem onClick={() => openDialog(req)}>
-                          <Eye className="size-4" />
-                          View
-                        </DropdownMenuItem> */}
-                        <DropdownMenuItem render={<Link href={`/orders/${req.id}/preview`} className="cursor-pointer" />}>
+                        <DropdownMenuItem
+                          render={<Link href={`/orders/${req.id}/preview`} className={cn("cursor-pointer", !hasPreview && "pointer-events-none opacity-50")} />}
+                          disabled={!hasPreview}
+                        >
                           <Eye className="size-4" />
                           Preview
                         </DropdownMenuItem>
@@ -493,16 +494,14 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                             New update
                           </DropdownMenuItem>
                         ) : null}
-                        {canApprove ? (
-                          <DropdownMenuItem
-                            className="text-emerald-700 font-semibold focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
-                            disabled={isActing}
-                            onClick={() => void handleOrderAction(req, "approve")}
-                          >
-                            {isActing ? <LoaderCircle className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
-                            Approve
-                          </DropdownMenuItem>
-                        ) : null}
+                        <DropdownMenuItem
+                          className="text-emerald-700 font-semibold focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
+                          disabled={!canApprove || isActing}
+                          onClick={() => void handleOrderAction(req, "approve")}
+                        >
+                          {isActing ? <LoaderCircle className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
+                          Approve
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

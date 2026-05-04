@@ -4,6 +4,7 @@ import { z } from "zod"
 
 import { mapBidRowsToItems, type BidPostRow } from "@/app/api/site/bids/shared"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 
 const bidInputSchema = z.object({
   title: z.string().trim().min(1),
@@ -183,7 +184,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ bidId
       await client.query("begin")
       
       const bidQuery = await client.query(
-        `select id, requester_id, title, budget, token_count, description, skills_needed, duration, is_price_negotiable
+        `select id, status, requester_id, title, budget, token_count, description, skills_needed, duration, is_price_negotiable
          from public.bid_posts
          where id = $1 and requester_id = $2
          for update`,
@@ -193,6 +194,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ bidId
       if (!bid) {
         await client.query("rollback")
         return NextResponse.json({ error: "Bid not found." }, { status: 404 })
+      }
+
+      if (bid.status !== "global_bid") {
+        await client.query("rollback")
+        return NextResponse.json({ error: "This bid has already been assigned or closed." }, { status: 400 })
       }
 
       const assignedCreatorId = parsedAssign.data.assignedCreatorId
@@ -274,6 +280,19 @@ export async function PATCH(request: Request, context: { params: Promise<{ bidId
       )
 
       await client.query("commit")
+
+      // Create notification for the creator
+      try {
+        await insertInboxNotification(client, {
+          userId: assignedCreatorId,
+          category: "order",
+          title: "Bid assigned to you",
+          body: `You have been assigned to: ${bid.title}. View your orders to start working.`,
+          actionUrl: "/dashboard/creator/orders",
+        })
+      } catch (notifyError) {
+        console.error("Failed to create notification:", notifyError)
+      }
     } else if (parsedVisibility.success) {
       const nextStatus = parsedVisibility.data.visibility === "closed" ? "pending" : "global_bid"
       const result = await client.query(

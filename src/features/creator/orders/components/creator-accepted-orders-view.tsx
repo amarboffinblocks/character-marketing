@@ -814,8 +814,8 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 <SelectContent>
                   <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="on_hold">On hold</SelectItem>
-                  <SelectItem value="reviewing">Under review (awaiting buyer)</SelectItem>
+                  <SelectItem value="on_hold">On check Hold</SelectItem>
+                  <SelectItem value="reviewing">Send for Review</SelectItem>
                 </SelectContent>
               </Select>
             </div>
