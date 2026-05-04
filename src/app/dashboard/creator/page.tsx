@@ -46,13 +46,26 @@ export default async function CreatorDashboardPage() {
       supabase.from("creator_reviews").select("rating").eq("creator_id", user.id),
     ])
 
-  const profileData = (profileResult.data?.profile_data as Record<string, unknown> | null) ?? null
-  const creatorProfile = profileData?.creator as Record<string, unknown> | undefined
-  const creatorName =
-    (typeof creatorProfile?.displayName === "string" && creatorProfile.displayName.trim()) ||
-    (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()) ||
-    (typeof user.user_metadata?.name === "string" && user.user_metadata.name.trim()) ||
-    "Creator"
+  const profileData = (profileResult.data?.profile_data as Record<string, unknown> | null) ?? {}
+  const creatorProfileRaw = (profileData.creator as Record<string, unknown> | undefined) ?? {}
+  const userProfileRaw = (profileData.user as Record<string, unknown> | undefined) ?? {}
+
+  const fullName =
+    (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
+    (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "")
+
+  const creatorProfile = {
+    ...creatorProfileRaw,
+    email: (creatorProfileRaw.email as string) || user.email || "",
+    displayName: (creatorProfileRaw.displayName as string) || fullName || "Creator",
+    avatarUrl: (creatorProfileRaw.avatarUrl as string) || (userProfileRaw.avatarUrl as string) || "",
+    bannerUrl: (creatorProfileRaw.bannerUrl as string) || (userProfileRaw.bannerUrl as string) || "",
+    tagline: (creatorProfileRaw.tagline as string) || (userProfileRaw.tagline as string) || "",
+    shortBio: (creatorProfileRaw.shortBio as string) || (userProfileRaw.shortBio as string) || "",
+    longBio: (creatorProfileRaw.longBio as string) || (userProfileRaw.longBio as string) || "",
+  }
+
+  const creatorName = creatorProfile.displayName
   const ratings = (reviewsResult.data ?? []).map((item) => Number(item.rating ?? 0)).filter((value) => value > 0)
   const averageRating =
     ratings.length > 0 ? ratings.reduce((sum, value) => sum + value, 0) / ratings.length : 0
@@ -62,6 +75,7 @@ export default async function CreatorDashboardPage() {
       creatorId={user.id}
       dashboardData={{
         creatorName,
+        creatorProfile: creatorProfile as any,
         orders: ordersResult,
         workspaceCounts: {
           characters: charactersCount,

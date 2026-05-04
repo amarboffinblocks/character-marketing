@@ -49,6 +49,7 @@ type CreatorDashboardData = {
     avatars: number
     backgrounds: number
   }
+  creatorProfile?: Record<string, any>
   draftCharacters: number
   reviewCount: number
   averageRating: number
@@ -205,19 +206,34 @@ function buildDeadlineDays(orders: CreatorOrderRow[]): DeadlineDay[] {
 }
 
 function buildCompletionChecks(data: CreatorDashboardData): CompletionCheck[] {
-  const totalAssets =
-    data.workspaceCounts.characters +
-    data.workspaceCounts.personas +
-    data.workspaceCounts.lorebooks +
-    data.workspaceCounts.avatars +
+  const profile = data.creatorProfile || {}
+  const skills = Array.isArray(profile.skills) ? profile.skills : []
+  const languages = Array.isArray(profile.languages) ? profile.languages : []
+  const socialLinks = Array.isArray(profile.socialLinks) ? profile.socialLinks : []
+  
+  // Total assets from workspace tables
+  const workspaceAssets = 
+    data.workspaceCounts.characters + 
+    data.workspaceCounts.personas + 
+    data.workspaceCounts.lorebooks + 
+    data.workspaceCounts.avatars + 
     data.workspaceCounts.backgrounds
+    
+  // Manual portfolio items from profile data
+  const manualPortfolio = Array.isArray(profile.portfolio) ? profile.portfolio : []
+  
+  const totalPortfolioCount = Math.max(workspaceAssets, manualPortfolio.length)
+
   return [
-    { label: "Display name set", done: data.creatorName.trim().length > 0 },
-    { label: "At least 3 portfolio items", done: totalAssets >= 3 },
-    { label: "At least 1 character", done: data.workspaceCounts.characters > 0 },
-    { label: "At least 1 persona", done: data.workspaceCounts.personas > 0 },
-    { label: "At least 1 avatar", done: data.workspaceCounts.avatars > 0 },
-    { label: "At least 1 review", done: data.reviewCount > 0 },
+    { label: "Display name", done: (profile.displayName || "").trim().length > 0 },
+    { label: "Tagline", done: (profile.tagline || "").trim().length > 5 },
+    { label: "Short bio", done: (profile.shortBio || "").trim().length > 10 },
+    { label: "Avatar image", done: Boolean(profile.avatarUrl) },
+    { label: "Banner image", done: Boolean(profile.bannerUrl) },
+    { label: "3+ skills", done: skills.length >= 3 },
+    { label: "Language", done: languages.length >= 1 },
+    { label: "3+ portfolio items", done: totalPortfolioCount >= 3 },
+    { label: "Social link", done: socialLinks.length >= 1 },
   ]
 }
 
