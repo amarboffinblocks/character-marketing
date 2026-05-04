@@ -1,4 +1,15 @@
+import { Suspense } from "react"
+
 import { SignInForm } from "@/features/site/auth"
+
+function SignInFormFallback() {
+  return (
+    <div
+      className="mx-auto h-[420px] max-w-[350px] animate-pulse rounded-2xl border border-border/60 bg-muted/30 md:max-w-[500px]"
+      aria-hidden
+    />
+  )
+}
 
 export default function SignInPage() {
   return (
@@ -10,7 +21,9 @@ export default function SignInPage() {
           Continue managing briefs, creators, and deliveries in one place.
         </p>
       </div>
-      <SignInForm />
+      <Suspense fallback={<SignInFormFallback />}>
+        <SignInForm />
+      </Suspense>
     </>
   )
 }

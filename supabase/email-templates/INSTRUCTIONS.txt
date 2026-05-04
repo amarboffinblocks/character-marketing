@@ -1,0 +1,32 @@
+Why you see a verification LINK (pkce_… /auth/v1/verify) instead of a 6-digit OTP
+==================================================================================
+
+1) WHAT THE APP DOES (correct for email + password signup)
+   - API route: src/app/api/auth/sign-up/route.ts calls supabase.auth.signUp({ email, password, options: { emailRedirectTo, data } }).
+   - That triggers Supabase Auth to send the project’s **“Confirm sign up”** email.
+   - API route: src/app/api/auth/verify-signup-otp/route.ts calls verifyOtp({ email, token, type: "email" }) — that is the right client call once the user has a numeric code.
+
+2) WHAT ACTUALLY CONTROLS THE EMAIL BODY
+   - Supabase **does not** let JavaScript choose “send link email” vs “send OTP email” for this flow.
+   - The **Confirm sign up** template in the Supabase Dashboard decides whether the message includes:
+     - {{ .ConfirmationURL }}  → long verify URL (often shown as a button + “direct access” text), OR
+     - {{ .Token }}            → 6-digit OTP for verifyOtp, OR both.
+
+3) WHY YOUR SCREENSHOT SHOWS A LINK
+   - The template is customized for “Character Market” with a **“Verify Email Address”** button and a **“Direct Access String”** block. Those are almost certainly wired to **{{ .ConfirmationURL }}** (or the same URL built from the token). There is **no {{ .Token }}** visible, so users never see the code.
+
+4) signInWithOtp IS NOT THE FIX HERE
+   - signInWithOtp is for **passwordless** email login (magic link / OTP sign-in), not for replacing **email + password signUp** confirmation.
+   - Switching the app to signInWithOtp would change the product (no password at signup, different flow). Keep signUp + verifyOtp for your current architecture.
+
+5) WHAT TO CHANGE (Supabase Dashboard — required)
+   - Authentication → Email templates → **Confirm sign up**.
+   - Remove any use of **{{ .ConfirmationURL }}** and any `<a href="...">` that points to it, and remove pasted raw **…/auth/v1/verify?…** URLs.
+   - Add a prominent line showing **{{ .Token }}** (the 6-digit code).
+   - Optional: keep emailRedirectTo in the app for rare fallback links — it does not force the link to appear; the template does.
+
+6) FILES IN THIS REPO TO USE
+   - supabase/email-templates/confirm-signup-otp-only.html — minimal OTP-only body (paste into the template editor).
+   - supabase/email-templates/confirm-signup-otp-only-branded.html — optional HTML closer to branded layout, still no confirmation link.
+
+After saving the template, send a new signup or use Resend — the new email should show the code.

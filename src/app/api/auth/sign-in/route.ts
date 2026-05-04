@@ -1,33 +1,53 @@
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
+import { ZodError } from "zod"
 
+import { mapSupabaseAuthError } from "@/lib/auth-error-messages"
 import { isAuthRole, resolveUserRole } from "@/lib/auth-roles"
+import { signInRequestSchema } from "@/lib/auth-validators"
 import { resolvePersistedRole, upsertProfileRole } from "@/lib/profile-role"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler"
 
-type SignInPayload = {
-  email?: string
-  password?: string
+function firstZodMessage(error: ZodError): string {
+  const flat = error.flatten()
+  const field = Object.values(flat.fieldErrors).flat()[0]
+  return (typeof field === "string" ? field : flat.formErrors[0]) ?? "Invalid request."
 }
 
-export async function POST(request: Request) {
-  const body = (await request.json()) as SignInPayload
-  const email = body.email?.trim().toLowerCase()
-  const password = body.password
+function signInErrorPayload(message: string | undefined, email: string) {
+  const mapped = mapSupabaseAuthError(message, "sign-in")
+  const lower = (message ?? "").toLowerCase()
+  const needsEmailConfirmation =
+    lower.includes("email not confirmed") || lower.includes("email address not confirmed")
+  return {
+    error: mapped,
+    ...(needsEmailConfirmation ? { code: "email_not_confirmed" as const, email } : {}),
+  }
+}
 
-  if (!email || !password) {
-    return NextResponse.json({ error: "Invalid sign-in payload." }, { status: 400 })
+export async function POST(request: NextRequest) {
+  let json: unknown
+  try {
+    json = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 })
   }
 
-  const supabase = await createServerSupabaseClient()
+  const parsed = signInRequestSchema.safeParse(json)
+  if (!parsed.success) {
+    return NextResponse.json({ error: firstZodMessage(parsed.error) }, { status: 400 })
+  }
+
+  const { email, password } = parsed.data
+  const { supabase, applyAuthCookiesTo } = createRouteHandlerSupabaseClient(request)
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error || !data.user) {
-    return NextResponse.json({ error: error?.message ?? "Unable to sign in." }, { status: 400 })
+    return NextResponse.json(signInErrorPayload(error?.message, email), { status: 401 })
   }
 
   let userRole = await resolvePersistedRole(supabase, data.user)
 
-  // Backfill legacy users created before role metadata was set.
   if (!userRole) {
     const metadataRole = resolveUserRole(data.user)
 
@@ -44,7 +64,10 @@ export async function POST(request: Request) {
 
     if (updateError) {
       await supabase.auth.signOut()
-      return NextResponse.json({ error: "Unable to assign account role. Please try again." }, { status: 400 })
+      return NextResponse.json(
+        { error: "Unable to assign account role. Please try again." },
+        { status: 400 },
+      )
     }
 
     if (updated.user) {
@@ -61,9 +84,11 @@ export async function POST(request: Request) {
       {
         error: "Unauthorized role. Please contact support.",
       },
-      { status: 403 }
+      { status: 403 },
     )
   }
 
-  return NextResponse.json({ message: "Signed in successfully.", role: userRole })
+  const response = NextResponse.json({ message: "Signed in successfully.", role: userRole })
+  applyAuthCookiesTo(response)
+  return response
 }
