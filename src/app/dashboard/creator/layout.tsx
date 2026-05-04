@@ -32,16 +32,37 @@ export default async function CreatorDashboardLayout({
     .maybeSingle()
 
   const profileData = (profileRow?.profile_data as Record<string, unknown> | null) ?? {}
+  const userData = (profileData.user as Record<string, unknown> | undefined) ?? {}
   const creatorData = (profileData.creator as Partial<CreatorProfileForm> | undefined) ?? {}
   const normalizedCreator: CreatorProfileForm = {
     ...defaultProfileForm,
     ...creatorData,
     email:
-      typeof creatorData.email === "string"
+      typeof creatorData.email === "string" && creatorData.email.trim().length > 0
         ? creatorData.email
         : typeof (creatorData as { handle?: unknown }).handle === "string"
           ? ((creatorData as { handle: string }).handle ?? "")
           : user.email ?? "",
+    avatarUrl:
+      typeof creatorData.avatarUrl === "string" && creatorData.avatarUrl.trim().length > 0
+        ? creatorData.avatarUrl
+        : (typeof userData.avatarUrl === "string" ? userData.avatarUrl : ""),
+    bannerUrl:
+      typeof creatorData.bannerUrl === "string" && creatorData.bannerUrl.trim().length > 0
+        ? creatorData.bannerUrl
+        : (typeof userData.bannerUrl === "string" ? userData.bannerUrl : ""),
+    tagline:
+      typeof creatorData.tagline === "string" && creatorData.tagline.trim().length > 0
+        ? creatorData.tagline
+        : (typeof userData.tagline === "string" ? userData.tagline : ""),
+    shortBio:
+      typeof creatorData.shortBio === "string" && creatorData.shortBio.trim().length > 0
+        ? creatorData.shortBio
+        : (typeof userData.shortBio === "string" ? userData.shortBio : ""),
+    longBio:
+      typeof creatorData.longBio === "string" && creatorData.longBio.trim().length > 0
+        ? creatorData.longBio
+        : (typeof userData.longBio === "string" ? userData.longBio : ""),
   }
   showProfileWarning = computeCompletion(normalizedCreator).percent < 70
   const userDisplayName =
