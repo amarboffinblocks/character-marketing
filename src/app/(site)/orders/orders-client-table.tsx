@@ -400,7 +400,6 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const creatorHandle = creator.handle
             const creatorSlug = req.creator_id
             const canPay =
-              !req.id.startsWith("bid-order-") &&
               (req.payment_status === "unpaid" || req.payment_status === "failed")
             const canApprove = (req.status === "delivered" || req.status === "funded") && req.payment_status === "pending"
             const canRequestUpdate = req.status === "delivered"

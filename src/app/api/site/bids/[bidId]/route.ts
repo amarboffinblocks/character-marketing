@@ -180,23 +180,100 @@ export async function PATCH(request: Request, context: { params: Promise<{ bidId
   try {
     await client.connect()
     if (parsedAssign.success) {
-      const result = await client.query(
+      await client.query("begin")
+      
+      const bidQuery = await client.query(
+        `select id, requester_id, title, budget, token_count, description, skills_needed, duration, is_price_negotiable
+         from public.bid_posts
+         where id = $1 and requester_id = $2
+         for update`,
+        [normalizedBidId, user.id]
+      )
+      const bid = bidQuery.rows[0]
+      if (!bid) {
+        await client.query("rollback")
+        return NextResponse.json({ error: "Bid not found." }, { status: 404 })
+      }
+
+      const assignedCreatorId = parsedAssign.data.assignedCreatorId
+      
+      // Update bid post
+      await client.query(
         `update public.bid_posts
          set assigned_creator_id = $1,
              status = 'processing',
              updated_at = now()
-         where id = $2 and requester_id = $3
-         returning id`,
-        [parsedAssign.data.assignedCreatorId, normalizedBidId, user.id]
+         where id = $2`,
+        [assignedCreatorId, normalizedBidId]
       )
-      if (!result.rows[0]) return NextResponse.json({ error: "Bid not found." }, { status: 404 })
 
       await client.query(
         `update public.bid_interests
          set status = case when creator_id = $1 then 'assigned' else status end
          where bid_id = $2`,
-        [parsedAssign.data.assignedCreatorId, normalizedBidId]
+        [assignedCreatorId, normalizedBidId]
       )
+
+      // Create Request
+      const parsedBudget = Math.round(Number(String(bid.budget).replace(/[^0-9.]/g, "")) || 0)
+      const requestPayload = {
+        source: "bid_post",
+        bidId: bid.id,
+        description: bid.description,
+        skillsNeeded: bid.skills_needed,
+        duration: bid.duration,
+        isPriceNegotiable: bid.is_price_negotiable
+      }
+
+      const requestInsert = await client.query(
+        `insert into public.requests
+          (request_type, creator_id, requester_id, package_id, package_title, package_price, tokens_label, request_payload, status)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         returning id`,
+        [
+          "custom_package",
+          assignedCreatorId,
+          user.id,
+          bid.id,
+          bid.title,
+          parsedBudget,
+          bid.token_count || "",
+          JSON.stringify(requestPayload),
+          "accepted"
+        ]
+      )
+      const requestId = requestInsert.rows[0].id
+
+      // Create Order
+      const snapshot = {
+        acceptedAt: new Date().toISOString(),
+        requestType: "custom_package",
+        packageId: bid.id,
+        packageTitle: bid.title,
+        packagePrice: parsedBudget,
+        tokensLabel: bid.token_count || "",
+        requestPayload: requestPayload,
+      }
+
+      await client.query(
+        `insert into public.orders
+          (request_id, buyer_id, creator_id, package_id, package_title, package_price, tokens_label, request_snapshot, status, payment_status)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+        [
+          requestId,
+          user.id,
+          assignedCreatorId,
+          bid.id,
+          bid.title,
+          parsedBudget,
+          bid.token_count || "",
+          JSON.stringify(snapshot),
+          "pending_payment",
+          "unpaid"
+        ]
+      )
+
+      await client.query("commit")
     } else if (parsedVisibility.success) {
       const nextStatus = parsedVisibility.data.visibility === "closed" ? "pending" : "global_bid"
       const result = await client.query(
