@@ -405,7 +405,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const isPaying = payingOrderId === req.id
             const isActing = actingOrderId === req.id
             const hasPreview = req.status === "delivered" || req.status === "approved" || req.status === "completed"
-            const canApprove = req.status === "delivered" && req.payment_status === "pending"
+            const canApprove = (req.status === "delivered" || req.status === "funded") && req.payment_status === "pending"
             const canRequestUpdate = req.status === "delivered"
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
