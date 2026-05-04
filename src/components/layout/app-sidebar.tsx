@@ -159,7 +159,7 @@ export function AppSidebar({
     const [workspaceOpen, setWorkspaceOpen] = useState(Boolean(workspaceActiveHref))
     const accountBasePath = brandHref.startsWith("/dashboard/admin") ? "/dashboard/admin" : "/dashboard/creator"
     const isCreatorSidebar = brandHref.startsWith("/dashboard/creator")
-    const { unreadCount: inboxUnreadCount } = useInboxFeed("creator", { enabled: isCreatorSidebar })
+    const { items, unreadCount: inboxUnreadCount } = useInboxFeed("creator", { enabled: isCreatorSidebar })
 
     const handleSignOut = async () => {
         if (isSigningOut) return
@@ -266,10 +266,20 @@ export function AppSidebar({
                                         const Icon = sidebarIcons[item.icon]
                                         const active = item.href === globalActiveHref
 
-                                        const resolvedBadge =
-                                            isCreatorSidebar && item.href === "/dashboard/creator/inbox"
-                                                ? (inboxUnreadCount > 0 ? String(inboxUnreadCount) : undefined)
-                                                : item.badge
+                                        const isInbox = item.href === "/dashboard/creator/inbox"
+                                        const isOrders = item.href === "/dashboard/creator/orders"
+                                        
+                                        let resolvedBadge = item.badge
+                                        if (isCreatorSidebar) {
+                                            if (isInbox && inboxUnreadCount > 0) {
+                                                resolvedBadge = String(inboxUnreadCount)
+                                            } else if (isOrders) {
+                                                const orderUnreadCount = items.filter(i => !i.isRead && i.category === "order").length
+                                                if (orderUnreadCount > 0) {
+                                                    resolvedBadge = String(orderUnreadCount)
+                                                }
+                                            }
+                                        }
 
                                         return (
                                             <SidebarMenuItem key={item.href}>
