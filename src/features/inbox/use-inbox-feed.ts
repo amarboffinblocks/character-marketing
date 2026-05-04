@@ -2,34 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 
-import { getMockSystemInboxItems } from "@/features/inbox/mock-inbox-data"
 import { type InboxItem, type InboxRole, type InboxTab } from "@/features/inbox/types"
 
 function sortByCreatedAtDesc(items: InboxItem[]) {
   return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-}
-
-function readStateStorageKey(role: InboxRole) {
-  return `character-market:inbox-read:${role}`
-}
-
-function readReadIds(role: InboxRole): string[] {
-  if (typeof window === "undefined") return []
-  try {
-    const raw = window.localStorage.getItem(readStateStorageKey(role))
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter((item): item is string => typeof item === "string")
-  } catch {
-    return []
-  }
-}
-
-function writeReadIds(role: InboxRole, ids: string[]) {
-  if (typeof window === "undefined") return
-  window.localStorage.setItem(readStateStorageKey(role), JSON.stringify(Array.from(new Set(ids))))
-  window.dispatchEvent(new Event("cm:inbox:read-updated"))
 }
 
 export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
@@ -43,19 +19,16 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
     setIsLoading(true)
     setError("")
     try {
-      const readIds = new Set(readReadIds(role))
-      const systemItems = getMockSystemInboxItems(role).map((item) => ({
-        ...item,
-        isRead: item.isRead || readIds.has(item.id),
-      }))
-      // Product rule: inbox should show only activity/system updates for now.
-      setItems(sortByCreatedAtDesc(systemItems))
+      const response = await fetch("/api/inbox")
+      if (!response.ok) throw new Error("Failed to fetch inbox")
+      const json = (await response.json()) as { items: InboxItem[] }
+      setItems(sortByCreatedAtDesc(json.items || []))
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load inbox.")
     } finally {
       setIsLoading(false)
     }
-  }, [role])
+  }, [])
 
   useEffect(() => {
     if (!enabled) {
@@ -79,15 +52,23 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
   )
 
   const markItemRead = useCallback(
-    (itemId: string) => {
-      setItems((current) => {
-        const next = current.map((item) => (item.id === itemId ? { ...item, isRead: true } : item))
-        const ids = next.filter((item) => item.isRead).map((item) => item.id)
-        writeReadIds(role, ids)
-        return next
-      })
+    async (itemId: string) => {
+      // Optimistic update
+      setItems((current) =>
+        current.map((item) => (item.id === itemId ? { ...item, isRead: true } : item))
+      )
+
+      try {
+        await fetch("/api/inbox", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ notificationId: itemId }),
+        })
+      } catch (err) {
+        console.error("Failed to mark notification as read:", err)
+      }
     },
-    [role]
+    []
   )
 
   const markAllRead = useCallback(

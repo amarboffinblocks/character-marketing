@@ -267,6 +267,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
          where id = $1`,
         [order.id, JSON.stringify(updatedSnapshot)]
       )
+
+      // Create notification for the creator
+      await client.query(
+        `insert into public.inbox_notifications (user_id, category, title, body, action_url)
+         values ($1, $2, $3, $4, $5)`,
+        [
+          order.creator_id,
+          "order",
+          "Revision requested",
+          `A buyer requested a revision for order #${order.id.slice(0, 8)}: "${message.slice(0, 50)}${message.length > 50 ? '...' : ''}"`,
+          `/dashboard/creator/orders`
+        ]
+      ).catch(err => console.error("Failed to create notification:", err))
+
       return NextResponse.json({
         success: true,
         order: { id: order.id, status: "in_progress", paymentStatus: order.payment_status },
