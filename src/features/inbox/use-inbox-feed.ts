@@ -16,6 +16,8 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState("")
 
+  const [userId, setUserId] = useState<string | null>(null)
+
   const refresh = useCallback(async () => {
     setIsLoading(true)
     setError("")
@@ -24,12 +26,21 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
       if (!response.ok) throw new Error("Failed to fetch inbox")
       const json = (await response.json()) as { items: InboxItem[] }
       setItems(sortByCreatedAtDesc(json.items || []))
+      
+      // Also get current user ID for realtime filtering if not set
+      if (!userId && json.items.length > 0) {
+        setUserId(json.items[0].userId)
+      } else if (!userId) {
+        const supabase = createClientSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) setUserId(user.id)
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : "Unable to load inbox.")
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [userId])
 
   useEffect(() => {
     if (!enabled) {
@@ -40,20 +51,27 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
     }
     void refresh()
 
+    if (!userId) return
+
     // Realtime subscription
     const supabase = createClientSupabaseClient()
+    const channelName = `inbox-notifications-${userId}-${Math.random().toString(36).slice(2, 7)}`
+    
+    console.log(`[Realtime] Subscribing to: ${channelName} for user: ${userId}`)
+
     const channel = supabase
-      .channel(`inbox-notifications-${Math.random().toString(36).slice(2, 9)}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "inbox_notifications",
+          filter: `user_id=eq.${userId}`,
         },
         (payload: { new: Record<string, any> }) => {
+          console.log("[Realtime] New notification received:", payload.new)
           const newItem = payload.new
-          // Map snake_case from DB to camelCase for the UI
           const mappedItem: InboxItem = {
             id: newItem.id,
             userId: newItem.user_id,
@@ -74,8 +92,10 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
           event: "UPDATE",
           schema: "public",
           table: "inbox_notifications",
+          filter: `user_id=eq.${userId}`,
         },
         (payload: { new: Record<string, any> }) => {
+          console.log("[Realtime] Notification updated:", payload.new)
           const updatedItem = payload.new
           setItems((current) =>
             current.map((item) =>
@@ -84,12 +104,15 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
           )
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log(`[Realtime] Subscription status: ${status}`)
+      })
 
     return () => {
+      console.log(`[Realtime] Unsubscribing from: ${channelName}`)
       void supabase.removeChannel(channel)
     }
-  }, [enabled, refresh])
+  }, [enabled, refresh, userId])
 
   const filteredItems = useMemo(() => {
     if (activeTab === "all") return items
