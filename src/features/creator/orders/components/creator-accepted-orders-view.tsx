@@ -103,7 +103,7 @@ function OrderSnapshotDetails({ order }: { order: CreatorOrderRow }) {
     ""
   const acceptedAt =
     typeof parsedPayload.acceptedAt === "string" ? new Date(parsedPayload.acceptedAt) : null
-  
+
   const revisionMessage = typeof parsedPayload.revision_message === "string" ? parsedPayload.revision_message : ""
 
   const requestedAssets =
@@ -144,10 +144,10 @@ function OrderSnapshotDetails({ order }: { order: CreatorOrderRow }) {
           <p className="mt-1 font-medium text-foreground">
             {acceptedAt && !Number.isNaN(acceptedAt.getTime())
               ? acceptedAt.toLocaleDateString("en-US", {
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })
               : "—"}
           </p>
         </div>
@@ -254,17 +254,17 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
             ? "in_progress"
             : nextStatus === "delivered"
               ? "delivered"
-            : nextStatus === "on_hold"
-              ? "on_hold"
-              : "completed"
+              : nextStatus === "on_hold"
+                ? "on_hold"
+                : "completed"
       setOrders((current) =>
         current.map((order) =>
           order.id === selectedOrder.id
             ? {
-                ...order,
-                status: nextLocalStatus,
-                payment_status: json.order?.paymentStatus ?? order.payment_status,
-              }
+              ...order,
+              status: nextLocalStatus,
+              payment_status: json.order?.paymentStatus ?? order.payment_status,
+            }
             : order
         )
       )
