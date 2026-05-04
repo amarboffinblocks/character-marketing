@@ -371,8 +371,8 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
       if (action === "approve") {
         window.location.href = `/creators/${order.creator_id}/review?orderId=${encodeURIComponent(order.id)}`
       }
-    } catch {
-      // Silent fail for now; parent page does not provide toast system.
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Unable to update order.")
     } finally {
       setActingOrderId(null)
     }
@@ -402,7 +402,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const canPay =
               !req.id.startsWith("bid-order-") &&
               (req.payment_status === "unpaid" || req.payment_status === "failed")
-            const canApprove = req.status === "delivered" && req.payment_status === "pending"
+            const canApprove = (req.status === "delivered" || req.status === "funded") && req.payment_status === "pending"
             const canRequestUpdate = req.status === "delivered"
             const isPaying = payingOrderId === req.id
             const isActing = actingOrderId === req.id

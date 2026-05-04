@@ -332,28 +332,34 @@ export async function releaseCreatorOrderEscrow(input: {
       throw new Error("Escrow funds are not ready for release yet.")
     }
 
+    const isDev = process.env.NODE_ENV === "development"
     const destinationAccount = readCreatorStripeAccountId(order.creator_profile_data)
-    if (!destinationAccount) {
+    if (!destinationAccount && !isDev) {
       throw new Error("Creator Stripe payout account is missing.")
     }
 
     const chargeId = normalizeText(order.stripe_charge_id)
-    if (!chargeId) {
+    if (!chargeId && !isDev) {
       throw new Error("Stripe charge is missing for this order.")
     }
 
-    const transfer = await stripe.transfers.create({
-      amount: toStripeAmount(order.package_price),
-      currency: "usd",
-      destination: destinationAccount,
-      source_transaction: chargeId,
-      transfer_group: normalizeText(order.transfer_group) || buildTransferGroup(order.id),
-      metadata: {
-        orderId: order.id,
-        creatorId: order.creator_id,
-        buyerId: order.buyer_id,
-      },
-    })
+    let transferId = `dev_transfer_${Math.random().toString(36).substring(7)}`
+
+    if (destinationAccount && chargeId) {
+      const transfer = await stripe.transfers.create({
+        amount: toStripeAmount(order.package_price),
+        currency: "usd",
+        destination: destinationAccount,
+        source_transaction: chargeId,
+        transfer_group: normalizeText(order.transfer_group) || buildTransferGroup(order.id),
+        metadata: {
+          orderId: order.id,
+          creatorId: order.creator_id,
+          buyerId: order.buyer_id,
+        },
+      })
+      transferId = transfer.id
+    }
 
     await client.query("begin")
     await client.query(
@@ -365,7 +371,7 @@ export async function releaseCreatorOrderEscrow(input: {
          payout_released_at = now(),
          updated_at = now()
        where id = $1`,
-      [order.id, transfer.id]
+      [order.id, transferId]
     )
 
     await client.query(
@@ -399,12 +405,12 @@ export async function releaseCreatorOrderEscrow(input: {
         "USD",
         "stripe_connect",
         "stripe",
-        transfer.id,
+        transferId,
         "succeeded",
         "",
         normalizeText(order.stripe_payment_intent_id),
         chargeId,
-        transfer.id,
+        transferId,
         normalizeText(order.transfer_group) || buildTransferGroup(order.id),
         "Escrow released to creator after order completion.",
       ]
@@ -415,7 +421,7 @@ export async function releaseCreatorOrderEscrow(input: {
       id: order.id,
       paymentStatus: "paid" as EscrowPaymentStatus,
       status: "approved",
-      transferId: transfer.id,
+      transferId: transferId,
     }
   } catch (error) {
     await client.query("rollback").catch(() => {})

@@ -6,6 +6,7 @@ import { useMemo, useState } from "react"
 import { Star } from "lucide-react"
 import { toast } from "sonner"
 
+import { RatingPicker } from "@/components/shared/rating-picker"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,39 +26,6 @@ type CreatorReviewFormViewProps = {
   orderId?: string
 }
 
-function StarPicker({
-  value,
-  onChange,
-}: {
-  value: number
-  onChange: (rating: number) => void
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      {Array.from({ length: 5 }).map((_, index) => {
-        const starValue = index + 1
-        const active = starValue <= value
-        return (
-          <button
-            key={starValue}
-            type="button"
-            className="inline-flex size-9 items-center justify-center rounded-lg border border-transparent transition hover:border-border hover:bg-muted/50"
-            onClick={() => onChange(starValue)}
-            aria-label={`Rate ${starValue} star${starValue === 1 ? "" : "s"}`}
-          >
-            <Star
-              className={cn(
-                "size-5",
-                active ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40"
-              )}
-            />
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFormViewProps) {
   const [rating, setRating] = useState(0)
   const [title, setTitle] = useState("")
@@ -66,14 +34,6 @@ export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFo
   const [submitted, setSubmitted] = useState(false)
   const canSubmit = rating > 0 && body.trim().length >= 12
 
-  const ratingLabel = useMemo(() => {
-    if (rating === 0) return "Select your rating"
-    if (rating === 5) return "Excellent"
-    if (rating >= 4) return "Great"
-    if (rating >= 3) return "Good"
-    if (rating >= 2) return "Needs improvement"
-    return "Poor"
-  }, [rating])
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -83,15 +43,19 @@ export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFo
     }
     setIsSubmitting(true)
     try {
+      const payload: any = {
+        rating,
+        title,
+        body,
+      }
+      if (orderId && orderId.trim()) {
+        payload.orderId = orderId.trim()
+      }
+
       const response = await fetch(`/api/site/creators/${encodeURIComponent(creator.id)}/reviews`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          rating,
-          title,
-          body,
-          orderId,
-        }),
+        body: JSON.stringify(payload),
       })
       const json = (await response.json()) as { review?: CreatorReviewRecord; error?: string }
       if (!response.ok) {
@@ -99,8 +63,8 @@ export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFo
       }
       setSubmitted(true)
       toast.success("Review submitted successfully.")
-    } catch {
-      toast.error("Unable to submit review.")
+    } catch (err: any) {
+      toast.error(err.message || "Unable to submit review.")
     } finally {
       setIsSubmitting(false)
     }
@@ -150,8 +114,7 @@ export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFo
             <form className="space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Overall rating</label>
-                <StarPicker value={rating} onChange={setRating} />
-                <p className="text-xs text-muted-foreground">{ratingLabel}</p>
+                <RatingPicker value={rating} onChange={setRating} size={22} />
               </div>
 
               <div className="space-y-2">

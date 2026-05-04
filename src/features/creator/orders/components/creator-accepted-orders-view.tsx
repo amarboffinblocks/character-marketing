@@ -747,10 +747,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                               <Eye className="size-4" />
                               View
                             </DropdownMenuItem>
-                            {(order.status === "funded" ||
-                              order.status === "in_progress" ||
-                              order.status === "on_hold" ||
-                              order.status === "approved") &&
+                            {order.status === "approved" &&
                             (order.payment_status === "pending" || order.payment_status === "paid") ? (
                               <DropdownMenuItem onClick={() => openDeliveryDialog(order)}>
                                 <PackageCheck className="size-4" />
