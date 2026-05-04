@@ -126,14 +126,16 @@ export function DashboardHeader({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Avatar className="size-7 ring-1 ring-border">
-                  {user.avatarUrl ? (
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  ) : null}
-                  <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                    {displayInitials}
-                  </AvatarFallback>
-                </Avatar>
+                <button type="button" className="relative size-7 shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="size-full ring-1 ring-border">
+                    {user.avatarUrl ? (
+                      <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                      {displayInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
               }
             />
             <DropdownMenuContent>
