@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { AlertTriangle, ArrowUpRight } from "lucide-react"
+import { AlertTriangle, ArrowUpRight, CheckCircle2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -30,17 +30,25 @@ const toneBadge: Record<ActionItem["tone"], string> = {
 }
 
 export function ActionRequiredCard({ items }: ActionRequiredCardProps) {
+  const isCaughtUp = items.length === 0
+
   return (
     <Card>
       <CardHeader className="border-b pb-4">
         <div className="flex items-center gap-2">
-          <AlertTriangle className="size-4 text-amber-600 dark:text-amber-300" />
-          <CardTitle>Action required</CardTitle>
+          {isCaughtUp ? (
+            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+          ) : (
+            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-300" />
+          )}
+          <CardTitle>{isCaughtUp ? "Up to date" : "Action required"}</CardTitle>
         </div>
-        <CardDescription>Top priority items to keep orders on track.</CardDescription>
+        <CardDescription>
+          {isCaughtUp ? "You have no pending tasks to complete." : "Top priority items to keep orders on track."}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-2 py-4">
-        {items.length === 0 ? (
+        {isCaughtUp ? (
           <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-4 text-sm text-muted-foreground">
             You are all caught up. Great work!
           </div>
