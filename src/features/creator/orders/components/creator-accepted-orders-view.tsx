@@ -17,13 +17,16 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { CreatorOrderRow, CreatorOrderStatus, CreatorPaymentStatus } from "@/features/creator/orders/creator-orders"
+import { buyerSummaryFromProfileData } from "@/lib/profile-buyer-display"
 import { cn } from "@/lib/utils"
 
 const orderStatusLabel: Record<CreatorOrderStatus, string> = {
+  pending: "Awaiting start",
   pending_payment: "Pending",
   funded: "Funded",
   in_progress: "Processing",
   on_hold: "On hold",
+  reviewing: "Under review",
   delivered: "Delivered",
   approved: "On hold",
   completed: "Completed",
@@ -32,10 +35,12 @@ const orderStatusLabel: Record<CreatorOrderStatus, string> = {
 }
 
 const orderStatusClass: Record<CreatorOrderStatus, string> = {
+  pending: "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300",
   pending_payment: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   funded: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   in_progress: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   on_hold: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  reviewing: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
   delivered: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
   approved: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
   completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
@@ -59,30 +64,17 @@ function formatCurrency(amount: number) {
   }).format(amount)
 }
 
-function formatCreatedAt(value: string) {
-  const d = new Date(value)
+function formatCreatedAt(value: string | Date) {
+  const d = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(d.getTime())) return "—"
   return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
 }
 
 function safeBuyerSummary(profileData: unknown) {
-  const root = profileData && typeof profileData === "object" ? (profileData as Record<string, unknown>) : null
-  const user = root && root.user && typeof root.user === "object" ? (root.user as Record<string, unknown>) : null
-
-  const displayName =
-    (user && typeof user.displayName === "string" && user.displayName.trim()) ||
-    (user && typeof user.name === "string" && user.name.trim()) ||
-    (root && typeof root.displayName === "string" && root.displayName.trim()) ||
-    (root && typeof root.name === "string" && root.name.trim()) ||
-    "Buyer"
-
-  const avatarUrl =
-    (user && typeof user.avatarUrl === "string" ? user.avatarUrl.trim() : "") ||
-    (root && typeof root.avatarUrl === "string" ? root.avatarUrl.trim() : "")
-
+  const b = buyerSummaryFromProfileData(profileData)
   return {
-    displayName,
-    avatarUrl: avatarUrl.length > 0 ? avatarUrl : null,
+    displayName: b.displayName || "Buyer",
+    avatarUrl: b.avatarUrl,
   }
 }
 
@@ -466,7 +458,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="processing">Processing</SelectItem>
                 <SelectItem value="on_hold">On hold</SelectItem>
-                <SelectItem value="delivered">Go for review</SelectItem>
+                <SelectItem value="Reviewing">Go for review</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>

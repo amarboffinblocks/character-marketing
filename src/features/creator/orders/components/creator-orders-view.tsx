@@ -66,6 +66,7 @@ import type {
   CreatorRequestStatus,
   CreatorRequestType,
 } from "@/features/creator/orders/creator-requests"
+import { buyerSummaryFromProfileData } from "@/lib/profile-buyer-display"
 import { cn } from "@/lib/utils"
 
 type CreatorOrdersViewProps = {
@@ -114,33 +115,7 @@ function getRequestCategories(request: CreatorRequestRow): string[] {
 }
 
 function safeBuyerSummary(profileData: unknown) {
-  const root = profileData && typeof profileData === "object" ? (profileData as Record<string, unknown>) : null
-  const user = root && root.user && typeof root.user === "object" ? (root.user as Record<string, unknown>) : null
-
-  const displayName =
-    (user && typeof user.displayName === "string" && user.displayName.trim()) ||
-    (user && typeof user.name === "string" && user.name.trim()) ||
-    (root && typeof root.displayName === "string" && root.displayName.trim()) ||
-    (root && typeof root.name === "string" && root.name.trim()) ||
-    ""
-
-  const handle =
-    (user && typeof user.handle === "string" ? user.handle.trim() : "") ||
-    (root && typeof root.handle === "string" ? root.handle.trim() : "")
-
-  const avatarUrl =
-    (user && typeof user.avatarUrl === "string" ? user.avatarUrl.trim() : "") ||
-    (root && typeof root.avatarUrl === "string" ? root.avatarUrl.trim() : "")
-  const email =
-    (user && typeof user.email === "string" ? user.email.trim() : "") ||
-    (root && typeof root.email === "string" ? root.email.trim() : "")
-
-  return {
-    displayName,
-    handle: handle.startsWith("@") || handle.length === 0 ? handle : `@${handle}`,
-    avatarUrl: avatarUrl.length > 0 ? avatarUrl : null,
-    email,
-  }
+  return buyerSummaryFromProfileData(profileData)
 }
 
 function RequestPayloadDetails({ request }: { request: CreatorRequestRow }) {
@@ -412,14 +387,31 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
       })
-      const json = (await response.json()) as { error?: string }
+      const json = (await response.json()) as {
+        error?: string
+        request?: { id: string; status: "accepted" | "rejected"; orderId?: string }
+      }
       if (!response.ok) {
         throw new Error(json.error || "Unable to update request status.")
       }
       if (nextStatus === "accepted") {
-        // Move accepted item out of requests queue; it appears under creator orders route.
-        setRequests((current) => current.filter((item) => item.id !== requestId))
-        setSelectedRequest((current) => (current && current.id === requestId ? null : current))
+        const orderId = json.request?.orderId
+        setRequests((current) =>
+          current.map((item) =>
+            item.id === requestId
+              ? {
+                  ...item,
+                  status: "accepted" as const,
+                  order_id: orderId ?? item.order_id,
+                }
+              : item
+          )
+        )
+        setSelectedRequest((current) =>
+          current && current.id === requestId
+            ? { ...current, status: "accepted", order_id: orderId ?? current.order_id }
+            : current
+        )
       } else {
         setRequests((current) =>
           current.map((item) => (item.id === requestId ? { ...item, status: nextStatus } : item))
