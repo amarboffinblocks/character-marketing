@@ -386,7 +386,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             <TableHead className="py-4">Creator</TableHead>
             <TableHead>Order</TableHead>
-            <TableHead>Payment</TableHead>
+            {/* <TableHead>Payment</TableHead> */}
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-center">Price</TableHead>
@@ -444,11 +444,11 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                     <span className="text-xs text-muted-foreground">#{req.id.slice(0, 8)}...</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                {/* <TableCell>
                   <Badge variant="outline" className="py-3  px-2 text-xs bg-primary/10">
                     {paymentStatusLabel[req.payment_status]}
                   </Badge>
-                </TableCell>
+                </TableCell> */}
                 <TableCell>
                   <Badge
                     variant="secondary"

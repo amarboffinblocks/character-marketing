@@ -690,7 +690,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>Buyer</TableHead>
                 <TableHead>Order</TableHead>
-                <TableHead>Payment</TableHead>
+                {/* <TableHead>Payment</TableHead> */}
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-center">Price</TableHead>
@@ -720,11 +720,11 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                         <span className="text-xs text-muted-foreground">#{order.id.slice(0, 8)}...</span>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    {/* <TableCell>
                       <Badge variant="outline" className="bg-primary/10 text-xs">
                         {paymentStatusLabel[order.payment_status]}
                       </Badge>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell>
                       <Badge variant="secondary" className={cn("font-medium px-2.5 py-0.5 rounded-md", orderStatusClass[order.status])}>
                         {orderStatusLabel[order.status]}
