@@ -225,7 +225,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
             <CardContent className="space-y-2">
               {isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading delivered assets…</p>
-              
+
               ) : deliverables.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No delivered assets have been attached yet.</p>
               ) : (

@@ -51,6 +51,7 @@ function patchApiStatusToRowStatus(api: OrderStatusPatch): CreatorOrderStatus {
     case "processing":
       return "in_progress"
     case "on_hold":
+      return "on_hold"
     case "reviewing":
       return "reviewing"
     case "delivered":
@@ -169,7 +170,7 @@ const orderStatusClass: Record<CreatorOrderStatus, string> = {
 const paymentStatusLabel: Record<CreatorPaymentStatus, string> = {
   unpaid: "Unpaid",
   pending: "In escrow",
-  paid: "Released",
+  paid: "Paid",
   failed: "Failed",
   refunded: "Refunded",
 }
