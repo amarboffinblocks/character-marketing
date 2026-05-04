@@ -1,9 +1,11 @@
 import pg from "pg"
 
 export type TransactionStatus = "pending" | "succeeded" | "failed" | "refunded"
+export type TransactionType = "charge" | "release" | "refund"
 
 export type TransactionRow = {
   id: string
+  transaction_type: TransactionType
   order_id: string
   amount: number
   currency: string
@@ -40,7 +42,8 @@ export async function fetchBuyerTransactions(userId: string): Promise<Transactio
     await client.connect()
     const result = await client.query(
       `select
-        t.id,
+       t.id,
+        t.transaction_type,
         t.order_id,
         t.amount,
         t.currency,
@@ -57,6 +60,7 @@ export async function fetchBuyerTransactions(userId: string): Promise<Transactio
        join public.orders o on o.id = t.order_id
        left join public.profiles p on p.id = t.creator_id
        where t.buyer_id = $1
+         and t.transaction_type in ('charge', 'refund')
        order by t.created_at desc`,
       [userId]
     )
@@ -78,7 +82,8 @@ export async function fetchCreatorTransactions(userId: string): Promise<Transact
     await client.connect()
     const result = await client.query(
       `select
-        t.id,
+       t.id,
+        t.transaction_type,
         t.order_id,
         t.amount,
         t.currency,
@@ -95,6 +100,7 @@ export async function fetchCreatorTransactions(userId: string): Promise<Transact
        join public.orders o on o.id = t.order_id
        left join public.profiles p on p.id = t.buyer_id
        where t.creator_id = $1
+         and t.transaction_type = 'release'
        order by t.created_at desc`,
       [userId]
     )

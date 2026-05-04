@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server"
-import { z } from "zod"
 
-import { updateCreatorOrderStatus } from "@/features/creator/orders/creator-orders"
+import { releaseCreatorOrderEscrow } from "@/lib/payments/escrow"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-
-const payloadSchema = z.object({
-  status: z.enum(["pending", "processing", "on_hold", "delivered", "completed"]),
-})
 
 function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
-export async function PATCH(request: Request, context: { params: Promise<{ requestId: string }> }) {
+export async function POST(_: Request, context: { params: Promise<{ requestId: string }> }) {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -28,22 +23,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
     return NextResponse.json({ error: "Order id is required." }, { status: 400 })
   }
 
-  const body = await request.json()
-  const parsed = payloadSchema.safeParse(body)
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues[0]?.message ?? "Invalid payload." }, { status: 400 })
-  }
-
   try {
-    const updated = await updateCreatorOrderStatus({
+    const updated = await releaseCreatorOrderEscrow({
       orderId: normalizedOrderId,
       creatorId: user.id,
-      status: parsed.data.status,
     })
 
     return NextResponse.json({ order: updated })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to update order."
+    const message = error instanceof Error ? error.message : "Unable to release creator payout."
     return NextResponse.json({ error: message }, { status: 400 })
   }
 }

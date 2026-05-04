@@ -14,15 +14,11 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { getAdminUserRecord } from "@/features/admin/admin-users-data"
+import { getAdminCreatorById, getAdminDirectoryUserById } from "@/features/admin/admin-directory-data"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
-import { getMarketplaceCreatorProfileById } from "@/features/site/marketplace/data/marketplace-server-data"
 import { cn } from "@/lib/utils"
 
-const roleBadge: Record<
-  NonNullable<ReturnType<typeof getAdminUserRecord>>["role"],
-  "default" | "secondary" | "outline"
-> = {
+const roleBadge: Record<"buyer" | "creator" | "admin", "default" | "secondary" | "outline"> = {
   buyer: "secondary",
   creator: "default",
   admin: "outline",
@@ -33,19 +29,31 @@ type AdminUserProfileViewProps = {
 }
 
 export async function AdminUserProfileView({ userId }: AdminUserProfileViewProps) {
-  const user = getAdminUserRecord(userId)
+  const user = await getAdminDirectoryUserById(userId)
   if (!user) {
     notFound()
   }
 
   const creatorProfile = user.linkedCreatorId
-    ? await getMarketplaceCreatorProfileById(user.linkedCreatorId)
+    ? await getAdminCreatorById(user.linkedCreatorId)
     : undefined
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2">
+        <div className="flex items-start gap-3">
+          <span className="relative mt-1 size-14 shrink-0 overflow-hidden rounded-full border border-border/70 bg-muted">
+            {user.avatarUrl ? (
+              <Image
+                src={user.avatarUrl}
+                alt={user.displayName}
+                fill
+                className="object-cover"
+                sizes="56px"
+              />
+            ) : null}
+          </span>
+          <div className="space-y-2">
           <Button
             variant="ghost"
             size="sm"
@@ -67,6 +75,7 @@ export async function AdminUserProfileView({ userId }: AdminUserProfileViewProps
             </Badge>
           </div>
           <p className="font-mono text-xs text-muted-foreground">{user.id}</p>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" className="h-9" type="button">
@@ -138,6 +147,12 @@ export async function AdminUserProfileView({ userId }: AdminUserProfileViewProps
               <p className="mt-2 rounded-lg border border-border/70 bg-muted/30 p-3 text-sm text-foreground">
                 {user.notes || "—"}
               </p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Raw profile data (admin)</p>
+              <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-border/70 bg-muted/30 p-3 font-mono text-[11px] text-foreground">
+                {JSON.stringify(user.rawProfileData, null, 2)}
+              </pre>
             </div>
           </CardContent>
         </Card>

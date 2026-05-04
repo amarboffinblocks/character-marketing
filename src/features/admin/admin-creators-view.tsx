@@ -3,11 +3,19 @@
 import { useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
-import { Download, Eye, Search, Store } from "lucide-react"
+import { Download, Eye, Search, ShieldBan, Store, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -27,16 +35,25 @@ import {
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
 import type { Creator } from "@/features/site/marketplace/types"
+import { toast } from "sonner"
 
 type AvailabilityFilter = "all" | "available" | "unavailable"
+type PendingCreatorAction = {
+  type: "delete" | "activate" | "deactivate"
+  creator: Creator
+} | null
 
 export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
   const [search, setSearch] = useState("")
   const [availability, setAvailability] = useState<AvailabilityFilter>("all")
+  const [rows, setRows] = useState(creators)
+  const [deletingCreatorId, setDeletingCreatorId] = useState("")
+  const [deactivatingCreatorId, setDeactivatingCreatorId] = useState("")
+  const [pendingAction, setPendingAction] = useState<PendingCreatorAction>(null)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return creators.filter((c) => {
+    return rows.filter((c) => {
       const matchesSearch =
         q.length === 0 ||
         c.name.toLowerCase().includes(q) ||
@@ -50,7 +67,60 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
             : !c.isAvailable
       return matchesSearch && matchesAvail
     })
-  }, [creators, search, availability])
+  }, [rows, search, availability])
+
+  async function handleDeleteCreator(creatorId: string) {
+    setDeletingCreatorId(creatorId)
+    try {
+      const response = await fetch(`/api/admin/creators/${encodeURIComponent(creatorId)}`, {
+        method: "DELETE",
+      })
+      const json = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(json.error || "Unable to delete creator.")
+      }
+      setRows((current) => current.filter((item) => item.id !== creatorId))
+      toast.success("Creator deleted.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete creator.")
+    } finally {
+      setDeletingCreatorId("")
+    }
+  }
+
+  async function handleStatusCreator(creator: Creator) {
+    const nextAction = creator.isAvailable ? "deactivate" : "activate"
+    setDeactivatingCreatorId(creator.id)
+    try {
+      const response = await fetch(`/api/admin/creators/${encodeURIComponent(creator.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: nextAction }),
+      })
+      const json = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(json.error || `Unable to ${nextAction} creator.`)
+      }
+      setRows((current) =>
+        current.map((item) => (item.id === creator.id ? { ...item, isAvailable: nextAction === "activate" } : item))
+      )
+      toast.success(nextAction === "deactivate" ? "Creator deactivated." : "Creator activated.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `Unable to ${nextAction} creator.`)
+    } finally {
+      setDeactivatingCreatorId("")
+    }
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingAction) return
+    if (pendingAction.type === "delete") {
+      await handleDeleteCreator(pendingAction.creator.id)
+    } else {
+      await handleStatusCreator(pendingAction.creator)
+    }
+    setPendingAction(null)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -113,11 +183,10 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
                   <TableHead>Handle</TableHead>
                   <TableHead className="text-right tabular-nums">From</TableHead>
                   <TableHead className="text-right tabular-nums">Rating</TableHead>
-                  <TableHead className="text-right tabular-nums">Reviews</TableHead>
-                  <TableHead className="min-w-[100px]">Response</TableHead>
-                  <TableHead>Status</TableHead>
+               
+                  <TableHead>Visibility</TableHead>
                   <TableHead className="text-right tabular-nums">Completed</TableHead>
-                  <TableHead className="w-[100px] text-right">Action</TableHead>
+                  <TableHead className="w-[280px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,7 +198,10 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
                     <TableCell className="align-middle">
                       <div className="flex items-center gap-3">
                         <CreatorAvatar creator={c} />
-                        <span className="font-medium text-foreground">{c.name}</span>
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-foreground">{c.name}</p>
+                          <p className="truncate text-xs text-muted-foreground">{c.email || "—"}</p>
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className="align-middle text-sm">@{c.handle}</TableCell>
@@ -139,39 +211,61 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
                     <TableCell className="align-middle text-right tabular-nums text-sm">
                       {c.rating.toFixed(1)}
                     </TableCell>
-                    <TableCell className="align-middle text-right tabular-nums text-sm">
-                      {c.reviewCount}
-                    </TableCell>
-                    <TableCell className="align-middle text-xs text-muted-foreground whitespace-nowrap">
-                      {c.responseTime}
-                    </TableCell>
+               
                     <TableCell className="align-middle">
-                      <div className="flex flex-wrap gap-1">
-                        {c.isVerified ? (
-                          <Badge variant="secondary">Verified</Badge>
-                        ) : (
-                          <Badge variant="outline">Unverified</Badge>
-                        )}
-                        {c.isAvailable ? (
-                          <Badge variant="default">Open</Badge>
-                        ) : (
-                          <Badge variant="outline">Busy</Badge>
-                        )}
-                      </div>
+                      {c.visibility === "private" ? (
+                        <Badge variant="outline">Private</Badge>
+                      ) : c.visibility === "unlisted" ? (
+                        <Badge variant="outline">Unlisted</Badge>
+                      ) : c.isAvailable ? (
+                        <Badge className="bg-emerald-100 text-emerald-700" variant="outline">Active</Badge>
+                      ) : (
+                        <Badge className="bg-rose-100 text-rose-700" variant="outline">Suspended</Badge>
+                      )}
                     </TableCell>
                     <TableCell className="align-middle text-right tabular-nums text-sm">
                       {c.completedOrders}
                     </TableCell>
                     <TableCell className="align-middle text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8"
-                        render={<Link href={`/dashboard/admin/creators/${c.id}`} />}
-                      >
-                        <Eye className="size-3.5" />
-                        View
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 w-8 p-0"
+                          render={<Link href={`/dashboard/admin/creators/${c.id}`} />}
+                          aria-label={`Preview ${c.name}`}
+                          title="Preview"
+                        >
+                          <Eye className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-8 w-8 p-0"
+                          disabled={deletingCreatorId === c.id}
+                          onClick={() => setPendingAction({ type: "delete", creator: c })}
+                          aria-label={`Delete ${c.name}`}
+                          title="Delete"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8 w-8 p-0"
+                          disabled={deactivatingCreatorId === c.id}
+                          onClick={() =>
+                            setPendingAction({
+                              type: c.isAvailable ? "deactivate" : "activate",
+                              creator: c,
+                            })
+                          }
+                          aria-label={`${c.isAvailable ? "Deactivate" : "Activate"} ${c.name}`}
+                          title={c.isAvailable ? "Deactivate" : "Activate"}
+                        >
+                          <ShieldBan className="size-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -187,25 +281,57 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-medium text-foreground">{c.name}</p>
+                      <p className="text-xs text-muted-foreground">{c.email || "—"}</p>
                       <p className="font-mono text-[11px] text-muted-foreground">{c.id}</p>
                       <p className="text-xs text-muted-foreground">@{c.handle}</p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-8 shrink-0"
-                      render={<Link href={`/dashboard/admin/creators/${c.id}`} />}
-                    >
-                      View
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-8 shrink-0 p-0"
+                        render={<Link href={`/dashboard/admin/creators/${c.id}`} />}
+                        aria-label={`Preview ${c.name}`}
+                        title="Preview"
+                      >
+                        <Eye className="size-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="h-8 w-8 shrink-0 p-0"
+                        disabled={deletingCreatorId === c.id}
+                        onClick={() => setPendingAction({ type: "delete", creator: c })}
+                        aria-label={`Delete ${c.name}`}
+                        title="Delete"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="h-8 w-8 shrink-0 p-0"
+                        disabled={deactivatingCreatorId === c.id}
+                        onClick={() =>
+                          setPendingAction({
+                            type: c.isAvailable ? "deactivate" : "activate",
+                            creator: c,
+                          })
+                        }
+                        aria-label={`${c.isAvailable ? "Deactivate" : "Activate"} ${c.name}`}
+                        title={c.isAvailable ? "Deactivate" : "Activate"}
+                      >
+                        <ShieldBan className="size-3.5" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {c.isVerified ? (
-                      <Badge variant="secondary">Verified</Badge>
-                    ) : (
-                      <Badge variant="outline">Unverified</Badge>
-                    )}
-                    {c.isAvailable ? (
+                    {c.isVerified ? <Badge variant="secondary">Verified</Badge> : <Badge variant="outline">Unverified</Badge>}
+                    {c.visibility === "private" ? (
+                      <Badge variant="outline">Private</Badge>
+                    ) : c.visibility === "unlisted" ? (
+                      <Badge variant="outline">Unlisted</Badge>
+                    ) : c.isAvailable ? (
                       <Badge variant="default">Open</Badge>
                     ) : (
                       <Badge variant="outline">Busy</Badge>
@@ -220,6 +346,38 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
           </ul>
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(pendingAction)} onOpenChange={(open) => (!open ? setPendingAction(null) : null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingAction?.type === "delete"
+                ? "Delete creator?"
+                : pendingAction?.type === "deactivate"
+                  ? "Close creator account?"
+                  : "Open creator account?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingAction?.type === "delete"
+                ? "This permanently deletes the creator profile and cannot be undone."
+                : pendingAction?.type === "deactivate"
+                  ? "This will close the creator account and set visibility to unavailable."
+                  : "This will open the creator account and allow availability again."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingAction(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant={pendingAction?.type === "delete" ? "destructive" : "default"}
+              onClick={() => void confirmPendingAction()}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

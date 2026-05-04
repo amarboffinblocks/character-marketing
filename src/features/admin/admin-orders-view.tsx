@@ -4,7 +4,6 @@ import { useMemo, useState } from "react"
 import { CalendarClock } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { OrdersListCard } from "@/features/creator/orders/components/orders-list-card"
 import { OrdersSummaryCards } from "@/features/creator/orders/components/orders-summary-cards"
 import { OrdersToolbar } from "@/features/creator/orders/components/orders-toolbar"
@@ -12,7 +11,7 @@ import {
   OrdersViewTabs,
   type SavedView,
 } from "@/features/creator/orders/components/orders-view-tabs"
-import { creatorOrders } from "@/features/creator/orders/data"
+import type { CreatorOrder } from "@/features/creator/orders/types"
 import type {
   OrderQuickFilter,
   OrderSortValue,
@@ -57,7 +56,7 @@ function applySavedView(
   }
 }
 
-export function AdminOrdersView() {
+export function AdminOrdersView({ initialOrders }: { initialOrders: CreatorOrder[] }) {
   const [search, setSearch] = useState("")
   const [status, setStatus] = useState<OrderStatusFilter>("all")
   const [sort, setSort] = useState<OrderSortValue>("due-asc")
@@ -65,13 +64,13 @@ export function AdminOrdersView() {
   const [view, setView] = useState<SavedView>("all")
 
   const filteredOrders = useMemo(() => {
-    const filtered = applyOrderFilters(creatorOrders, {
+    const filtered = applyOrderFilters(initialOrders, {
       search,
       status,
       quickFilters,
     })
     return sortOrders(filtered, sort)
-  }, [quickFilters, search, sort, status])
+  }, [initialOrders, quickFilters, search, sort, status])
 
   const hasActiveFilters =
     search.trim().length > 0 || status !== "all" || quickFilters.length > 0
@@ -128,7 +127,7 @@ export function AdminOrdersView() {
       </section>
 
       <OrdersSummaryCards
-        orders={creatorOrders}
+        orders={initialOrders}
         activeStatus={status}
         activeQuickFilters={quickFilters}
         onApplyStatus={handleApplyStatusFromCard}

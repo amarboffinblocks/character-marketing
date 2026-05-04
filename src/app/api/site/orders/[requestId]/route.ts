@@ -1,18 +1,15 @@
 import { NextResponse } from "next/server"
 import pg from "pg"
 
+import {
+  createStripeCheckoutSessionForOrder,
+  getPaymentsDbClient,
+  releaseCreatorOrderEscrow,
+} from "@/lib/payments/escrow"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
-}
-
-function getDbClient() {
-  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
-  if (!connectionString) {
-    throw new Error("Server misconfigured.")
-  }
-  return new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
 }
 
 export async function DELETE(_: Request, context: { params: Promise<{ requestId: string }> }) {
@@ -31,7 +28,12 @@ export async function DELETE(_: Request, context: { params: Promise<{ requestId:
     return NextResponse.json({ error: "requestId is required." }, { status: 400 })
   }
 
-  const client = getDbClient()
+  const connectionString = process.env.DIRECT_URL || process.env.DATABASE_URL
+  if (!connectionString) {
+    throw new Error("Server misconfigured.")
+  }
+
+  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
   try {
     await client.connect()
     const result = await client.query(
@@ -54,7 +56,7 @@ export async function DELETE(_: Request, context: { params: Promise<{ requestId:
   }
 }
 
-export async function POST(_: Request, context: { params: Promise<{ requestId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ requestId: string }> }) {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -70,13 +72,17 @@ export async function POST(_: Request, context: { params: Promise<{ requestId: s
     return NextResponse.json({ error: "orderId is required." }, { status: 400 })
   }
 
-  const client = getDbClient()
+  const {
+    data: { session },
+  } = await supabase.auth.getSession()
+
+  const client = getPaymentsDbClient()
   try {
     await client.connect()
     await client.query("begin")
 
     const orderResult = await client.query(
-      `select id, buyer_id, creator_id, package_price, payment_status, status
+      `select id, buyer_id, creator_id, package_title, package_price, payment_status, status, transfer_group
        from public.orders
        where id = $1 and buyer_id = $2
        for update`,
@@ -87,9 +93,11 @@ export async function POST(_: Request, context: { params: Promise<{ requestId: s
           id: string
           buyer_id: string
           creator_id: string
+          package_title: string
           package_price: number
           payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
           status: string
+          transfer_group: string | null
         }
       | undefined
 
@@ -98,60 +106,185 @@ export async function POST(_: Request, context: { params: Promise<{ requestId: s
       return NextResponse.json({ error: "Order not found." }, { status: 404 })
     }
 
-    if (order.payment_status === "paid") {
+    if (order.payment_status === "pending" || order.payment_status === "paid") {
       await client.query("commit")
       return NextResponse.json({
         success: true,
         order: {
           id: order.id,
-          paymentStatus: "paid",
+          paymentStatus: order.payment_status,
           status: order.status,
         },
       })
     }
 
+    const { session: checkoutSession, transferGroup } = await createStripeCheckoutSessionForOrder({
+      order,
+      buyerEmail: session?.user.email,
+      request,
+    })
+
     await client.query(
-      `insert into public.payment_transactions
-         (order_id, buyer_id, creator_id, amount, currency, payment_method, provider, provider_reference, status, notes)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      `update public.orders
+       set
+         transfer_group = $2,
+         stripe_checkout_session_id = $3,
+         updated_at = now()
+       where id = $1`,
+      [order.id, transferGroup, checkoutSession.id]
+    )
+
+    const existingCheckoutResult = await client.query(
+      `update public.payment_transactions
+       set
+         provider_reference = $2,
+         status = $3,
+         transfer_group = $4,
+         notes = $5
+      where checkout_session_id = $1
+      returning id`,
       [
-        order.id,
-        order.buyer_id,
-        order.creator_id,
-        order.package_price,
-        "USD",
-        "card",
-        "manual",
-        `txn-${Date.now()}`,
-        "succeeded",
-        "Buyer paid from orders page.",
+        checkoutSession.id,
+        checkoutSession.id,
+        "pending",
+        transferGroup,
+        "Buyer started Stripe Checkout for escrow funding.",
       ]
     )
 
-    const updateResult = await client.query(
-      `update public.orders
-       set
-         payment_status = 'paid',
-         status = case when status = 'pending_payment' then 'funded' else status end,
-         updated_at = now()
-       where id = $1
-       returning id, payment_status, status`,
-      [order.id]
-    )
-    const updated = updateResult.rows[0] as { id: string; payment_status: string; status: string } | undefined
+    if (!existingCheckoutResult.rows[0]) {
+      await client.query(
+        `insert into public.payment_transactions
+           (
+             transaction_type,
+             order_id,
+             buyer_id,
+             creator_id,
+             amount,
+             currency,
+             payment_method,
+             provider,
+             provider_reference,
+             status,
+             checkout_session_id,
+             transfer_group,
+             notes
+           )
+         values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+        [
+          "charge",
+          order.id,
+          order.buyer_id,
+          order.creator_id,
+          order.package_price,
+          "USD",
+          "card",
+          "stripe",
+          checkoutSession.id,
+          "pending",
+          checkoutSession.id,
+          transferGroup,
+          "Buyer started Stripe Checkout for escrow funding.",
+        ]
+      )
+    }
 
     await client.query("commit")
     return NextResponse.json({
       success: true,
       order: {
-        id: updated?.id ?? order.id,
-        paymentStatus: updated?.payment_status ?? "paid",
-        status: updated?.status ?? order.status,
+        id: order.id,
+        paymentStatus: order.payment_status,
+        status: order.status,
       },
+      checkoutUrl: checkoutSession.url,
     })
   } catch (error) {
     await client.query("rollback").catch(() => {})
     const message = error instanceof Error ? error.message : "Unable to process payment."
+    return NextResponse.json({ error: message }, { status: 400 })
+  } finally {
+    await client.end().catch(() => {})
+  }
+}
+
+export async function PATCH(request: Request, context: { params: Promise<{ requestId: string }> }) {
+  const supabase = await createServerSupabaseClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
+  const { requestId } = await context.params
+  const normalizedOrderId = asString(requestId)
+  if (!normalizedOrderId) {
+    return NextResponse.json({ error: "orderId is required." }, { status: 400 })
+  }
+
+  const payload = (await request.json().catch(() => ({}))) as { action?: unknown }
+  const action = asString(payload.action)
+  if (action !== "approve" && action !== "request_update") {
+    return NextResponse.json({ error: "Invalid action." }, { status: 400 })
+  }
+
+  const client = getPaymentsDbClient()
+  try {
+    await client.connect()
+    const orderResult = await client.query(
+      `select id, buyer_id, creator_id, status, payment_status
+       from public.orders
+       where id = $1 and buyer_id = $2
+       limit 1`,
+      [normalizedOrderId, user.id]
+    )
+    const order = orderResult.rows[0] as
+      | {
+          id: string
+          buyer_id: string
+          creator_id: string
+          status: string
+          payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
+        }
+      | undefined
+    if (!order) {
+      return NextResponse.json({ error: "Order not found." }, { status: 404 })
+    }
+
+    if (action === "request_update") {
+      await client.query(
+        `update public.orders
+         set status = 'in_progress', updated_at = now()
+         where id = $1`,
+        [order.id]
+      )
+      return NextResponse.json({
+        success: true,
+        order: { id: order.id, status: "in_progress", paymentStatus: order.payment_status },
+      })
+    }
+
+    if (order.payment_status !== "pending") {
+      return NextResponse.json(
+        { error: "Escrow must be funded before approval and payout release." },
+        { status: 400 }
+      )
+    }
+
+    await client.end().catch(() => {})
+    const updated = await releaseCreatorOrderEscrow({
+      orderId: order.id,
+      creatorId: order.creator_id,
+    })
+
+    return NextResponse.json({
+      success: true,
+      order: { id: updated.id, status: "completed", paymentStatus: updated.paymentStatus },
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to update order."
     return NextResponse.json({ error: message }, { status: 400 })
   } finally {
     await client.end().catch(() => {})

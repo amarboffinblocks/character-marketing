@@ -31,6 +31,12 @@ const transactionStatusClass = {
   refunded: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
 } as const
 
+const transactionTypeLabel = {
+  charge: "Escrow funded",
+  release: "Released to creator",
+  refund: "Refund",
+} as const
+
 function safeCounterparty(profileData: unknown) {
   const root = profileData && typeof profileData === "object" ? (profileData as Record<string, unknown>) : null
   const user = root?.user && typeof root.user === "object" ? (root.user as Record<string, unknown>) : null
@@ -116,8 +122,8 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
           {role === "buyer"
-            ? "Track your payments for creator orders and view transaction history."
-            : "Track incoming payments from completed and active customer orders."}
+            ? "Track Stripe checkout funding, escrow state, and refunds for your creator orders."
+            : "Track escrow releases that have been paid out to your connected creator account."}
         </p>
       </section>
 
@@ -198,7 +204,9 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
                       <TableCell className="py-4">
                         <div className="flex flex-col gap-0.5">
                           <span className="font-medium text-foreground">{tx.package_title}</span>
-                          <span className="text-xs text-muted-foreground">#{tx.order_id.slice(0, 8)}...</span>
+                          <span className="text-xs text-muted-foreground">
+                            #{tx.order_id.slice(0, 8)}... · {transactionTypeLabel[tx.transaction_type]}
+                          </span>
                         </div>
                       </TableCell>
                       <TableCell>

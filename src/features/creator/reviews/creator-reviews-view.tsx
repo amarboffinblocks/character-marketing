@@ -44,16 +44,16 @@ function RatingStars({ rating, size = "sm" }: { rating: ReviewRating; size?: "sm
 }
 
 export function CreatorReviewsView({ creatorId }: { creatorId: string }) {
-  const [resolvedCreatorId, setResolvedCreatorId] = useState(creatorId)
+  const [fallbackCreatorId, setFallbackCreatorId] = useState("")
   const [search, setSearch] = useState("")
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all")
   const [replyFilter, setReplyFilter] = useState<ReplyFilter>("all")
+  const resolvedCreatorId = creatorId || fallbackCreatorId
   const submittedReviews = useCreatorReviews(resolvedCreatorId)
   const [replyByReviewId, setReplyByReviewId] = useState<Record<string, string>>({})
 
   useEffect(() => {
-    if (creatorId) {
-      setResolvedCreatorId(creatorId)
+    if (creatorId || fallbackCreatorId) {
       return
     }
     const supabase = createClientSupabaseClient()
@@ -62,10 +62,10 @@ export function CreatorReviewsView({ creatorId }: { creatorId: string }) {
         data: { user },
       } = await supabase.auth.getUser()
       if (user?.id) {
-        setResolvedCreatorId(user.id)
+        setFallbackCreatorId(user.id)
       }
     })()
-  }, [creatorId])
+  }, [creatorId, fallbackCreatorId])
 
   const metrics = useMemo(() => {
     const total = submittedReviews.length

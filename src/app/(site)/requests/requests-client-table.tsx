@@ -1,9 +1,17 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { UserRound } from "lucide-react"
+import { ChevronLeft, Eye, UserRound } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Pagination,
@@ -29,6 +37,7 @@ type BuyerRequestRow = {
   tokens_label: string
   status: RequestStatus
   created_at: string
+  request_payload: unknown
   creator_profile_data: unknown | null
   order_id: string | null
 }
@@ -94,6 +103,7 @@ function safeCreatorSummary(profileData: unknown) {
 
 export function RequestsClientTable({ requests }: { requests: BuyerRequestRow[] }) {
   const [currentPage, setCurrentPage] = useState(1)
+  const [selectedRequest, setSelectedRequest] = useState<BuyerRequestRow | null>(null)
   const totalPages = Math.max(1, Math.ceil(requests.length / ROWS_PER_PAGE))
   const paginatedRows = useMemo(() => {
     const start = (currentPage - 1) * ROWS_PER_PAGE
@@ -112,6 +122,7 @@ export function RequestsClientTable({ requests }: { requests: BuyerRequestRow[] 
             <TableHead>Created</TableHead>
             <TableHead className="text-center">Price</TableHead>
             <TableHead className="text-right">Order</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -158,6 +169,18 @@ export function RequestsClientTable({ requests }: { requests: BuyerRequestRow[] 
                     <span className="text-xs text-muted-foreground">Not yet</span>
                   )}
                 </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8 w-8 p-0"
+                    aria-label={`Preview request ${req.id}`}
+                    title="Preview request"
+                    onClick={() => setSelectedRequest(req)}
+                  >
+                    <Eye className="size-3.5" />
+                  </Button>
+                </TableCell>
               </TableRow>
             )
           })}
@@ -190,6 +213,226 @@ export function RequestsClientTable({ requests }: { requests: BuyerRequestRow[] 
           </Pagination>
         </div>
       ) : null}
+
+      <Dialog open={Boolean(selectedRequest)} onOpenChange={(open) => (open ? undefined : setSelectedRequest(null))}>
+        <DialogContent className="sm:max-w-2xl">
+          {selectedRequest ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedRequest.package_title}</DialogTitle>
+                <DialogDescription>
+                  Request #{selectedRequest.id} · {requestTypeLabel[selectedRequest.request_type]}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 py-3 text-sm">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg border border-border/60 bg-muted/15 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Status</p>
+                    <p className="mt-1 font-medium text-foreground">{requestStatusLabel[selectedRequest.status]}</p>
+                  </div>
+                  <div className="rounded-lg border border-border/60 bg-muted/15 p-3">
+                    <p className="text-xs font-semibold text-muted-foreground">Price</p>
+                    <p className="mt-1 font-medium text-foreground">{formatCurrency(selectedRequest.package_price)}</p>
+                  </div>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/15 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Tokens</p>
+                  <p className="mt-1 font-medium text-foreground">{selectedRequest.tokens_label || "—"}</p>
+                </div>
+                <div className="rounded-lg border border-border/60 bg-muted/15 p-3">
+                  <p className="text-xs font-semibold text-muted-foreground">Request Details</p>
+                  <RequestPayloadDetails request={selectedRequest} />
+                </div>
+              </div>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </>
   )
+}
+
+function RequestPayloadDetails({ request }: { request: BuyerRequestRow }) {
+  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  let payload = request.request_payload
+  if (typeof payload === "string") {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      payload = undefined
+    }
+  }
+
+  const parsedPayload = payload as Record<string, unknown> | undefined
+  if (!parsedPayload) return null
+
+  const details =
+    parsedPayload.details && typeof parsedPayload.details === "object"
+      ? (parsedPayload.details as Record<string, unknown>)
+      : {}
+  const notes =
+    (typeof parsedPayload.notes === "string" && parsedPayload.notes) ||
+    (typeof parsedPayload.instructions === "string" && parsedPayload.instructions) ||
+    (typeof parsedPayload.messageToCreator === "string" && parsedPayload.messageToCreator) ||
+    ""
+
+  if (request.request_type === "custom_package") {
+    const keys = ["character", "persona", "lorebook", "background", "avatar"] as const
+
+    return (
+      <div className="mt-4 space-y-4">
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-foreground">Requested Assets</h4>
+          {!activeCategory ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {keys.map((key) => {
+                const items = Array.isArray(details[key]) ? details[key] : []
+                if (items.length === 0) return null
+
+                const firstNames = items
+                  .map((item) =>
+                    typeof item === "string"
+                      ? item
+                      : (item as Record<string, unknown>)?.characterName ||
+                        (item as Record<string, unknown>)?.personaName ||
+                        (item as Record<string, unknown>)?.lorebookName ||
+                        (item as Record<string, unknown>)?.backgroundName ||
+                        (item as Record<string, unknown>)?.avatarName ||
+                        `Custom ${key}`
+                  )
+                  .slice(0, 2)
+                  .join(", ")
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setActiveCategory(key)}
+                    className="flex w-full cursor-pointer flex-col items-start rounded-xl border border-border/60 bg-muted/20 p-4 text-left shadow-2xs transition-all duration-200 hover:bg-muted/40"
+                  >
+                    <p className="text-xs font-semibold capitalize text-muted-foreground">
+                      {key}s ({items.length})
+                    </p>
+                    <p className="mt-1.5 w-full truncate text-sm font-medium text-foreground/90">
+                      {firstNames}
+                      {items.length > 2 ? "..." : ""}
+                    </p>
+                    <span className="mt-2 text-[10px] font-medium text-primary/80">Click to view details</span>
+                  </button>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="space-y-3 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between border-b border-border/40 pb-2">
+                <h4 className="flex items-center gap-1 text-sm font-bold capitalize text-foreground">
+                  <span className="text-primary">{activeCategory}s</span> Details
+                </h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 cursor-pointer px-2 text-xs hover:bg-primary/10 hover:text-primary"
+                  onClick={() => setActiveCategory(null)}
+                >
+                  <ChevronLeft className="mr-1 size-3.5" />
+                  Back
+                </Button>
+              </div>
+
+              <div className="max-h-[320px] space-y-3 overflow-y-auto pr-1 pt-1">
+                {Array.isArray(details[activeCategory]) &&
+                  (details[activeCategory] as unknown[]).map((item, idx) => {
+                    const itemObject =
+                      item && typeof item === "object" ? (item as Record<string, unknown>) : {}
+                    const name =
+                      typeof item === "string"
+                        ? item
+                        : itemObject.characterName ||
+                          itemObject.personaName ||
+                          itemObject.lorebookName ||
+                          itemObject.backgroundName ||
+                          itemObject.avatarName ||
+                          `Custom ${activeCategory} #${idx + 1}`
+
+                    return (
+                      <div
+                        key={`${activeCategory}-${idx}`}
+                        className="space-y-3 rounded-xl border border-border bg-background/50 p-4 shadow-2xs"
+                      >
+                        <p className="border-b border-border/40 pb-1.5 text-sm font-semibold text-primary">
+                          {String(name)}
+                        </p>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {Object.entries(itemObject).map(([k, v]) => {
+                            if (!v || k === "id") return null
+                            if (["characterName", "personaName", "lorebookName", "backgroundName", "avatarName"].includes(k)) {
+                              return null
+                            }
+                            const label = k.replace(/([A-Z])/g, " $1").trim()
+                            return (
+                              <div key={k} className="not-first:border-border/20 sm:col-span-2 not-first:border-t pt-2 first:pt-0">
+                                <span className="mb-1 block text-xs font-semibold capitalize text-foreground/95">
+                                  {label}
+                                </span>
+                                <p className="whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground/85">
+                                  {String(v)}
+                                </p>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {notes ? (
+          <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/10 p-3">
+            <h4 className="text-xs font-semibold text-muted-foreground">Instructions</h4>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{notes}</p>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  if (request.request_type === "preselect_package") {
+    const requestedAssets =
+      parsedPayload.requestedAssets && typeof parsedPayload.requestedAssets === "object"
+        ? (parsedPayload.requestedAssets as Record<string, unknown>)
+        : {}
+    const keys = ["character", "persona", "lorebook", "background", "avatar"] as const
+
+    return (
+      <div className="mt-4 space-y-4">
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold text-foreground">Included Assets</h4>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {keys.map((key) => {
+              const count = typeof requestedAssets[key] === "number" ? requestedAssets[key] : 0
+              if (count === 0) return null
+              return (
+                <div key={key} className="rounded-lg border border-border/60 bg-muted/20 p-2 text-center">
+                  <p className="text-lg font-semibold text-foreground">{count}</p>
+                  <p className="text-xs capitalize text-muted-foreground">{key}s</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {notes ? (
+          <div className="space-y-1.5 rounded-lg border border-border/60 bg-muted/10 p-3">
+            <h4 className="text-xs font-semibold text-muted-foreground">Instructions</h4>
+            <p className="whitespace-pre-wrap text-sm text-foreground">{notes}</p>
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  return null
 }

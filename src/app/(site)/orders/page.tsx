@@ -5,6 +5,7 @@ import { Activity, CalendarClock, CheckCircle2, FolderSearch, Timer } from "luci
 
 import { buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { syncOrderEscrowAfterCheckoutReturn } from "@/lib/payments/escrow"
 import { cn } from "@/lib/utils"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { OrdersClientTable } from "./orders-client-table"
@@ -146,7 +147,9 @@ async function fetchBuyerOrders(userId: string): Promise<BuyerOrderRow[]> {
   }
 }
 
-export default async function OrdersPage() {
+export default async function OrdersPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -154,6 +157,20 @@ export default async function OrdersPage() {
 
   if (!user) {
     redirect("/sign-in")
+  }
+
+  const searchParams = await props.searchParams
+  const checkoutState = Array.isArray(searchParams.checkout)
+    ? searchParams.checkout[0]
+    : searchParams.checkout
+  const checkoutOrderId = Array.isArray(searchParams.order) ? searchParams.order[0] : searchParams.order
+
+  if (checkoutState === "success" && typeof checkoutOrderId === "string" && checkoutOrderId.trim()) {
+    try {
+      await syncOrderEscrowAfterCheckoutReturn({ orderId: checkoutOrderId.trim() })
+    } catch {
+      // Do not block orders page rendering if fallback sync fails.
+    }
   }
 
   const orders = await fetchBuyerOrders(user.id)
@@ -203,8 +220,8 @@ export default async function OrdersPage() {
               Orders
             </h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Track accepted requests after they become orders. Payment and fulfillment will attach to
-              these records.
+              Track accepted requests after they become orders. Pay through Stripe to secure funds in
+              escrow, then follow fulfillment until the creator completes the work.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

@@ -14,9 +14,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAdminCreatorExtra } from "@/features/admin/admin-creator-extras"
-import { getAdminUserRecord } from "@/features/admin/admin-users-data"
+import { getAdminCreatorById, getAdminDirectoryUserById } from "@/features/admin/admin-directory-data"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
-import { getMarketplaceCreatorProfileById } from "@/features/site/marketplace/data/marketplace-server-data"
 import { cn } from "@/lib/utils"
 
 type AdminCreatorProfileViewProps = {
@@ -24,13 +23,13 @@ type AdminCreatorProfileViewProps = {
 }
 
 export async function AdminCreatorProfileView({ creatorId }: AdminCreatorProfileViewProps) {
-  const creator = await getMarketplaceCreatorProfileById(creatorId)
+  const creator = await getAdminCreatorById(creatorId)
   if (!creator) {
     notFound()
   }
 
   const extra = getAdminCreatorExtra(creatorId)
-  const linkedUser = extra.linkedUserId ? getAdminUserRecord(extra.linkedUserId) : undefined
+  const linkedUser = extra.linkedUserId ? await getAdminDirectoryUserById(extra.linkedUserId) : undefined
 
   return (
     <div className="flex flex-col gap-6">

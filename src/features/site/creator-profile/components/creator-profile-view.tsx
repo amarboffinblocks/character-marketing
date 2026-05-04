@@ -1,5 +1,5 @@
 "use client"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Container } from "@/components/shared"
 import { CreatorProfileHeader } from "@/features/site/creator-profile/components/creator-profile-header"
 import { CreatorProfileStatBar } from "@/features/site/creator-profile/components/creator-profile-stat-bar"
@@ -66,6 +66,7 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
  * Full creator profile layout: hero header, stats, tabbed main column, and packages sidebar.
  */
 export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileViewProps) {
+  const [renderedAt] = useState(() => Date.now())
   const localReviews = useCreatorReviews(profile.id)
   const { averageRating, reviewCount } = useCreatorReviewAggregate({
     creatorId: profile.id,
@@ -83,14 +84,14 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
       title: review.title,
       body: review.body,
       dateLabel: new Intl.RelativeTimeFormat("en", { numeric: "auto" }).format(
-        -Math.max(1, Math.round((Date.now() - new Date(review.createdAt).getTime()) / (1000 * 60 * 60 * 24))),
+        -Math.max(1, Math.round((renderedAt - new Date(review.createdAt).getTime()) / (1000 * 60 * 60 * 24))),
         "day"
       ),
       createdAt: review.createdAt,
       status: review.status,
     }))
     return [...mappedLocal, ...profile.reviews]
-  }, [localReviews, profile.reviews])
+  }, [localReviews, profile.reviews, renderedAt])
   const profileWithReviewStats = useMemo(
     () => ({
       ...profile,

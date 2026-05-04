@@ -45,8 +45,8 @@ const orderStatusClass: Record<CreatorOrderStatus, string> = {
 
 const paymentStatusLabel: Record<CreatorPaymentStatus, string> = {
   unpaid: "Unpaid",
-  pending: "Pending",
-  paid: "Paid",
+  pending: "In escrow",
+  paid: "Released",
   failed: "Failed",
   refunded: "Refunded",
 }
@@ -89,13 +89,14 @@ function safeBuyerSummary(profileData: unknown) {
 export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: CreatorOrderRow[] }) {
   const [orders, setOrders] = useState(initialOrders)
   const [selectedOrder, setSelectedOrder] = useState<CreatorOrderRow | null>(null)
-  const [nextStatus, setNextStatus] = useState<"pending" | "processing" | "on_hold" | "completed">("pending")
+  const [nextStatus, setNextStatus] = useState<"pending" | "processing" | "on_hold" | "delivered" | "completed">("pending")
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [error, setError] = useState("")
 
-  function toStatusOption(status: CreatorOrderStatus): "pending" | "processing" | "on_hold" | "completed" {
+  function toStatusOption(status: CreatorOrderStatus): "pending" | "processing" | "on_hold" | "delivered" | "completed" {
     if (status === "pending_payment") return "pending"
     if (status === "in_progress") return "processing"
+    if (status === "delivered") return "delivered"
     if (status === "on_hold" || status === "approved") return "on_hold"
     if (status === "completed") return "completed"
     return "processing"
@@ -117,7 +118,14 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: nextStatus }),
       })
-      const json = (await response.json()) as { error?: string }
+      const json = (await response.json()) as {
+        error?: string
+        order?: {
+          id: string
+          status?: CreatorOrderStatus | "completed"
+          paymentStatus?: CreatorPaymentStatus
+        }
+      }
       if (!response.ok) {
         throw new Error(json.error || "Unable to update order status.")
       }
@@ -126,12 +134,20 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
           ? "pending_payment"
           : nextStatus === "processing"
             ? "in_progress"
+            : nextStatus === "delivered"
+              ? "delivered"
             : nextStatus === "on_hold"
               ? "on_hold"
               : "completed"
       setOrders((current) =>
         current.map((order) =>
-          order.id === selectedOrder.id ? { ...order, status: nextLocalStatus } : order
+          order.id === selectedOrder.id
+            ? {
+                ...order,
+                status: nextLocalStatus,
+                payment_status: json.order?.paymentStatus ?? order.payment_status,
+              }
+            : order
         )
       )
       setSelectedOrder(null)
@@ -192,7 +208,8 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
       <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Creator Orders</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-          Accepted requests become orders and move here for payment and fulfillment tracking.
+          Accepted requests become orders here. Buyers fund them through Stripe escrow, then you
+          complete the work and receive the release payout.
         </p>
       </section>
 
@@ -305,11 +322,12 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
             <DialogTitle>Update order status</DialogTitle>
             <DialogDescription>
               Confirm status update for <span className="font-medium text-foreground">{selectedOrder?.package_title ?? "order"}</span>.
+              Move to <span className="font-medium text-foreground">Delivered</span> when ready for buyer review.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground">Next status</p>
-            <Select value={nextStatus} onValueChange={(value) => setNextStatus(value as "pending" | "processing" | "on_hold" | "completed")}>
+            <Select value={nextStatus} onValueChange={(value) => setNextStatus(value as "pending" | "processing" | "on_hold" | "delivered" | "completed")}>
               <SelectTrigger>
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -317,6 +335,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="processing">Processing</SelectItem>
                 <SelectItem value="on_hold">On hold</SelectItem>
+                <SelectItem value="delivered">Go for review</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
               </SelectContent>
             </Select>

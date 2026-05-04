@@ -1,6 +1,7 @@
 export type Creator = {
   id: string
   name: string
+  email?: string
   handle: string
   tagline: string
   languages: string[]
@@ -12,6 +13,7 @@ export type Creator = {
   responseTime: string
   isVerified: boolean
   isAvailable: boolean
+  visibility?: "public" | "private" | "unlisted"
   specialties: string[]
   completedOrders: number
 }

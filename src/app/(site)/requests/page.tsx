@@ -23,6 +23,7 @@ type BuyerRequestRow = {
   tokens_label: string
   status: RequestStatus
   created_at: string
+  request_payload: unknown
   creator_profile_data: unknown | null
   order_id: string | null
 }
@@ -58,6 +59,7 @@ async function fetchBuyerRequests(userId: string): Promise<BuyerRequestRow[]> {
           r.tokens_label,
           r.status,
           r.created_at,
+          r.request_payload,
           p.profile_data as creator_profile_data,
           o.id as order_id
         from public.requests r
@@ -83,6 +85,7 @@ async function fetchBuyerRequests(userId: string): Promise<BuyerRequestRow[]> {
             r.tokens_label,
             r.status,
             r.created_at,
+            r.request_payload,
             p.profile_data as creator_profile_data,
             null::uuid as order_id
           from public.requests r

@@ -2,12 +2,20 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { Download, Eye, Search, Users } from "lucide-react"
+import { Download, Eye, Search, ShieldBan, Trash2, Users } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -24,22 +32,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import type { AdminUserRecord } from "@/features/admin/admin-users-data"
-import { adminUserRecords } from "@/features/admin/admin-users-data"
+import type { AdminDirectoryUser } from "@/features/admin/admin-directory-data"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
+import { toast } from "sonner"
 
-const roleVariant: Record<AdminUserRecord["role"], "default" | "secondary" | "outline"> = {
+const roleVariant: Record<AdminDirectoryUser["role"], "default" | "secondary" | "outline"> = {
   buyer: "secondary",
   creator: "default",
   admin: "outline",
 }
 
-type RoleFilter = "all" | AdminUserRecord["role"]
-type StatusFilter = "all" | AdminUserRecord["status"]
+type RoleFilter = "all" | AdminDirectoryUser["role"]
+type StatusFilter = "all" | AdminDirectoryUser["status"]
+type PendingUserAction = {
+  type: "delete" | "activate" | "deactivate"
+  user: AdminDirectoryUser
+} | null
 
-function getUserAvatarUrl(user: AdminUserRecord) {
-  return `https://i.pravatar.cc/120?u=${encodeURIComponent(user.email)}`
+function getUserAvatarUrl(user: AdminDirectoryUser) {
+  return user.avatarUrl
 }
 
 function getInitials(name: string) {
@@ -54,14 +66,18 @@ function getInitials(name: string) {
   )
 }
 
-export function AdminUsersView() {
+export function AdminUsersView({ users }: { users: AdminDirectoryUser[] }) {
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [rows, setRows] = useState(users)
+  const [deletingUserId, setDeletingUserId] = useState("")
+  const [deactivatingUserId, setDeactivatingUserId] = useState("")
+  const [pendingAction, setPendingAction] = useState<PendingUserAction>(null)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    return adminUserRecords.filter((u) => {
+    return rows.filter((u) => {
       const matchesSearch =
         q.length === 0 ||
         u.displayName.toLowerCase().includes(q) ||
@@ -71,7 +87,71 @@ export function AdminUsersView() {
       const matchesStatus = statusFilter === "all" ? true : u.status === statusFilter
       return matchesSearch && matchesRole && matchesStatus
     })
-  }, [search, roleFilter, statusFilter])
+  }, [rows, search, roleFilter, statusFilter])
+
+  async function handleDeleteUser(userId: string) {
+    setDeletingUserId(userId)
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(userId)}`, {
+        method: "DELETE",
+      })
+      const json = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(json.error || "Unable to delete user.")
+      }
+      setRows((current) => current.filter((item) => item.id !== userId))
+      toast.success("User deleted.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to delete user.")
+    } finally {
+      setDeletingUserId("")
+    }
+  }
+
+  async function handleStatusUser(user: AdminDirectoryUser) {
+    const nextAction = user.status === "active" ? "deactivate" : "activate"
+    setDeactivatingUserId(user.id)
+    try {
+      const response = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: nextAction }),
+      })
+      const json = (await response.json()) as { error?: string }
+      if (!response.ok) {
+        throw new Error(json.error || `Unable to ${nextAction} user.`)
+      }
+      setRows((current) =>
+        current.map((item) =>
+          item.id === user.id
+            ? {
+                ...item,
+                status: nextAction === "deactivate" ? "suspended" : "active",
+                flags:
+                  nextAction === "deactivate"
+                    ? Array.from(new Set([...item.flags, "suspended"]))
+                    : item.flags.filter((flag) => flag !== "suspended"),
+              }
+            : item
+        )
+      )
+      toast.success(nextAction === "deactivate" ? "User deactivated." : "User activated.")
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : `Unable to ${nextAction} user.`)
+    } finally {
+      setDeactivatingUserId("")
+    }
+  }
+
+  async function confirmPendingAction() {
+    if (!pendingAction) return
+    if (pendingAction.type === "delete") {
+      await handleDeleteUser(pendingAction.user.id)
+    } else {
+      await handleStatusUser(pendingAction.user)
+    }
+    setPendingAction(null)
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -79,7 +159,7 @@ export function AdminUsersView() {
         icon={Users}
         badge="User management"
         title="Users"
-        description="Search, filter, and open full platform profiles. Demo directory only."
+        description="Search, filter, preview, and manage platform users."
         actions={
           <Button variant="outline" className="h-9 border-primary/25 bg-background/80 hover:bg-primary/10">
             <Download className="size-4" />
@@ -106,7 +186,6 @@ export function AdminUsersView() {
             <SelectContent>
               <SelectItem value="all">All roles</SelectItem>
               <SelectItem value="buyer">Buyer</SelectItem>
-              <SelectItem value="creator">Creator</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
             </SelectContent>
           </Select>
@@ -117,7 +196,7 @@ export function AdminUsersView() {
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="suspended">Suspended</SelectItem>
+              <SelectItem value="suspended">Deactive</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -142,11 +221,9 @@ export function AdminUsersView() {
                   <TableHead className="min-w-[200px]">Email</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="min-w-[140px]">Last active</TableHead>
                   <TableHead className="text-right tabular-nums">Orders</TableHead>
                   <TableHead className="text-right tabular-nums">Spend</TableHead>
-                  <TableHead className="min-w-[110px]">Joined</TableHead>
-                  <TableHead className="w-[100px] text-right">Action</TableHead>
+                  <TableHead className="w-[280px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -175,28 +252,46 @@ export function AdminUsersView() {
                         {u.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="align-middle text-xs text-muted-foreground whitespace-nowrap">
-                      {u.lastActiveAt}
-                    </TableCell>
                     <TableCell className="align-middle text-right tabular-nums text-sm">
                       {u.ordersCount}
                     </TableCell>
                     <TableCell className="align-middle text-right tabular-nums text-sm">
                       {u.lifetimeSpendUsd > 0 ? formatUsd(u.lifetimeSpendUsd) : "—"}
                     </TableCell>
-                    <TableCell className="align-middle text-xs text-muted-foreground whitespace-nowrap">
-                      {u.joinedAt}
-                    </TableCell>
                     <TableCell className="align-middle text-right">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8"
-                        render={<Link href={`/dashboard/admin/users/${u.id}`} />}
-                      >
-                        <Eye className="size-3.5" />
-                        View
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8"
+                          render={<Link href={`/dashboard/admin/users/${u.id}`} />}
+                        >
+                          <Eye className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-8"
+                          disabled={deletingUserId === u.id}
+                          onClick={() => setPendingAction({ type: "delete", user: u })}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-8"
+                          disabled={deactivatingUserId === u.id}
+                          onClick={() =>
+                            setPendingAction({
+                              type: u.status === "active" ? "deactivate" : "activate",
+                              user: u,
+                            })
+                          }
+                        >
+                          <ShieldBan className="size-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -234,21 +329,77 @@ export function AdminUsersView() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">{u.lastActiveAt}</span>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    render={<Link href={`/dashboard/admin/users/${u.id}`} />}
-                  >
-                    View
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-8"
+                      render={<Link href={`/dashboard/admin/users/${u.id}`} />}
+                    >
+                      Preview
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-8"
+                      disabled={deletingUserId === u.id}
+                      onClick={() => setPendingAction({ type: "delete", user: u })}
+                    >
+                      Delete
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8"
+                      disabled={deactivatingUserId === u.id}
+                      onClick={() =>
+                        setPendingAction({
+                          type: u.status === "active" ? "deactivate" : "activate",
+                          user: u,
+                        })
+                      }
+                    >
+                      {u.status === "active" ? "Deactivate" : "Activate"}
+                    </Button>
+                  </div>
                 </div>
               </li>
             ))}
           </ul>
         </CardContent>
       </Card>
+
+      <Dialog open={Boolean(pendingAction)} onOpenChange={(open) => (!open ? setPendingAction(null) : null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingAction?.type === "delete"
+                ? "Delete user?"
+                : pendingAction?.type === "deactivate"
+                  ? "Deactivate user?"
+                  : "Activate user?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingAction?.type === "delete"
+                ? "This permanently deletes the user profile and cannot be undone."
+                : pendingAction?.type === "deactivate"
+                  ? "This will suspend the user account."
+                  : "This will reopen the user account."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingAction(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant={pendingAction?.type === "delete" ? "destructive" : "default"}
+              onClick={() => void confirmPendingAction()}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

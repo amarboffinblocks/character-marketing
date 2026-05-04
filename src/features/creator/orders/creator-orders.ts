@@ -157,7 +157,7 @@ export async function fetchCreatorOrders(creatorId: string): Promise<CreatorOrde
 export async function updateCreatorOrderStatus(input: {
   orderId: string
   creatorId: string
-  status: "pending" | "processing" | "on_hold" | "completed"
+  status: "pending" | "processing" | "on_hold" | "delivered" | "completed"
 }) {
   const connectionString = getConnectionString()
   if (!connectionString) {
@@ -171,6 +171,8 @@ export async function updateCreatorOrderStatus(input: {
         ? "in_progress"
         : input.status === "on_hold"
           ? "approved"
+          : input.status === "delivered"
+            ? "delivered"
           : "completed"
   const isBidOrder = input.orderId.startsWith("bid-order-")
   const bidId = isBidOrder ? input.orderId.replace(/^bid-order-/, "").trim() : ""
@@ -185,6 +187,8 @@ export async function updateCreatorOrderStatus(input: {
       const nextBidStatus =
         input.status === "completed"
           ? "completed"
+          : input.status === "delivered"
+            ? "processing"
           : input.status === "on_hold" || input.status === "pending"
             ? "pending"
             : "processing"

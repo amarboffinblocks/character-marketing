@@ -6,6 +6,7 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { computeAdminProfileCompletion, defaultAdminProfileForm, type AdminProfileForm } from "@/features/admin/admin-profile-data"
 import { adminSidebarGroups } from "@/features/admin/navigation"
 import { resolvePersistedRole } from "@/lib/profile-role"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 export default async function AdminDashboardLayout({
@@ -50,10 +51,37 @@ export default async function AdminDashboardLayout({
   const sidebarCookie = cookieStore.get("sidebar_state")?.value
   const defaultOpen = sidebarCookie === undefined ? true : sidebarCookie === "true"
 
+  const adminSupabase = createAdminSupabaseClient()
+  const [usersCountResult, creatorsCountResult] = await Promise.all([
+    adminSupabase
+      .from("profiles")
+      .select("*", { head: true, count: "exact" })
+      .neq("role", "creator"),
+    adminSupabase
+      .from("profiles")
+      .select("*", { head: true, count: "exact" })
+      .eq("role", "creator"),
+  ])
+  const usersCount = usersCountResult.count ?? 0
+  const creatorsCount = creatorsCountResult.count ?? 0
+
+  const sidebarGroups = adminSidebarGroups.map((group) => ({
+    ...group,
+    items: group.items.map((item) => {
+      if (item.href === "/dashboard/admin/users") {
+        return { ...item, badge: String(usersCount) }
+      }
+      if (item.href === "/dashboard/admin/creators") {
+        return { ...item, badge: String(creatorsCount) }
+      }
+      return item
+    }),
+  }))
+
   return (
     <SidebarProvider defaultOpen={defaultOpen}>
       <AppSidebar
-        groups={adminSidebarGroups}
+        groups={sidebarGroups}
         workspaceName="Character Market"
         workspaceSubtitle="Admin"
         brandHref="/dashboard/admin"
