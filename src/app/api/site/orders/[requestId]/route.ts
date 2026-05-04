@@ -6,6 +6,7 @@ import {
   getPaymentsDbClient,
   releaseCreatorOrderEscrow,
 } from "@/lib/payments/escrow"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 function asString(value: unknown) {
@@ -249,7 +250,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
           creator_id: string
           status: string
           payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
-          request_snapshot: any
+          request_snapshot: Record<string, unknown> | null
         }
       | undefined
     if (!order) {
@@ -257,7 +258,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
     }
 
     if (action === "request_update") {
-      const updatedSnapshot = typeof order.request_snapshot === 'object' && order.request_snapshot !== null 
+      const updatedSnapshot = typeof order.request_snapshot === "object" && order.request_snapshot !== null
         ? { ...order.request_snapshot, revision_message: message }
         : { revision_message: message }
 
@@ -267,6 +268,20 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
          where id = $1`,
         [order.id, JSON.stringify(updatedSnapshot)]
       )
+
+      // Create notification for the creator
+      await client.query(
+        `insert into public.inbox_notifications (user_id, category, title, body, action_url)
+         values ($1, $2, $3, $4, $5)`,
+        [
+          order.creator_id,
+          "order",
+          "Revision requested",
+          `A buyer requested a revision for order #${order.id.slice(0, 8)}: "${message.slice(0, 50)}${message.length > 50 ? '...' : ''}"`,
+          `/dashboard/creator/orders`
+        ]
+      ).catch(err => console.error("Failed to create notification:", err))
+
       return NextResponse.json({
         success: true,
         order: { id: order.id, status: "in_progress", paymentStatus: order.payment_status },
@@ -286,9 +301,30 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
       creatorId: order.creator_id,
     })
 
+    const notificationClient = getPaymentsDbClient()
+    try {
+      await notificationClient.connect()
+      await insertInboxNotification(notificationClient, {
+        userId: order.creator_id,
+        category: "payment",
+        title: "Order approved",
+        body: `The buyer approved order #${order.id.slice(0, 8)}. Escrow funds were released to your connected account.`,
+        actionUrl: "/dashboard/creator/transactions",
+      })
+      await insertInboxNotification(notificationClient, {
+        userId: order.creator_id,
+        category: "order",
+        title: "Order status updated",
+        body: `Order #${order.id.slice(0, 8)} was approved by the buyer.`,
+        actionUrl: "/dashboard/creator/orders",
+      })
+    } finally {
+      await notificationClient.end().catch(() => {})
+    }
+
     return NextResponse.json({
       success: true,
-      order: { id: updated.id, status: "completed", paymentStatus: updated.paymentStatus },
+      order: { id: updated.id, status: "approved", paymentStatus: updated.paymentStatus },
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to update order."

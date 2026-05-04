@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { LoaderCircle, UserRound } from "lucide-react"
+import { BadgeCheck, CreditCard, Eye, LoaderCircle, MessageSquareText, MoreVertical, UserRound } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -31,6 +32,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 import { Textarea } from "@/components/ui/textarea"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 
 type OrderStatus =
@@ -99,9 +101,16 @@ const orderStatusClass: Record<OrderStatus, string> = {
 const paymentStatusLabel: Record<PaymentStatus, string> = {
   unpaid: "Unpaid",
   pending: "In escrow",
-  paid: "Released",
+  paid: "Paid",
   failed: "Failed",
   refunded: "Refunded",
+}
+
+function buyerFacingOrderStatusLabel(order: BuyerOrderRow): string {
+  if (order.status === "delivered" && order.payment_status === "pending") {
+    return "Review"
+  }
+  return orderStatusLabel[order.status]
 }
 
 function safeCreatorSummary(profileData: unknown) {
@@ -317,7 +326,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
           : current
       )
     } catch {
-      // Silent fail for now; parent page does not provide toast system.
+      toast.error("Something went wrong, contact creator")
     } finally {
       setPayingOrderId(null)
     }
@@ -360,8 +369,11 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             }
           : current
       )
-    } catch {
-      // Silent fail for now; parent page does not provide toast system.
+      if (action === "approve") {
+        window.location.href = `/creators/${order.creator_id}/review?orderId=${encodeURIComponent(order.id)}`
+      }
+    } catch (error) {
+      toast.error("Something went wrong, contact creator")
     } finally {
       setActingOrderId(null)
     }
@@ -375,7 +387,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
           <TableRow className="bg-muted/30 hover:bg-muted/30">
             <TableHead className="py-4">Creator</TableHead>
             <TableHead>Order</TableHead>
-            <TableHead>Payment</TableHead>
+            {/* <TableHead>Payment</TableHead> */}
             <TableHead>Status</TableHead>
             <TableHead>Created</TableHead>
             <TableHead className="text-center">Price</TableHead>
@@ -389,12 +401,12 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const creatorHandle = creator.handle
             const creatorSlug = req.creator_id
             const canPay =
-              !req.id.startsWith("bid-order-") &&
               (req.payment_status === "unpaid" || req.payment_status === "failed")
-            const canApprove = req.status === "delivered" && req.payment_status === "pending"
-            const canRequestUpdate = req.status === "delivered"
             const isPaying = payingOrderId === req.id
             const isActing = actingOrderId === req.id
+            const hasPreview = req.status === "delivered" || req.status === "approved" || req.status === "completed"
+            const canApprove = (req.status === "delivered" || req.status === "funded") && req.payment_status === "pending"
+            const canRequestUpdate = req.status === "delivered"
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
@@ -433,17 +445,17 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                     <span className="text-xs text-muted-foreground">#{req.id.slice(0, 8)}...</span>
                   </div>
                 </TableCell>
-                <TableCell>
+                {/* <TableCell>
                   <Badge variant="outline" className="py-3  px-2 text-xs bg-primary/10">
                     {paymentStatusLabel[req.payment_status]}
                   </Badge>
-                </TableCell>
+                </TableCell> */}
                 <TableCell>
                   <Badge
                     variant="secondary"
                     className={cn("font-medium px-2.5 py-0.5 rounded-md", orderStatusClass[req.status])}
                   >
-                    {orderStatusLabel[req.status]}
+                    {buyerFacingOrderStatusLabel(req)}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
@@ -453,49 +465,45 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                   {formatCurrency(req.package_price)}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    {canPay ? (
-                      <Button
-                        size="sm"
-                        className="h-8 cursor-pointer px-3 font-medium"
-                        disabled={isPaying}
-                        onClick={() => void handlePayNow(req)}
-                      >
-                        {isPaying ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
-                        Pay now
-                      </Button>
-                    ) : null}
-                    {canRequestUpdate ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 cursor-pointer px-3 font-medium"
-                        disabled={isActing}
-                        onClick={() => void openUpdateDialog(req)}
-                      >
-                        {isActing ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
-                        New update
-                      </Button>
-                    ) : null}
-                    {canApprove ? (
-                      <Button
-                        size="sm"
-                        className="h-8 cursor-pointer px-3 font-medium"
-                        disabled={isActing}
-                        onClick={() => void handleOrderAction(req, "approve")}
-                      >
-                        {isActing ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
-                        Approve
-                      </Button>
-                    ) : null}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 cursor-pointer px-4 font-medium"
-                      onClick={() => openDialog(req)}
-                    >
-                      View
-                    </Button>
+                  <div className="flex justify-end">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="outline" size="icon-sm" aria-label="Order actions">
+                            <MoreVertical className="size-4" />
+                          </Button>
+                        }
+                      />
+                      <DropdownMenuContent align="end" className="w-44">
+                        <DropdownMenuItem
+                          render={<Link href={`/orders/${req.id}/preview`} className={cn("cursor-pointer", !hasPreview && "pointer-events-none opacity-50")} />}
+                          disabled={!hasPreview}
+                        >
+                          <Eye className="size-4" />
+                          Preview
+                        </DropdownMenuItem>
+                        {canPay ? (
+                          <DropdownMenuItem disabled={isPaying} onClick={() => void handlePayNow(req)}>
+                            {isPaying ? <LoaderCircle className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
+                            Pay now
+                          </DropdownMenuItem>
+                        ) : null}
+                        {canRequestUpdate ? (
+                          <DropdownMenuItem disabled={isActing} onClick={() => openUpdateDialog(req)}>
+                            {isActing ? <LoaderCircle className="size-4 animate-spin" /> : <MessageSquareText className="size-4" />}
+                            New update
+                          </DropdownMenuItem>
+                        ) : null}
+                        <DropdownMenuItem
+                          className="text-emerald-700 font-semibold focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
+                          disabled={!canApprove || isActing}
+                          onClick={() => void handleOrderAction(req, "approve")}
+                        >
+                          {isActing ? <LoaderCircle className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
+                          Approve
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </TableCell>
               </TableRow>
@@ -585,7 +593,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                         variant="secondary"
                         className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", orderStatusClass[selectedOrder.status])}
                       >
-                        {orderStatusLabel[selectedOrder.status]}
+                        {buyerFacingOrderStatusLabel(selectedOrder)}
                       </Badge>
                     </div>
                   </div>
@@ -631,6 +639,15 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                 </div>
 
                 <div className="mt-6 flex justify-end gap-2">
+                  {(selectedOrder.status === "delivered" || selectedOrder.status === "approved" || selectedOrder.status === "completed") ? (
+                    <Link
+                      href={`/orders/${selectedOrder.id}/preview`}
+                      className={cn(buttonVariants({ variant: "outline" }), "px-4")}
+                      onClick={() => setIsDialogOpen(false)}
+                    >
+                      Open Preview
+                    </Link>
+                  ) : null}
                   <Link
                     href={`/creators/${selectedOrder.creator_id}`}
                     className={cn(buttonVariants({ variant: "outline" }), "px-4")}
@@ -653,7 +670,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
           <DialogHeader>
             <DialogTitle>Request an update</DialogTitle>
             <DialogDescription>
-              Tell the creator what you'd like to change.
+              Tell the creator what you&apos;d like to change.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">

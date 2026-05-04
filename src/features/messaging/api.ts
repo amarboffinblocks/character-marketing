@@ -6,8 +6,9 @@ import type {
 } from "@/features/messaging/types"
 
 async function asJson<T>(response: Response): Promise<T> {
-  const json = (await response.json()) as T & { error?: string }
+  const json = (await response.json()) as T & { error?: string, details?: any, hint?: any, code?: string }
   if (!response.ok) {
+    console.error("API REQUEST FAILED:", json)
     const message = typeof json.error === "string" ? json.error : "Request failed."
     throw new Error(message)
   }

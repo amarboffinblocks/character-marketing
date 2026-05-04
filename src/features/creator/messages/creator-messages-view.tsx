@@ -37,6 +37,7 @@ type CreatorMessagesViewProps = {
 }
 
 export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesViewProps) {
+  type TypingChannel = { send: (message: unknown) => Promise<unknown> | unknown }
   const searchParams = useSearchParams()
   const threadParam = searchParams.get("thread")?.trim() ?? ""
   const orderParam = searchParams.get("order")?.trim() ?? ""
@@ -61,11 +62,22 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const threadsLoadSeqRef = useRef(0)
   const messagesLoadSeqRef = useRef(0)
   const currentUserSenderRole = viewerRole === "creator" ? "creator" : "buyer"
+  const typingChannelRef = useRef<TypingChannel | null>(null)
+  const activeThreadIdRef = useRef("")
+  const currentUserSenderRoleRef = useRef<"creator" | "buyer">(currentUserSenderRole)
 
   useEffect(() => {
     if (!scrollRef.current) return
     scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages, activeThreadId])
+
+  useEffect(() => {
+    activeThreadIdRef.current = activeThreadId
+  }, [activeThreadId])
+
+  useEffect(() => {
+    currentUserSenderRoleRef.current = currentUserSenderRole
+  }, [currentUserSenderRole])
 
   const loadThreads = useCallback(async (options?: { silent?: boolean }) => {
     const silent = options?.silent ?? false
@@ -136,19 +148,57 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     const channel = supabase
       .channel(`conversation-messages-${viewerRole}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_messages" }, (payload) => {
-        const threadId = (payload.new as { thread_id?: string }).thread_id ?? ""
+        const newRow = payload.new as {
+          id?: string
+          thread_id?: string
+          sender_id?: string
+          sender_role?: MessageItem["senderRole"]
+          body?: string
+          created_at?: string
+        }
+        const threadId = newRow.thread_id ?? ""
         if (!threadId) return
 
         if (threadId === activeThreadId) {
-          // Avoid the unread flicker by only reloading threads *after* mark-read completes.
-          setThreads((current) =>
-            current.map((t) => (t.id === threadId ? { ...t, unreadCount: 0, status: "active" } : t))
-          )
+          // Stream the new incoming message instantly without waiting for a full messages reload.
+          const messageId = newRow.id
+          if (messageId) {
+            const nextMessage: MessageItem = {
+              id: messageId,
+              threadId,
+              senderId: newRow.sender_id ?? "",
+              senderRole: newRow.sender_role ?? "buyer",
+              text: newRow.body ?? "",
+              createdAt: newRow.created_at ?? new Date().toISOString(),
+            }
+
+            setMessages((current) => {
+              if (current.some((m) => m.id === messageId)) return current
+              const next = [...current, nextMessage]
+              next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+              return next
+            })
+
+            setThreads((current) =>
+              current.map((t) =>
+                t.id === threadId
+                  ? {
+                      ...t,
+                      unreadCount: 0,
+                      status: "active",
+                      lastMessageText: nextMessage.text,
+                      lastMessageAt: nextMessage.createdAt,
+                    }
+                  : t
+              )
+            )
+          }
+
+          // Mark as read (server truth), then update unread counts.
           void (async () => {
             try {
-              await loadMessages(threadId, true)
+              await markThreadRead(threadId)
             } finally {
-              // Always resync threads after attempting mark-read.
               await loadThreads({ silent: true })
             }
           })().catch(() => {})
@@ -174,11 +224,12 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
           isTyping?: boolean
         }
 
-        if (!data?.threadId || data.threadId !== activeThreadId) return
-        if (!data?.senderRole) return
+        const activeId = activeThreadIdRef.current
+        const myRole = currentUserSenderRoleRef.current
 
-        // Only show when the other side is typing.
-        if (data.senderRole === currentUserSenderRole) return
+        if (!data?.threadId || data.threadId !== activeId) return
+        if (!data?.senderRole) return
+        if (data.senderRole === myRole) return
 
         const isTyping = data.isTyping ?? true
         if (!isTyping) {
@@ -192,21 +243,23 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
         setIsCounterpartTyping(true)
         if (counterpartTypingTimeoutRef.current) window.clearTimeout(counterpartTypingTimeoutRef.current)
-
         counterpartTypingTimeoutRef.current = window.setTimeout(() => {
           setIsCounterpartTyping(false)
         }, 2500)
       })
       .subscribe()
 
+    typingChannelRef.current = typingChannel as unknown as TypingChannel
+
     return () => {
       if (counterpartTypingTimeoutRef.current) {
         window.clearTimeout(counterpartTypingTimeoutRef.current)
         counterpartTypingTimeoutRef.current = null
       }
+      typingChannelRef.current = null
       void supabase.removeChannel(typingChannel)
     }
-  }, [activeThreadId, currentUserSenderRole, supabase])
+  }, [supabase])
 
   const filteredThreads = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -227,9 +280,10 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
       lastTypingSentAtRef.current = now
 
-      supabase
-        .channel("conversation-typing")
-        .send({
+      const channel = (typingChannelRef.current ??
+        (supabase.channel("conversation-typing") as unknown as TypingChannel)) as TypingChannel
+      Promise.resolve(
+        channel.send({
           type: "broadcast",
           event: "typing",
           payload: {
@@ -238,6 +292,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
             isTyping,
           },
         })
+      )
         .catch(() => {})
     },
     [currentUserSenderRole, supabase]
@@ -277,7 +332,12 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     setError("")
     try {
       const message = await sendThreadMessage(activeThread.id, composer.trim())
-      setMessages((current) => [...current, message])
+      setMessages((current) => {
+        if (current.some((m) => m.id === message.id)) return current
+        const next = [...current, message]
+        next.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+        return next
+      })
       setComposer("")
       emitTyping(false)
       await loadThreads({ silent: true })
@@ -307,9 +367,9 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   return (
     <TooltipProvider>
-      <div className="flex min-h-0 h-full overflow-hidden rounded-2xl border border-border/60 bg-background/50">
-        <div className="flex min-h-0 w-full h-full overflow-hidden">
-          <aside className="flex min-h-0 w-full flex-col border-r border-border/40 bg-muted/5 sm:w-[380px]">
+      <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-background/50">
+        <div className="flex h-full min-h-0 w-full overflow-hidden">
+          <aside className="flex min-h-0 w-full h-full overflow-y-auto flex-col border-r border-border/40 bg-muted/5 sm:w-[380px]">
             <div className="p-6 pb-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -385,7 +445,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
             </div>
           </aside>
 
-          <main className="flex min-h-0 flex-1 flex-col bg-background/20  ">
+          <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background/20">
             {activeThread ? (
               <>
                 <header className="flex h-16 items-center justify-between border-b border-border/40 bg-background/60 px-6 py-4 backdrop-blur-md">
@@ -403,9 +463,6 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                         <span className="text-xs text-muted-foreground">
                           {viewerRole === "creator" ? "Buyer conversation" : "Creator conversation"}
                         </span>
-                        <Badge variant="outline" className="h-4 px-1 text-[10px] opacity-60">
-                          {activeThread.orderId}
-                        </Badge>
                       </div>
                       {isCounterpartTyping ? (
                         <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">
@@ -430,10 +487,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                   </DropdownMenu>
                 </header>
 
-                <div
-                  ref={scrollRef}
-                  className="scrollbar-thin min-h-0 flex-1 space-y-5 overflow-y-auto bg-muted/10 p-6 "
-                >
+                <div ref={scrollRef} className="scrollbar-thin min-h-0 flex-1 space-y-5 overflow-y-auto bg-muted/10 p-6">
                   <div className="my-4 flex justify-center">
                     <span className="rounded-full bg-background/80 px-4 py-1.5 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur-sm">
                       Today
@@ -501,7 +555,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                   {error ? <div className="text-center text-xs text-destructive">{error}</div> : null}
                 </div>
 
-                <footer className="flex-none border-t border-border/40 bg-background/60 p-4 backdrop-blur">
+                <footer className="shrink-0 border-t border-border/40 bg-background/60 p-4 backdrop-blur">
                   <div className="mx-auto w-full">
                     <div className="ring-offset-background flex items-end gap-2 rounded-2xl border border-border/60 bg-background/85 p-2 pl-4 transition-all group-within:ring-2 group-within:ring-primary/20">
                       <Textarea

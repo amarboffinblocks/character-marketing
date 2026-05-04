@@ -394,32 +394,18 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
       if (!response.ok) {
         throw new Error(json.error || "Unable to update request status.")
       }
-      if (nextStatus === "accepted") {
-        const orderId = json.request?.orderId
-        setRequests((current) =>
-          current.map((item) =>
-            item.id === requestId
-              ? {
-                  ...item,
-                  status: "accepted" as const,
-                  order_id: orderId ?? item.order_id,
-                }
-              : item
-          )
+      setRequests((current) =>
+        current.map((item) =>
+          item.id === requestId
+            ? { ...item, status: nextStatus, order_id: json.request?.orderId ?? item.order_id }
+            : item
         )
-        setSelectedRequest((current) =>
-          current && current.id === requestId
-            ? { ...current, status: "accepted", order_id: orderId ?? current.order_id }
-            : current
-        )
-      } else {
-        setRequests((current) =>
-          current.map((item) => (item.id === requestId ? { ...item, status: nextStatus } : item))
-        )
-        setSelectedRequest((current) =>
-          current && current.id === requestId ? { ...current, status: nextStatus } : current
-        )
-      }
+      )
+      setSelectedRequest((current) =>
+        current && current.id === requestId
+          ? { ...current, status: nextStatus, order_id: json.request?.orderId ?? current.order_id }
+          : current
+      )
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update request status.")
     } finally {

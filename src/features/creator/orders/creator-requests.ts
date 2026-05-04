@@ -1,4 +1,5 @@
 import pg from "pg"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 
 export type CreatorRequestType = "custom_package" | "preselect_package"
 export type CreatorRequestStatus = "pending" | "processing" | "accepted" | "rejected" | "completed"
@@ -171,6 +172,13 @@ export async function updateCreatorRequestStatus(input: {
          returning id, status`,
         [input.requestId, input.creatorId]
       )
+      await insertInboxNotification(client, {
+        userId: requestRow.requester_id,
+        category: "request",
+        title: "Request rejected",
+        body: `Your request for ${requestRow.package_title} was rejected by the creator.`,
+        actionUrl: "/requests",
+      })
       await client.query("commit")
       return result.rows[0] as {
         id: string
@@ -247,6 +255,19 @@ export async function updateCreatorRequestStatus(input: {
     }
 
     await client.query("commit")
+    const notifyClient = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
+    try {
+      await notifyClient.connect()
+      await insertInboxNotification(notifyClient, {
+        userId: requestRow.requester_id,
+        category: "request",
+        title: "Request accepted",
+        body: `Your request for ${requestRow.package_title} was accepted. Complete payment to start the order.`,
+        actionUrl: "/orders",
+      })
+    } finally {
+      await notifyClient.end().catch(() => {})
+    }
     return {
       ...(acceptedRequestResult.rows[0] as { id: string; status: "accepted" | "rejected" }),
       orderId,

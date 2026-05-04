@@ -52,6 +52,7 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
   const [highlightInput, setHighlightInput] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<Set<string>>(new Set())
   const [isLoadingEdit, setIsLoadingEdit] = useState(mode === "edit")
 
   const title = mode === "edit" ? "Edit service" : "Create new service"
@@ -117,6 +118,13 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
 
   function update<Key extends keyof ServiceFormState>(key: Key, value: ServiceFormState[Key]) {
     setForm((current) => ({ ...current, [key]: value }))
+    if (fieldErrors.has(key)) {
+      setFieldErrors((current) => {
+        const next = new Set(current)
+        next.delete(key)
+        return next
+      })
+    }
   }
 
   function addHighlightsFromInput() {
@@ -140,17 +148,24 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
+    const nextErrors = new Set<string>()
 
-    if (!normalizedPayload.serviceName) return setError("Service name is required.")
-    if (!normalizedPayload.description) return setError("Description is required.")
-    if (normalizedPayload.price <= 0) return setError("Price must be greater than 0.")
+    if (!normalizedPayload.serviceName) nextErrors.add("serviceName")
+    if (!normalizedPayload.description) nextErrors.add("description")
+    if (normalizedPayload.price <= 0) nextErrors.add("price")
     if (
       normalizedPayload.discountedPrice !== null &&
       (normalizedPayload.discountedPrice <= 0 || normalizedPayload.discountedPrice >= normalizedPayload.price)
     ) {
-      return setError("Discounted price must be lower than price.")
+      nextErrors.add("discountedPrice")
     }
-    if (!normalizedPayload.tokensLabel) return setError("Tokens label is required.")
+    if (!normalizedPayload.tokensLabel) nextErrors.add("tokensLabel")
+
+    if (nextErrors.size > 0) {
+      setFieldErrors(nextErrors)
+      setError("Please fill all the required fields.")
+      return
+    }
 
     setIsSubmitting(true)
     const url = "/api/creator/services"
@@ -214,6 +229,7 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
                 value={form.serviceName}
                 onChange={(event) => update("serviceName", event.target.value)}
                 placeholder="Custom Story Starter"
+                aria-invalid={fieldErrors.has("serviceName")}
               />
             </div>
 
@@ -226,6 +242,7 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
                 value={form.description}
                 onChange={(event) => update("description", event.target.value)}
                 placeholder="Great for quick character deployment..."
+                aria-invalid={fieldErrors.has("description")}
               />
             </div>
 
@@ -239,6 +256,7 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
                 min={1}
                 value={form.price}
                 onChange={(event) => update("price", event.target.value)}
+                aria-invalid={fieldErrors.has("price")}
               />
             </div>
 
@@ -253,6 +271,7 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
                 value={form.discountedPrice}
                 onChange={(event) => update("discountedPrice", event.target.value)}
                 placeholder="Leave empty for no discount"
+                aria-invalid={fieldErrors.has("discountedPrice")}
               />
             </div>
 
@@ -265,6 +284,7 @@ export function ServiceFormView({ mode }: ServiceFormViewProps) {
                 value={form.tokensLabel}
                 onChange={(event) => update("tokensLabel", event.target.value)}
                 placeholder="Up to 4K context tokens"
+                aria-invalid={fieldErrors.has("tokensLabel")}
               />
             </div>
           </CardContent>

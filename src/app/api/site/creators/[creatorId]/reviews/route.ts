@@ -2,12 +2,15 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import { getOrdersDbClient } from "@/lib/order-deliveries"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 const createReviewSchema = z.object({
   rating: z.number().int().min(1).max(5),
   title: z.string().trim().max(120).optional(),
   body: z.string().trim().min(12).max(4000),
+  orderId: z.string().uuid().optional(),
 })
 
 function asString(value: unknown) {
@@ -48,7 +51,7 @@ export async function GET(_: Request, context: { params: Promise<{ creatorId: st
   const admin = createAdminSupabaseClient()
   const { data: reviews, error } = await admin
     .from("creator_reviews")
-    .select("id,creator_id,reviewer_id,rating,title,body,status,created_at")
+    .select("id,creator_id,reviewer_id,order_id,rating,title,body,status,created_at")
     .eq("creator_id", normalizedCreatorId)
     .eq("status", "published")
     .order("created_at", { ascending: false })
@@ -81,6 +84,7 @@ export async function GET(_: Request, context: { params: Promise<{ creatorId: st
     return {
       id: asString(record.id),
       creatorId: asString(record.creator_id),
+      orderId: asString(record.order_id),
       reviewerId,
       rating: Number(record.rating ?? 0),
       title: asString(record.title),
@@ -119,17 +123,51 @@ export async function POST(request: Request, context: { params: Promise<{ creato
   }
 
   const admin = createAdminSupabaseClient()
+  if (parsed.data.orderId) {
+    const { data: orderRecord, error: orderError } = await admin
+      .from("orders")
+      .select("id,buyer_id,creator_id,status")
+      .eq("id", parsed.data.orderId)
+      .eq("buyer_id", user.id)
+      .eq("creator_id", normalizedCreatorId)
+      .maybeSingle()
+
+    if (orderError) {
+      return NextResponse.json({ error: orderError.message }, { status: 400 })
+    }
+    const order = orderRecord as Record<string, unknown> | null
+    if (!order) {
+      return NextResponse.json({ error: "Order not found for review." }, { status: 400 })
+    }
+    const status = asString(order.status)
+    if (status !== "completed" && status !== "approved") {
+      return NextResponse.json({ error: "You can review only approved orders." }, { status: 400 })
+    }
+
+    const { data: existingReview } = await admin
+      .from("creator_reviews")
+      .select("id")
+      .eq("order_id", parsed.data.orderId)
+      .eq("reviewer_id", user.id)
+      .maybeSingle()
+
+    if (existingReview) {
+      return NextResponse.json({ error: "You already reviewed this order." }, { status: 400 })
+    }
+  }
+
   const { data: inserted, error } = await admin
     .from("creator_reviews")
     .insert({
       creator_id: normalizedCreatorId,
       reviewer_id: user.id,
+      order_id: parsed.data.orderId ?? null,
       rating: parsed.data.rating,
       title: parsed.data.title ?? "",
       body: parsed.data.body,
       status: "published",
     })
-    .select("id,creator_id,reviewer_id,rating,title,body,status,created_at")
+    .select("id,creator_id,reviewer_id,order_id,rating,title,body,status,created_at")
     .single()
 
   if (error) {
@@ -143,10 +181,24 @@ export async function POST(request: Request, context: { params: Promise<{ creato
   const summary = reviewerSummary(null, fallbackName)
 
   const record = (inserted ?? {}) as Record<string, unknown>
+  const notificationClient = getOrdersDbClient()
+  try {
+    await notificationClient.connect()
+    await insertInboxNotification(notificationClient, {
+      userId: normalizedCreatorId,
+      category: "review",
+      title: "New review received",
+      body: `A buyer left a ${String(record.rating ?? parsed.data.rating)}-star review on your profile.`,
+      actionUrl: "/dashboard/creator/reviews",
+    })
+  } finally {
+    await notificationClient.end().catch(() => {})
+  }
   return NextResponse.json({
     review: {
       id: asString(record.id),
       creatorId: asString(record.creator_id),
+      orderId: asString(record.order_id),
       reviewerId: asString(record.reviewer_id),
       rating: Number(record.rating ?? 0),
       title: asString(record.title),

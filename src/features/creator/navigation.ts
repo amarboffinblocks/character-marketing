@@ -5,6 +5,7 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
     label: "Overview",
     items: [
       { title: "Dashboard", href: "/dashboard/creator", icon: "dashboard" },
+      { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
     ],
   },
   {

@@ -1,5 +1,12 @@
-import { InboxView } from "@/features/inbox/components/inbox-view"
+import { CreatorMessagesView } from "@/features/creator/messages/creator-messages-view"
 
 export default function CreatorMessagesPage() {
-  return <InboxView role="creator" />
+
+
+  return (
+    <div className="h-full min-h-0 overflow-hidden">
+      <CreatorMessagesView />
+    </div>
+  )
+
 }

@@ -12,12 +12,13 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageLoader } from "@/components/ui/page-loader"
+import { isNetworkError } from "@/lib/auth-error-messages"
 import { type AuthRole } from "@/lib/auth-roles"
 import { cn } from "@/lib/utils"
 
 const signInSchema = z.object({
   email: z.email("Enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
   remember: z.boolean().default(false),
 })
 
@@ -60,6 +61,7 @@ export default function SignInForm() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSocialLoading, setIsSocialLoading] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [verifyEmailHint, setVerifyEmailHint] = useState<string | null>(null)
   const searchParams = useSearchParams()
 
   const {
@@ -97,6 +99,7 @@ export default function SignInForm() {
   const onSubmit = async (values: SignInSchema) => {
     setIsSubmitting(true)
     setFormError(null)
+    setVerifyEmailHint(null)
 
     try {
       const response = await fetch("/api/auth/sign-in", {
@@ -107,9 +110,17 @@ export default function SignInForm() {
         body: JSON.stringify(values),
       })
 
-      const result = (await response.json()) as { error?: string; role?: AuthRole }
+      const result = (await response.json()) as {
+        error?: string
+        role?: AuthRole
+        code?: string
+        email?: string
+      }
       if (!response.ok) {
         setFormError(result.error ?? "Sign in failed.")
+        setVerifyEmailHint(
+          result.code === "email_not_confirmed" && result.email ? result.email : null,
+        )
         toast.error("Sign in failed", { description: result.error ?? "Please try again." })
         return
       }
@@ -117,9 +128,12 @@ export default function SignInForm() {
       toast.success("Signed in successfully")
       window.location.href =
         result.role === "admin" ? "/dashboard/admin" : result.role === "creator" ? "/dashboard/creator" : "/"
-    } catch {
-      setFormError("Something went wrong while signing in. Please try again.")
-      toast.error("Unable to sign in", { description: "Please try again." })
+    } catch (err) {
+      const msg = isNetworkError(err)
+        ? "Network error. Check your connection and try again."
+        : "Something went wrong while signing in. Please try again."
+      setFormError(msg)
+      toast.error("Unable to sign in", { description: msg })
     } finally {
       setIsSubmitting(false)
     }
@@ -128,6 +142,7 @@ export default function SignInForm() {
   const onSocialSignIn = async (provider: "google" | "x") => {
     setIsSocialLoading(true)
     setFormError(null)
+    setVerifyEmailHint(null)
 
     try {
       const response = await fetch("/api/auth/oauth", {
@@ -146,9 +161,12 @@ export default function SignInForm() {
       }
 
       window.location.href = result.url
-    } catch {
-      setFormError("Something went wrong while starting social sign in.")
-      toast.error("Social sign in failed", { description: "Please try again." })
+    } catch (err) {
+      const msg = isNetworkError(err)
+        ? "Network error. Check your connection and try again."
+        : "Something went wrong while starting social sign in."
+      setFormError(msg)
+      toast.error("Social sign in failed", { description: msg })
     } finally {
       setIsSocialLoading(false)
     }
@@ -265,6 +283,22 @@ export default function SignInForm() {
         {formError || queryErrorMessage ? (
           <p className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {formError ?? queryErrorMessage}
+          </p>
+        ) : null}
+
+        {verifyEmailHint ? (
+          <p className="mt-3 text-center text-sm text-muted-foreground">
+            <Link
+              href={`/otp-verification?email=${encodeURIComponent(verifyEmailHint)}`}
+              className="font-medium text-primary hover:underline"
+            >
+              Enter your verification code
+            </Link>{" "}
+            or{" "}
+            <Link href={`/verify-email?email=${encodeURIComponent(verifyEmailHint)}`} className="font-medium text-primary hover:underline">
+              resend a code
+            </Link>
+            .
           </p>
         ) : null}
 

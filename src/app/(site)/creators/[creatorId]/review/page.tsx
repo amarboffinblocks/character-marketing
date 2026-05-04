@@ -5,10 +5,12 @@ import { getCreatorProfileById } from "@/features/site/creator-profile"
 
 type CreatorReviewPageProps = {
   params: Promise<{ creatorId: string }>
+  searchParams: Promise<{ orderId?: string }>
 }
 
-export default async function CreatorReviewPage({ params }: CreatorReviewPageProps) {
+export default async function CreatorReviewPage({ params, searchParams }: CreatorReviewPageProps) {
   const { creatorId } = await params
+  const { orderId } = await searchParams
   const profile = await getCreatorProfileById(creatorId)
   if (!profile) {
     notFound()
@@ -23,6 +25,7 @@ export default async function CreatorReviewPage({ params }: CreatorReviewPagePro
         avatar: profile.avatar,
         tagline: profile.tagline,
       }}
+      orderId={typeof orderId === "string" ? orderId : ""}
     />
   )
 }

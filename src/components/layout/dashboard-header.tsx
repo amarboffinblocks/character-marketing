@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import { HeaderNotifications } from "@/components/layout/header-notifications"
 import { cn } from "@/lib/utils"
 
 export type DashboardHeaderUser = {
@@ -118,37 +119,23 @@ export function DashboardHeader({
         ) : null}
 
         <div className="flex shrink-0 items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button variant="ghost" size="icon-sm" aria-label="Notifications">
-                  <Bell />
-                </Button>
-              }
-            />
-            <DropdownMenuContent>
-              <DropdownMenuItem
-                render={<Link href={`${basePath}/orders/all`} className="cursor-pointer" />}
-              >
-                <Bell className="size-4" />
-                View updates
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <HeaderNotifications userRole="creator" />
 
           <Separator orientation="vertical" />
 
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Avatar className="size-7 ring-1 ring-border">
-                  {user.avatarUrl ? (
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                  ) : null}
-                  <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                    {displayInitials}
-                  </AvatarFallback>
-                </Avatar>
+                <button type="button" className="relative size-7 shrink-0 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+                  <Avatar className="size-full ring-1 ring-border">
+                    {user.avatarUrl ? (
+                      <AvatarImage src={user.avatarUrl} alt={user.name} />
+                    ) : null}
+                    <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+                      {displayInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
               }
             />
             <DropdownMenuContent>

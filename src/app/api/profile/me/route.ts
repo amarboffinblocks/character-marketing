@@ -42,6 +42,9 @@ export async function GET(request: Request) {
   const fullName =
     (typeof user.user_metadata?.full_name === "string" ? user.user_metadata.full_name : "") ||
     (typeof user.user_metadata?.name === "string" ? user.user_metadata.name : "")
+  const userAvatarUrl = (profileData.user as Record<string, unknown> | undefined)?.avatarUrl
+  const userBannerUrl = (profileData.user as Record<string, unknown> | undefined)?.bannerUrl
+
   const hydratedData =
     selectedProfileData && typeof selectedProfileData === "object"
       ? {
@@ -54,10 +57,35 @@ export async function GET(request: Request) {
             typeof selectedProfileData.displayName === "string" && selectedProfileData.displayName.trim().length > 0
               ? selectedProfileData.displayName
               : fullName,
+          avatarUrl:
+            typeof selectedProfileData.avatarUrl === "string" && selectedProfileData.avatarUrl.trim().length > 0
+              ? selectedProfileData.avatarUrl
+              : (typeof userAvatarUrl === "string" ? userAvatarUrl : ""),
+          bannerUrl:
+            typeof selectedProfileData.bannerUrl === "string" && selectedProfileData.bannerUrl.trim().length > 0
+              ? selectedProfileData.bannerUrl
+              : (typeof userBannerUrl === "string" ? userBannerUrl : ""),
+          tagline:
+            typeof selectedProfileData.tagline === "string" && selectedProfileData.tagline.trim().length > 0
+              ? selectedProfileData.tagline
+              : (typeof (profileData.user as any)?.tagline === "string" ? (profileData.user as any).tagline : ""),
+          shortBio:
+            typeof selectedProfileData.shortBio === "string" && selectedProfileData.shortBio.trim().length > 0
+              ? selectedProfileData.shortBio
+              : (typeof (profileData.user as any)?.shortBio === "string" ? (profileData.user as any).shortBio : ""),
+          longBio:
+            typeof selectedProfileData.longBio === "string" && selectedProfileData.longBio.trim().length > 0
+              ? selectedProfileData.longBio
+              : (typeof (profileData.user as any)?.longBio === "string" ? (profileData.user as any).longBio : ""),
         }
       : {
           email: user.email ?? "",
           displayName: fullName,
+          avatarUrl: typeof userAvatarUrl === "string" ? userAvatarUrl : "",
+          bannerUrl: typeof userBannerUrl === "string" ? userBannerUrl : "",
+          tagline: typeof (profileData.user as any)?.tagline === "string" ? (profileData.user as any).tagline : "",
+          shortBio: typeof (profileData.user as any)?.shortBio === "string" ? (profileData.user as any).shortBio : "",
+          longBio: typeof (profileData.user as any)?.longBio === "string" ? (profileData.user as any).longBio : "",
         }
 
   return NextResponse.json({

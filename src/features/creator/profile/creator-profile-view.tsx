@@ -994,6 +994,47 @@ function ProfessionalSection({
             ))}
           </div>
         </div>
+
+        <div className="space-y-3 rounded-lg border border-border/70 p-3 md:col-span-2">
+          <p className="text-sm font-medium text-foreground">Stripe payout setup</p>
+          <p className="text-xs text-muted-foreground">
+            Fill these details so payouts can be released automatically when you deliver approved orders.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Stripe account ID</label>
+              <Input
+                value={form.stripeConnectAccountId}
+                onChange={(event) => updateField("stripeConnectAccountId", event.target.value)}
+                placeholder="acct_..."
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Account holder name</label>
+              <Input
+                value={form.payoutAccountHolderName}
+                onChange={(event) => updateField("payoutAccountHolderName", event.target.value)}
+                placeholder="John Doe"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Payout country</label>
+              <Input
+                value={form.payoutCountry}
+                onChange={(event) => updateField("payoutCountry", event.target.value)}
+                placeholder="US"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">Payout currency</label>
+              <Input
+                value={form.payoutCurrency}
+                onChange={(event) => updateField("payoutCurrency", event.target.value)}
+                placeholder="USD"
+              />
+            </div>
+          </div>
+        </div>
       </CardContent>
 
       <CardContent className="grid gap-4 border-t py-4 md:grid-cols-3">

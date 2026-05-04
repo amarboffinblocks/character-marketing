@@ -9,6 +9,8 @@ type InterestRow = {
   bid_id: string
   creator_id: string
   status: "interested" | "assigned" | "withdrawn"
+  proposed_price: string
+  message: string
 }
 
 type ProfileRow = {
@@ -65,7 +67,7 @@ export async function GET() {
     if (bidIds.length === 0) return NextResponse.json({ bids: [] })
 
     const interestsResult = await client.query(
-      `select bid_id, creator_id, status
+      `select bid_id, creator_id, status, proposed_price, message
        from public.bid_interests
        where bid_id = any($1::uuid[])`,
       [bidIds]

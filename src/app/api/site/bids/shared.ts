@@ -9,6 +9,8 @@ type InterestRow = {
   bid_id: string
   creator_id: string
   status: "interested" | "assigned" | "withdrawn"
+  proposed_price: string
+  message: string
 }
 
 export type BidPostRow = {
@@ -73,7 +75,14 @@ export function mapBidRowsToItems(params: {
     const bidInterests = interestsByBid.get(row.id) ?? []
     const interested = bidInterests
       .filter((item) => item.status === "interested")
-      .map((item) => mapProfileToPerson(profilesById.get(item.creator_id)))
+      .map((item) => {
+        const person = mapProfileToPerson(profilesById.get(item.creator_id))
+        return {
+          ...person,
+          proposedPrice: item.proposed_price,
+          message: item.message,
+        }
+      })
     const assignedCreator = row.assigned_creator_id
       ? mapProfileToPerson(profilesById.get(row.assigned_creator_id))
       : null

@@ -17,6 +17,8 @@ import {
   Wrench,
 } from "lucide-react"
 
+import { toast } from "sonner"
+
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
@@ -62,7 +64,7 @@ export function PostABidView() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [assigningBidId, setAssigningBidId] = useState<string | null>(null)
-  const [isAssigning, setIsAssigning] = useState(false)
+  const [isAssigningTo, setIsAssigningTo] = useState<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -126,7 +128,7 @@ export function PostABidView() {
   }
 
   async function handleAssignCreator(bidId: string, creatorId: string) {
-    setIsAssigning(true)
+    setIsAssigningTo(creatorId)
     setError("")
     try {
       const response = await fetch(`/api/site/bids/${encodeURIComponent(bidId)}`, {
@@ -148,10 +150,12 @@ export function PostABidView() {
         })
       )
       setAssigningBidId(null)
+      toast.success("Creator assigned successfully!")
     } catch (assignError) {
       setError(assignError instanceof Error ? assignError.message : "Unable to assign creator.")
+      toast.error("Something went wrong, contact creator")
     } finally {
-      setIsAssigning(false)
+      setIsAssigningTo(null)
     }
   }
 
@@ -282,17 +286,17 @@ export function PostABidView() {
             <p className="text-sm text-muted-foreground">Try another search or create a new bid.</p>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
-            <table className="min-w-[980px] table-fixed text-sm">
+          <div className="w-full  overflow-x-auto no-scrollbar">
+            <table className="w-full table-fixed text-sm">
               <thead>
                 <tr className="border-b border-border/70 bg-muted/20">
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Bid</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Duration</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Budget</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Interested</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Working</th>
-                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
+                  <th className="w-[30%] px-4 py-3 text-left font-medium text-muted-foreground">Bid</th>
+                  <th className="w-[12%] px-4 py-3 text-left font-medium text-muted-foreground">Duration</th>
+                  <th className="w-[12%] px-4 py-3 text-left font-medium text-muted-foreground">Budget</th>
+                  <th className="w-[12%] px-4 py-3 text-left font-medium text-muted-foreground">Interested</th>
+                  <th className="w-[14%] px-4 py-3 text-left font-medium text-muted-foreground">Working</th>
+                  <th className="w-[10%] px-4 py-3 text-left font-medium text-muted-foreground">Status</th>
+                  <th className="w-[10%] px-4 py-3 text-right font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -394,11 +398,20 @@ export function PostABidView() {
                     .find((bid) => bid.id === assigningBidId)
                     ?.interestedCreators.map((creator) => (
                       <div key={creator.id} className="flex items-center justify-between gap-3 rounded-lg border border-border/70 p-3">
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{creator.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {creator.email || creator.handle || "Creator"}
-                          </p>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-medium text-foreground">{creator.name}</p>
+                            {creator.proposedPrice && (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                                ${creator.proposedPrice}
+                              </Badge>
+                            )}
+                          </div>
+                          {creator.message && (
+                            <p className="mt-1 text-xs text-muted-foreground italic line-clamp-2">
+                              "{creator.message}"
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           <Link
@@ -410,10 +423,12 @@ export function PostABidView() {
                           <Button
                             size="sm"
                             className="h-8"
-                            disabled={isAssigning}
+                            disabled={Boolean(isAssigningTo)}
                             onClick={() => void handleAssignCreator(assigningBidId, creator.id)}
                           >
-                            {isAssigning ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
+                            {isAssigningTo === creator.id ? (
+                              <LoaderCircle className="size-3.5 animate-spin" />
+                            ) : null}
                             Assign
                           </Button>
                         </div>

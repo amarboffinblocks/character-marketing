@@ -31,13 +31,34 @@ import {
   creatorDashboardQuickActions,
   creatorDashboardStats,
 } from "@/features/creator/dashboard/data"
-import type { CreatorDashboardStat } from "@/features/creator/dashboard/types"
+import type {
+  CreatorQuickAction,
+  CreatorDashboardStat,
+} from "@/features/creator/dashboard/types"
 import type { CreatorOrderRow } from "@/features/creator/orders/creator-orders"
 
-const earningsSeries = [
-  110, 140, 130, 170, 190, 160, 210, 240, 220, 260, 300, 280, 320, 340, 310, 360, 380,
-  350, 400, 420, 390, 430, 460, 440, 500, 520, 490, 540, 560, 580,
-]
+function buildEarningsSeries(orders: CreatorOrderRow[]): number[] {
+  const series = new Array(30).fill(0)
+  const today = new Date()
+  
+  orders.forEach((order) => {
+    if (order.status !== "completed" || !order.updated_at) return
+    
+    const orderDate = new Date(order.updated_at)
+    const diffTime = today.getTime() - orderDate.getTime()
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24))
+    
+    // We want index 29 to be today (diffDays = 0), index 0 to be 29 days ago.
+    if (diffDays >= 0 && diffDays < 30) {
+      const index = 29 - diffDays
+      if (index >= 0 && index < 30) {
+         series[index] += Number(order.package_price ?? 0)
+      }
+    }
+  })
+  
+  return series
+}
 
 type CreatorDashboardData = {
   creatorName: string
@@ -49,6 +70,7 @@ type CreatorDashboardData = {
     avatars: number
     backgrounds: number
   }
+  creatorProfile?: Record<string, any>
   draftCharacters: number
   reviewCount: number
   averageRating: number
@@ -81,7 +103,7 @@ function toIsoDateKey(value: unknown): string {
 function toActivityStatus(status: CreatorOrderRow["status"]): RecentActivityItem["status"] {
   if (status === "pending_payment") return "new"
   if (status === "in_progress") return "in_progress"
-  if (status === "on_hold" || status === "approved") return "waiting_on_buyer"
+  if (status === "on_hold" || status === "approved" || status === "reviewing") return "waiting_on_buyer"
   if (status === "delivered") return "review"
   return "completed"
 }
@@ -90,7 +112,9 @@ function buildActionItems(data: CreatorDashboardData): ActionItem[] {
   const items: ActionItem[] = []
   const activeOrders = data.orders.filter((order) => order.status !== "completed" && order.status !== "cancelled")
   const unpaidOrder = activeOrders.find((order) => order.payment_status === "unpaid" || order.status === "pending_payment")
-  const blockedOrder = activeOrders.find((order) => order.status === "on_hold" || order.status === "approved")
+  const blockedOrder = activeOrders.find(
+    (order) => order.status === "on_hold" || order.status === "approved" || order.status === "reviewing"
+  )
 
   if (unpaidOrder) {
     items.push({
@@ -125,13 +149,46 @@ function buildActionItems(data: CreatorDashboardData): ActionItem[] {
   return items
 }
 
+function buildQuickActions(data: CreatorDashboardData): CreatorQuickAction[] {
+  const actions: CreatorQuickAction[] = []
+  
+  const activeOrders = data.orders.filter((o) => o.status !== "completed" && o.status !== "cancelled").length
+
+  if (activeOrders > 0) {
+    actions.push({ href: "/dashboard/creator/orders", label: `Review ${activeOrders} pending orders` })
+  } else {
+    actions.push({ href: "/dashboard/creator/orders", label: "View order history" })
+  }
+
+  const totalAssets = 
+    data.workspaceCounts.characters + 
+    data.workspaceCounts.personas + 
+    data.workspaceCounts.lorebooks + 
+    data.workspaceCounts.avatars + 
+    data.workspaceCounts.backgrounds
+
+  if (totalAssets === 0) {
+    actions.push({ href: "/dashboard/creator/workspace/characters/new", label: "Create your first listing" })
+  } else {
+    actions.push({ href: "/dashboard/creator/workspace/characters/new", label: "Create a new listing" })
+  }
+
+  actions.push({ href: "/dashboard/creator/profile", label: "Update profile details" })
+
+  return actions
+}
+
 function buildMessagesPreview(orders: CreatorOrderRow[]): MessagePreviewItem[] {
   return orders.slice(0, 4).map((order) => ({
     id: order.id,
     buyerName: buyerDisplayName(order.buyer_profile_data),
     preview: order.package_title,
     time: new Date(order.updated_at).toLocaleDateString(),
-    unread: order.status === "on_hold" || order.status === "pending_payment" || order.payment_status === "unpaid",
+    unread:
+      order.status === "on_hold" ||
+      order.status === "reviewing" ||
+      order.status === "pending_payment" ||
+      order.payment_status === "unpaid",
   }))
 }
 
@@ -153,35 +210,30 @@ function buildWorkspaceHealth(data: CreatorDashboardData): WorkspaceHealthItem[]
       count: data.workspaceCounts.characters,
       href: "/dashboard/creator/workspace/characters",
       icon: "characters",
-      imageUrl: "https://picsum.photos/seed/character-card/480/240",
     },
     {
       label: "Personas",
       count: data.workspaceCounts.personas,
       href: "/dashboard/creator/workspace/personas",
       icon: "personas",
-      imageUrl: "https://picsum.photos/seed/persona-card/480/240",
     },
     {
       label: "Lorebooks",
       count: data.workspaceCounts.lorebooks,
       href: "/dashboard/creator/workspace/lorebooks",
       icon: "lorebooks",
-      imageUrl: "https://picsum.photos/seed/lorebook-card/480/240",
     },
     {
       label: "Avatars",
       count: data.workspaceCounts.avatars,
       href: "/dashboard/creator/workspace/avatars",
       icon: "avatars",
-      imageUrl: "https://picsum.photos/seed/avatar-card/480/240",
     },
     {
       label: "Backgrounds",
       count: data.workspaceCounts.backgrounds,
       href: "/dashboard/creator/workspace/backgrounds",
       icon: "backgrounds",
-      imageUrl: "https://picsum.photos/seed/background-card/480/240",
     },
   ]
 }
@@ -205,19 +257,34 @@ function buildDeadlineDays(orders: CreatorOrderRow[]): DeadlineDay[] {
 }
 
 function buildCompletionChecks(data: CreatorDashboardData): CompletionCheck[] {
-  const totalAssets =
-    data.workspaceCounts.characters +
-    data.workspaceCounts.personas +
-    data.workspaceCounts.lorebooks +
-    data.workspaceCounts.avatars +
+  const profile = data.creatorProfile || {}
+  const skills = Array.isArray(profile.skills) ? profile.skills : []
+  const languages = Array.isArray(profile.languages) ? profile.languages : []
+  const socialLinks = Array.isArray(profile.socialLinks) ? profile.socialLinks : []
+  
+  // Total assets from workspace tables
+  const workspaceAssets = 
+    data.workspaceCounts.characters + 
+    data.workspaceCounts.personas + 
+    data.workspaceCounts.lorebooks + 
+    data.workspaceCounts.avatars + 
     data.workspaceCounts.backgrounds
+    
+  // Manual portfolio items from profile data
+  const manualPortfolio = Array.isArray(profile.portfolio) ? profile.portfolio : []
+  
+  const totalPortfolioCount = Math.max(workspaceAssets, manualPortfolio.length)
+
   return [
-    { label: "Display name set", done: data.creatorName.trim().length > 0 },
-    { label: "At least 3 portfolio items", done: totalAssets >= 3 },
-    { label: "At least 1 character", done: data.workspaceCounts.characters > 0 },
-    { label: "At least 1 persona", done: data.workspaceCounts.personas > 0 },
-    { label: "At least 1 avatar", done: data.workspaceCounts.avatars > 0 },
-    { label: "At least 1 review", done: data.reviewCount > 0 },
+    { label: "Display name", done: (profile.displayName || "").trim().length > 0 },
+    { label: "Tagline", done: (profile.tagline || "").trim().length > 5 },
+    { label: "Short bio", done: (profile.shortBio || "").trim().length > 10 },
+    { label: "Avatar image", done: Boolean(profile.avatarUrl) },
+    { label: "Banner image", done: Boolean(profile.bannerUrl) },
+    { label: "3+ skills", done: skills.length >= 3 },
+    { label: "Language", done: languages.length >= 1 },
+    { label: "3+ portfolio items", done: totalPortfolioCount >= 3 },
+    { label: "Social link", done: socialLinks.length >= 1 },
   ]
 }
 
@@ -231,7 +298,11 @@ function buildDashboardStats(data: CreatorDashboardData): CreatorDashboardStat[]
   const completedOrders = data.orders.filter((order) => order.status === "completed")
   const earnings30d = completedOrders.reduce((sum, order) => sum + Number(order.package_price ?? 0), 0)
   const responseCount = data.orders.filter(
-    (order) => order.status === "on_hold" || order.status === "pending_payment" || order.payment_status === "unpaid"
+    (order) =>
+      order.status === "on_hold" ||
+      order.status === "reviewing" ||
+      order.status === "pending_payment" ||
+      order.payment_status === "unpaid"
   ).length
 
   return creatorDashboardStats.map((stat) => {
@@ -273,7 +344,11 @@ export function CreatorDashboardView({ creatorId, dashboardData }: CreatorDashbo
     (order) => order.status !== "completed" && order.status !== "cancelled"
   ).length
   const needsResponse = dashboardData.orders.filter(
-    (order) => order.status === "on_hold" || order.status === "pending_payment" || order.payment_status === "unpaid"
+    (order) =>
+      order.status === "on_hold" ||
+      order.status === "reviewing" ||
+      order.status === "pending_payment" ||
+      order.payment_status === "unpaid"
   ).length
   const draftsPending = dashboardData.draftCharacters
 
@@ -282,8 +357,9 @@ export function CreatorDashboardView({ creatorId, dashboardData }: CreatorDashbo
   const recentActivity = buildRecentActivity(dashboardData.orders)
   const workspaceHealth = buildWorkspaceHealth(dashboardData)
   const deadlineDays = buildDeadlineDays(dashboardData.orders)
-  const completionChecks = buildCompletionChecks(dashboardData)
   const stats = buildDashboardStats(dashboardData)
+  const dynamicEarningsSeries = buildEarningsSeries(dashboardData.orders)
+  const dynamicQuickActions = buildQuickActions(dashboardData)
 
   return (
     <div className="flex flex-col gap-6">
@@ -300,19 +376,20 @@ export function CreatorDashboardView({ creatorId, dashboardData }: CreatorDashbo
         <div className="lg:col-span-2">
           <ActionRequiredCard items={actionItems} />
         </div>
-        <ProfileCompletionCard checks={completionChecks} />
+        <QuickActionsCard actions={dynamicQuickActions} />
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">
-        <EarningsChartCard
-          earnings={earningsSeries}
-          currentTotal={`$${dashboardData.orders
-            .filter((order) => order.status === "completed")
-            .reduce((sum, order) => sum + Number(order.package_price ?? 0), 0)
-            .toLocaleString()}`}
-          deltaLabel={`${dashboardData.orders.filter((order) => order.status === "completed").length} completed orders`}
-        />
-        <QuickActionsCard actions={creatorDashboardQuickActions} />
+        <div className="lg:col-span-3">
+          <EarningsChartCard
+            earnings={dynamicEarningsSeries}
+            currentTotal={`$${dashboardData.orders
+              .filter((order) => order.status === "completed")
+              .reduce((sum, order) => sum + Number(order.package_price ?? 0), 0)
+              .toLocaleString()}`}
+            deltaLabel={`${dashboardData.orders.filter((order) => order.status === "completed").length} completed orders`}
+          />
+        </div>
       </section>
 
       <section className="grid gap-4 lg:grid-cols-3">

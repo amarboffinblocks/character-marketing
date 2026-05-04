@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { ArrowRight, Eye, EyeOff, Lock, Mail, User } from "lucide-react"
@@ -11,6 +12,7 @@ import { z } from "zod"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { PageLoader } from "@/components/ui/page-loader"
+import { isNetworkError } from "@/lib/auth-error-messages"
 import { SIGN_IN_ALLOWED_ROLES, type SignInAllowedRole } from "@/lib/auth-roles"
 import { cn } from "@/lib/utils"
 
@@ -19,7 +21,7 @@ const signUpSchema = z
     fullName: z.string().min(2, "Name must be at least 2 characters"),
     email: z.email("Enter a valid email"),
     role: z.enum(SIGN_IN_ALLOWED_ROLES),
-    password: z.string().min(8, "Password must be at least 8 characters"),
+    password: z.string().min(8, "Password must be at least 8 characters").regex(/^\S+$/, "Password cannot contain spaces"),
     confirmPassword: z.string().min(8, "Confirm your password"),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -66,6 +68,7 @@ function XIcon() {
 }
 
 export default function SignUpForm({ role }: SignUpFormProps) {
+  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -103,20 +106,41 @@ export default function SignUpForm({ role }: SignUpFormProps) {
         }),
       })
 
-      const result = (await response.json()) as { error?: string; message?: string }
+      const result = (await response.json()) as {
+        error?: string
+        message?: string
+        needsEmailConfirmation?: boolean
+        email?: string
+        role?: SignInAllowedRole
+      }
       if (!response.ok) {
         setFormError(result.error ?? "Failed to create account.")
         toast.error("Sign up failed", { description: result.error ?? "Please try again." })
         return
       }
 
+      if (result.needsEmailConfirmation && result.email) {
+        const q = new URLSearchParams({ email: result.email, role: result.role ?? role })
+        toast.success("Check your email", { description: result.message ?? "Enter the verification code to continue." })
+        router.push(`/otp-verification?${q.toString()}`)
+        return
+      }
+
       setFormMessage(result.message ?? "Account created successfully.")
       toast.success("Account created", {
-        description: result.message ?? "Check your inbox to verify your email.",
+        description: result.message ?? "You are signed in.",
       })
-    } catch {
-      setFormError("Something went wrong while creating your account.")
-      toast.error("Sign up failed", { description: "Please try again." })
+
+      if (!result.needsEmailConfirmation) {
+        window.location.href =
+          result.role === "creator" ? "/dashboard/creator" : "/"
+      }
+    } catch (err) {
+      const msg = isNetworkError(err)
+        ? "Network error. Check your connection and try again."
+        : "Something went wrong while creating your account."
+      setFormError(msg)
+      toast.error("Sign up failed", { description: msg })
     } finally {
       setIsSubmitting(false)
     }
@@ -144,9 +168,12 @@ export default function SignUpForm({ role }: SignUpFormProps) {
       }
 
       window.location.href = result.url
-    } catch {
-      setFormError("Something went wrong while starting social sign up.")
-      toast.error("Social sign up failed", { description: "Please try again." })
+    } catch (err) {
+      const msg = isNetworkError(err)
+        ? "Network error. Check your connection and try again."
+        : "Something went wrong while starting social sign up."
+      setFormError(msg)
+      toast.error("Social sign up failed", { description: msg })
     } finally {
       setIsSocialLoading(false)
     }
