@@ -95,7 +95,8 @@ export async function POST(request: Request, context: { params: Promise<{ thread
       .single()
 
     if (error || !data) {
-      return NextResponse.json({ error: "Unable to send message.", details: error?.message }, { status: 400 })
+      console.error("MESSAGE INSERT ERROR:", error);
+      return NextResponse.json({ error: "Unable to send message.", details: error?.message, hint: error?.hint, code: error?.code }, { status: 400 })
     }
 
     await markRead(supabase, normalizedThreadId, user.id, data.id)
@@ -112,8 +113,10 @@ export async function POST(request: Request, context: { params: Promise<{ thread
       ),
     })
   } catch (error) {
+    console.error("MESSAGE CATCH ERROR:", error);
     const message = error instanceof Error ? error.message : "Unable to send message."
+    const details = error instanceof Error ? { message: error.message, stack: error.stack } : String(error)
     const status = message === "Unauthorized" ? 401 : 400
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json({ error: message, details }, { status })
   }
 }

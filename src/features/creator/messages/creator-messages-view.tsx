@@ -463,9 +463,6 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                         <span className="text-xs text-muted-foreground">
                           {viewerRole === "creator" ? "Buyer conversation" : "Creator conversation"}
                         </span>
-                        <Badge variant="outline" className="h-4 px-1 text-[10px] opacity-60">
-                          {activeThread.orderId}
-                        </Badge>
                       </div>
                       {isCounterpartTyping ? (
                         <div className="mt-1 inline-flex items-center gap-2 text-xs text-muted-foreground">

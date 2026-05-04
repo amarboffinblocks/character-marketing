@@ -148,7 +148,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="/inbox" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Inbox</Link>
+            <Link href="/messages" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Messages</Link>
             <Link href="/faq" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">FAQ</Link>
           </nav>
         ) : null}
@@ -231,7 +231,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
               {activityLinks.map((link) => (
                 <Link key={`${link.label}-${link.href}`} href={link.href} className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>{link.label}</Link>
               ))}
-              <Link href="/inbox" className="mt-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>Inbox</Link>
+              <Link href="/messages" className="mt-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>Messages</Link>
               <Link href="/faq" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>FAQ</Link>
             </nav>
             <div className="mt-4 flex flex-col gap-1 border-t border-border/60 pt-4">
