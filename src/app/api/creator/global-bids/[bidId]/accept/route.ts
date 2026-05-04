@@ -13,7 +13,7 @@ function getDbClient() {
   return new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
 }
 
-export async function POST(_: Request, context: { params: Promise<{ bidId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ bidId: string }> }) {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -24,6 +24,10 @@ export async function POST(_: Request, context: { params: Promise<{ bidId: strin
   const { bidId } = await context.params
   const normalizedBidId = asString(bidId)
   if (!normalizedBidId) return NextResponse.json({ error: "bidId is required." }, { status: 400 })
+
+  const body = await request.json().catch(() => ({}))
+  const proposedPrice = asString(body.proposedPrice)
+  const message = asString(body.message)
 
   const client = getDbClient()
   try {
@@ -42,11 +46,14 @@ export async function POST(_: Request, context: { params: Promise<{ bidId: strin
     }
 
     await client.query(
-      `insert into public.bid_interests (bid_id, creator_id, status)
-       values ($1, $2, 'interested')
+      `insert into public.bid_interests (bid_id, creator_id, status, proposed_price, message)
+       values ($1, $2, 'interested', $3, $4)
        on conflict (bid_id, creator_id)
-       do update set status = 'interested'`,
-      [normalizedBidId, user.id]
+       do update set 
+         status = 'interested',
+         proposed_price = excluded.proposed_price,
+         message = excluded.message`,
+      [normalizedBidId, user.id, proposedPrice, message]
     )
 
     return NextResponse.json({ success: true })

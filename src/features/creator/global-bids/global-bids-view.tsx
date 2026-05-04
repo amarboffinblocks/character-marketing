@@ -7,14 +7,24 @@ import { useRouter } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
+import { Label } from "../../../components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
 import { openOrCreateThread } from "@/features/messaging/api"
 import { cn } from "@/lib/utils"
 
@@ -74,6 +84,9 @@ export function GlobalBidsView() {
   const [error, setError] = useState("")
   const [openingChatBidId, setOpeningChatBidId] = useState<string | null>(null)
   const [acceptingBidId, setAcceptingBidId] = useState<string | null>(null)
+  const [biddingBid, setBiddingBid] = useState<GlobalBid | null>(null)
+  const [proposedPrice, setProposedPrice] = useState("")
+  const [bidMessage, setBidMessage] = useState("")
 
   const filteredBids = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -135,12 +148,14 @@ export function GlobalBidsView() {
     }
   }
 
-  async function handleAcceptBid(bidId: string) {
+  async function handleAcceptBid(bidId: string, price: string, message: string) {
     setAcceptingBidId(bidId)
     setError("")
     try {
       const response = await fetch(`/api/creator/global-bids/${encodeURIComponent(bidId)}/accept`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ proposedPrice: price, message }),
       })
       const data = (await response.json()) as { error?: string }
       if (!response.ok) throw new Error(data.error || "Unable to accept bid.")
@@ -151,6 +166,9 @@ export function GlobalBidsView() {
             : bid
         )
       )
+      setBiddingBid(null)
+      setProposedPrice("")
+      setBidMessage("")
     } catch (acceptError) {
       setError(acceptError instanceof Error ? acceptError.message : "Unable to accept bid.")
     } finally {
@@ -307,14 +325,18 @@ export function GlobalBidsView() {
                             acceptingBidId === bid.id ||
                             bid.creatorInterestStatus === "interested"
                           }
-                          onClick={() => void handleAcceptBid(bid.id)}
+                          onClick={() => {
+                            setBiddingBid(bid)
+                            setProposedPrice(bid.budget.replace(/[^0-9.]/g, ""))
+                            setBidMessage("")
+                          }}
                         >
                           {acceptingBidId === bid.id ? (
                             <LoaderCircle className="size-4 animate-spin" />
                           ) : (
                             <CircleCheckBig className="size-4" />
                           )}
-                          Accept
+                          Send a Bid
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -325,6 +347,51 @@ export function GlobalBidsView() {
           </ul>
         )}
       </section>
+      <Dialog open={!!biddingBid} onOpenChange={(open) => !open && setBiddingBid(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Send a Bid</DialogTitle>
+            <DialogDescription>
+              Submit your proposal for "{biddingBid?.title}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="price">Your Proposed Price ($)</Label>
+              <Input
+                id="price"
+                placeholder="e.g. 450"
+                value={proposedPrice}
+                onChange={(e) => setProposedPrice(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="message">Message to Client</Label>
+              <Textarea
+                id="message"
+                placeholder="Describe why you're a good fit..."
+                className="min-h-[100px]"
+                value={bidMessage}
+                onChange={(e) => setBidMessage(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBiddingBid(null)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!proposedPrice || acceptingBidId === biddingBid?.id}
+              onClick={() => biddingBid && handleAcceptBid(biddingBid.id, proposedPrice, bidMessage)}
+            >
+              {acceptingBidId === biddingBid?.id ? (
+                <LoaderCircle className="mr-2 size-4 animate-spin" />
+              ) : null}
+              Submit Bid
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
