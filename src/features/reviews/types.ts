@@ -3,6 +3,7 @@ export type ReviewStatus = "published" | "pending"
 export type CreatorReviewRecord = {
   id: string
   creatorId: string
+  orderId?: string
   reviewerName: string
   reviewerAvatar: string | null
   reviewerInitials: string
@@ -15,6 +16,7 @@ export type CreatorReviewRecord = {
 
 export type CreateCreatorReviewInput = {
   creatorId: string
+  orderId?: string
   reviewerName: string
   reviewerAvatar?: string | null
   rating: number

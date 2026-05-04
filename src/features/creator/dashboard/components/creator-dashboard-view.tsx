@@ -103,7 +103,7 @@ function toIsoDateKey(value: unknown): string {
 function toActivityStatus(status: CreatorOrderRow["status"]): RecentActivityItem["status"] {
   if (status === "pending_payment") return "new"
   if (status === "in_progress") return "in_progress"
-  if (status === "on_hold" || status === "approved") return "waiting_on_buyer"
+  if (status === "on_hold" || status === "approved" || status === "reviewing") return "waiting_on_buyer"
   if (status === "delivered") return "review"
   return "completed"
 }
@@ -112,7 +112,9 @@ function buildActionItems(data: CreatorDashboardData): ActionItem[] {
   const items: ActionItem[] = []
   const activeOrders = data.orders.filter((order) => order.status !== "completed" && order.status !== "cancelled")
   const unpaidOrder = activeOrders.find((order) => order.payment_status === "unpaid" || order.status === "pending_payment")
-  const blockedOrder = activeOrders.find((order) => order.status === "on_hold" || order.status === "approved")
+  const blockedOrder = activeOrders.find(
+    (order) => order.status === "on_hold" || order.status === "approved" || order.status === "reviewing"
+  )
 
   if (unpaidOrder) {
     items.push({
@@ -182,7 +184,11 @@ function buildMessagesPreview(orders: CreatorOrderRow[]): MessagePreviewItem[] {
     buyerName: buyerDisplayName(order.buyer_profile_data),
     preview: order.package_title,
     time: new Date(order.updated_at).toLocaleDateString(),
-    unread: order.status === "on_hold" || order.status === "pending_payment" || order.payment_status === "unpaid",
+    unread:
+      order.status === "on_hold" ||
+      order.status === "reviewing" ||
+      order.status === "pending_payment" ||
+      order.payment_status === "unpaid",
   }))
 }
 
@@ -292,7 +298,11 @@ function buildDashboardStats(data: CreatorDashboardData): CreatorDashboardStat[]
   const completedOrders = data.orders.filter((order) => order.status === "completed")
   const earnings30d = completedOrders.reduce((sum, order) => sum + Number(order.package_price ?? 0), 0)
   const responseCount = data.orders.filter(
-    (order) => order.status === "on_hold" || order.status === "pending_payment" || order.payment_status === "unpaid"
+    (order) =>
+      order.status === "on_hold" ||
+      order.status === "reviewing" ||
+      order.status === "pending_payment" ||
+      order.payment_status === "unpaid"
   ).length
 
   return creatorDashboardStats.map((stat) => {
@@ -334,7 +344,11 @@ export function CreatorDashboardView({ creatorId, dashboardData }: CreatorDashbo
     (order) => order.status !== "completed" && order.status !== "cancelled"
   ).length
   const needsResponse = dashboardData.orders.filter(
-    (order) => order.status === "on_hold" || order.status === "pending_payment" || order.payment_status === "unpaid"
+    (order) =>
+      order.status === "on_hold" ||
+      order.status === "reviewing" ||
+      order.status === "pending_payment" ||
+      order.payment_status === "unpaid"
   ).length
   const draftsPending = dashboardData.draftCharacters
 

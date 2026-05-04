@@ -5,6 +5,18 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { type InboxItem, type InboxRole, type InboxTab } from "@/features/inbox/types"
 import { createClientSupabaseClient } from "@/lib/supabase/client"
 
+type InboxNotificationRow = {
+  id: string
+  user_id: string
+  type: InboxItem["type"]
+  category: InboxItem["category"]
+  title: string
+  body: string
+  is_read: boolean
+  action_url: string | null
+  created_at: string
+}
+
 function sortByCreatedAtDesc(items: InboxItem[]) {
   return [...items].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 }
@@ -69,7 +81,7 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
           table: "inbox_notifications",
           filter: `user_id=eq.${userId}`,
         },
-        (payload: { new: Record<string, any> }) => {
+        (payload: { new: InboxNotificationRow }) => {
           console.log("[Realtime] New notification received:", payload.new)
           const newItem = payload.new
           const mappedItem: InboxItem = {
@@ -94,7 +106,7 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
           table: "inbox_notifications",
           filter: `user_id=eq.${userId}`,
         },
-        (payload: { new: Record<string, any> }) => {
+        (payload: { new: InboxNotificationRow }) => {
           console.log("[Realtime] Notification updated:", payload.new)
           const updatedItem = payload.new
           setItems((current) =>

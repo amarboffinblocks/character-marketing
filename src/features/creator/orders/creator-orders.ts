@@ -132,18 +132,12 @@ export async function fetchCreatorOrders(creatorId: string): Promise<CreatorOrde
         [creatorId]
       )
       const dbOrders = (result.rows ?? []) as CreatorOrderRow[]
-      return [...dbOrders, ...assignedBidOrders].map((order) => ({
-        ...order,
-        status: order.status === "approved" ? "on_hold" : order.status,
-      })).sort(
+      return [...dbOrders, ...assignedBidOrders].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       )
     } catch (error) {
       if (isMissingOrdersTableError(error)) {
-        return assignedBidOrders.map((order) => ({
-          ...order,
-          status: order.status === "approved" ? "on_hold" : order.status,
-        })).sort(
+        return assignedBidOrders.sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         )
       }
@@ -157,7 +151,7 @@ export async function fetchCreatorOrders(creatorId: string): Promise<CreatorOrde
 export async function updateCreatorOrderStatus(input: {
   orderId: string
   creatorId: string
-  status: "pending" | "processing" | "on_hold" | "delivered" | "completed"
+  status: "pending" | "processing" | "on_hold" | "reviewing" | "delivered" | "completed"
 }) {
   const connectionString = getConnectionString()
   if (!connectionString) {
@@ -169,11 +163,11 @@ export async function updateCreatorOrderStatus(input: {
       ? "pending_payment"
       : input.status === "processing"
         ? "in_progress"
-        : input.status === "on_hold"
+        : input.status === "on_hold" || input.status === "reviewing"
           ? "approved"
           : input.status === "delivered"
             ? "delivered"
-          : "completed"
+            : "completed"
   const isBidOrder = input.orderId.startsWith("bid-order-")
   const bidId = isBidOrder ? input.orderId.replace(/^bid-order-/, "").trim() : ""
 
@@ -189,7 +183,7 @@ export async function updateCreatorOrderStatus(input: {
           ? "completed"
           : input.status === "delivered"
             ? "processing"
-          : input.status === "on_hold" || input.status === "pending"
+          : input.status === "on_hold" || input.status === "reviewing" || input.status === "pending"
             ? "pending"
             : "processing"
 

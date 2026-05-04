@@ -1,10 +1,24 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Activity, CheckCircle2, LoaderCircle, PackageCheck, Timer, UserRound } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import Link from "next/link"
+import {
+  Activity,
+  CheckCircle2,
+  CreditCard,
+  Copy,
+  Eye,
+  ExternalLink,
+  LoaderCircle,
+  MoreVertical,
+  NotebookPen,
+  PackageCheck,
+  Timer,
+  UserRound,
+} from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
   Dialog,
@@ -14,11 +28,115 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { CreatorOrderRow, CreatorOrderStatus, CreatorPaymentStatus } from "@/features/creator/orders/creator-orders"
 import { buyerSummaryFromProfileData } from "@/lib/profile-buyer-display"
 import { cn } from "@/lib/utils"
+
+/** Values sent to PATCH /api/creator/orders/[id]/order-status */
+type OrderStatusPatch = "pending" | "processing" | "on_hold" | "reviewing" | "delivered" | "completed"
+
+function patchApiStatusToRowStatus(api: OrderStatusPatch): CreatorOrderStatus {
+  switch (api) {
+    case "pending":
+      return "pending_payment"
+    case "processing":
+      return "in_progress"
+    case "on_hold":
+    case "reviewing":
+      return "reviewing"
+    case "delivered":
+      return "delivered"
+    case "completed":
+      return "completed"
+    default:
+      return "in_progress"
+  }
+}
+
+const REVIEW_REQUIRED_TYPES = ["character", "persona", "lorebook", "avatar"] as const
+
+type ReviewPickKey = (typeof REVIEW_REQUIRED_TYPES)[number] | "background"
+
+type CreatorPayoutProfile = {
+  stripeConnectAccountId: string
+  payoutAccountHolderName: string
+  payoutCountry: string
+  payoutCurrency: string
+}
+
+/** Initial / cleared state for per-type asset dropdowns */
+const EMPTY_ASSET_PICKS: Record<ReviewPickKey, string> = {
+  character: "",
+  persona: "",
+  lorebook: "",
+  avatar: "",
+  background: "",
+}
+
+/** Options API returns keyed rows; map to picker keys used in payloads. */
+const REVIEW_ROWS: ReadonlyArray<{ pickKey: ReviewPickKey; optionsKey: string; label: string; required: boolean }> = [
+  { pickKey: "character", optionsKey: "character", label: "Character", required: false },
+  { pickKey: "persona", optionsKey: "persona", label: "Persona", required: false },
+  { pickKey: "lorebook", optionsKey: "lorebook", label: "Lorebook", required: false },
+  { pickKey: "avatar", optionsKey: "avatar", label: "Avatar", required: false },
+  { pickKey: "background", optionsKey: "background", label: "Background", required: false },
+]
+
+const DELIVERY_PICK_ROWS: ReadonlyArray<{ pickKey: ReviewPickKey; optionsKey: string; label: string }> = [
+  { pickKey: "character", optionsKey: "character", label: "Character" },
+  { pickKey: "persona", optionsKey: "persona", label: "Persona" },
+  { pickKey: "lorebook", optionsKey: "lorebook", label: "Lorebook" },
+  { pickKey: "avatar", optionsKey: "avatar", label: "Avatar" },
+  { pickKey: "background", optionsKey: "background", label: "Background" },
+]
+
+function picksToDeliverableAssets(picks: Record<ReviewPickKey, string>): Array<{ assetType: string; assetId: string }> {
+  const out: Array<{ assetType: string; assetId: string }> = []
+  for (const t of REVIEW_REQUIRED_TYPES) {
+    const id = picks[t]?.trim()
+    if (id) out.push({ assetType: t, assetId: id })
+  }
+  const bg = picks.background?.trim()
+  if (bg) out.push({ assetType: "background", assetId: bg })
+  return out
+}
+
+function picksToReviewAssets(picks: Record<ReviewPickKey, string>): Array<{ assetType: string; assetId: string }> {
+  return picksToDeliverableAssets(picks)
+}
+
+function selectedOptionLabel(
+  items: Array<{ assetId: string; title: string; subtitle: string }>,
+  assetId: string,
+  fallback: string
+) {
+  const selected = items.find((item) => item.assetId === assetId)
+  if (!selected) return fallback
+  return selected.subtitle ? `${selected.title} · ${selected.subtitle}` : selected.title
+}
+
+function creatorWorkspacePreviewHref(assetType: ReviewPickKey, assetId: string) {
+  if (!assetId) return ""
+  if (assetType === "character") return `/dashboard/creator/workspace/characters/view?id=${encodeURIComponent(assetId)}`
+  if (assetType === "persona") return `/dashboard/creator/workspace/personas/view?id=${encodeURIComponent(assetId)}`
+  if (assetType === "lorebook") return `/dashboard/creator/workspace/lorebooks/view?id=${encodeURIComponent(assetId)}`
+  if (assetType === "avatar") return `/dashboard/creator/workspace/avatars/view?id=${encodeURIComponent(assetId)}`
+  return `/dashboard/creator/workspace/backgrounds/view?id=${encodeURIComponent(assetId)}`
+}
+
+async function copyAssetSelection(assetType: ReviewPickKey, assetId: string) {
+  if (!assetId || typeof navigator === "undefined" || !navigator.clipboard) return
+  await navigator.clipboard.writeText(`${assetType}:${assetId}`)
+}
 
 const orderStatusLabel: Record<CreatorOrderStatus, string> = {
   pending: "Awaiting start",
@@ -28,7 +146,7 @@ const orderStatusLabel: Record<CreatorOrderStatus, string> = {
   on_hold: "On hold",
   reviewing: "Under review",
   delivered: "Delivered",
-  approved: "On hold",
+  approved: "Approved",
   completed: "Completed",
   cancelled: "Cancelled",
   refunded: "Refunded",
@@ -42,7 +160,7 @@ const orderStatusClass: Record<CreatorOrderStatus, string> = {
   on_hold: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
   reviewing: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
   delivered: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
-  approved: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  approved: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   cancelled: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
   refunded: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
@@ -202,22 +320,52 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
   const [selectedOrder, setSelectedOrder] = useState<CreatorOrderRow | null>(null)
   const [orderToView, setOrderToView] = useState<CreatorOrderRow | null>(null)
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false)
-  const [nextStatus, setNextStatus] = useState<"pending" | "processing" | "on_hold" | "delivered" | "completed">("pending")
+  const [nextStatus, setNextStatus] = useState<OrderStatusPatch>("processing")
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
+  const [deliveryOrder, setDeliveryOrder] = useState<CreatorOrderRow | null>(null)
+  const [deliveryOptions, setDeliveryOptions] = useState<Record<string, Array<{ assetType: string; assetId: string; title: string; subtitle: string; thumbnailUrl: string | null }>>>({})
+  const [deliveryPick, setDeliveryPick] = useState<Record<ReviewPickKey, string>>(EMPTY_ASSET_PICKS)
+  const [deliveryNote, setDeliveryNote] = useState("")
+  const [isLoadingDeliveryOptions, setIsLoadingDeliveryOptions] = useState(false)
+  const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false)
+  const [statusReviewOptions, setStatusReviewOptions] = useState<
+    Record<string, Array<{ assetType: string; assetId: string; title: string; subtitle: string; thumbnailUrl: string | null }>>
+  >({})
+  const [statusReviewPick, setStatusReviewPick] = useState<Record<ReviewPickKey, string>>(EMPTY_ASSET_PICKS)
+  const [statusReviewNote, setStatusReviewNote] = useState("")
+  const [isLoadingStatusReviewOptions, setIsLoadingStatusReviewOptions] = useState(false)
   const [error, setError] = useState("")
+  const [creatorPayoutProfile, setCreatorPayoutProfile] = useState<CreatorPayoutProfile | null>(null)
+  const [isLoadingPayoutProfile, setIsLoadingPayoutProfile] = useState(false)
 
-  function toStatusOption(status: CreatorOrderStatus): "pending" | "processing" | "on_hold" | "delivered" | "completed" {
-    if (status === "pending_payment") return "pending"
-    if (status === "in_progress") return "processing"
-    if (status === "delivered") return "delivered"
-    if (status === "on_hold" || status === "approved") return "on_hold"
-    if (status === "completed") return "completed"
-    return "processing"
+  function toStatusOption(status: CreatorOrderStatus): OrderStatusPatch {
+    switch (status) {
+      case "pending_payment":
+      case "pending":
+        return "pending"
+      case "funded":
+      case "in_progress":
+        return "processing"
+      case "delivered":
+        return "delivered"
+      case "completed":
+        return "delivered"
+      case "reviewing":
+        return "reviewing"
+      case "on_hold":
+      case "approved":
+        return "reviewing"
+      default:
+        return "processing"
+    }
   }
 
   function openStatusModal(order: CreatorOrderRow) {
     setSelectedOrder(order)
     setNextStatus(toStatusOption(order.status))
+    setStatusReviewPick({ ...EMPTY_ASSET_PICKS })
+    setStatusReviewNote("")
+    setStatusReviewOptions({})
     setError("")
   }
 
@@ -226,37 +374,133 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
     setIsViewDialogOpen(true)
   }
 
+  function openDeliveryDialog(order: CreatorOrderRow) {
+    setDeliveryOrder(order)
+    setDeliveryOptions({})
+    setDeliveryPick({ ...EMPTY_ASSET_PICKS })
+    setDeliveryNote("")
+    setError("")
+  }
+
+  const deliveredAssetCount = useMemo(() => picksToDeliverableAssets(deliveryPick).length, [deliveryPick])
+
+  useEffect(() => {
+    if (!deliveryOrder) return
+    let mounted = true
+    setIsLoadingDeliveryOptions(true)
+    setError("")
+    void (async () => {
+      try {
+        const response = await fetch(`/api/creator/orders/${encodeURIComponent(deliveryOrder.id)}/deliverables`)
+        const json = (await response.json()) as {
+          error?: string
+          options?: Record<string, Array<{ assetType: string; assetId: string; title: string; subtitle: string; thumbnailUrl: string | null }>>
+        }
+        if (!response.ok) {
+          throw new Error(json.error || "Unable to load deliverable options.")
+        }
+        if (!mounted) return
+        setDeliveryOptions(json.options ?? {})
+      } catch (deliveryError) {
+        if (!mounted) return
+        setError(deliveryError instanceof Error ? deliveryError.message : "Unable to load deliverable options.")
+      } finally {
+        if (mounted) setIsLoadingDeliveryOptions(false)
+      }
+    })()
+
+    return () => {
+      mounted = false
+    }
+  }, [deliveryOrder])
+
+  useEffect(() => {
+    if (!deliveryOrder) return
+    let mounted = true
+    setIsLoadingPayoutProfile(true)
+    void (async () => {
+      try {
+        const response = await fetch("/api/profile/me?role=creator")
+        const json = (await response.json()) as { data?: Record<string, unknown> }
+        if (!response.ok || !mounted) return
+        const data = json.data ?? {}
+        setCreatorPayoutProfile({
+          stripeConnectAccountId:
+            typeof data.stripeConnectAccountId === "string" ? data.stripeConnectAccountId : "",
+          payoutAccountHolderName:
+            typeof data.payoutAccountHolderName === "string" ? data.payoutAccountHolderName : "",
+          payoutCountry: typeof data.payoutCountry === "string" ? data.payoutCountry : "",
+          payoutCurrency: typeof data.payoutCurrency === "string" ? data.payoutCurrency : "",
+        })
+      } finally {
+        if (mounted) setIsLoadingPayoutProfile(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [deliveryOrder])
+
+  useEffect(() => {
+    if (!selectedOrder || nextStatus !== "reviewing") return
+    let mounted = true
+    setIsLoadingStatusReviewOptions(true)
+    setError("")
+    void (async () => {
+      try {
+        const response = await fetch(`/api/creator/orders/${encodeURIComponent(selectedOrder.id)}/deliverables`)
+        const json = (await response.json()) as {
+          error?: string
+          options?: Record<
+            string,
+            Array<{ assetType: string; assetId: string; title: string; subtitle: string; thumbnailUrl: string | null }>
+          >
+        }
+        if (!response.ok) {
+          throw new Error(json.error || "Unable to load workspace assets.")
+        }
+        if (!mounted) return
+        setStatusReviewOptions(json.options ?? {})
+      } catch (loadError) {
+        if (!mounted) return
+        setError(loadError instanceof Error ? loadError.message : "Unable to load workspace assets.")
+      } finally {
+        if (mounted) setIsLoadingStatusReviewOptions(false)
+      }
+    })()
+    return () => {
+      mounted = false
+    }
+  }, [selectedOrder, nextStatus])
+
   async function confirmStatusUpdate() {
     if (!selectedOrder) return
+    const reviewAssets = picksToReviewAssets(statusReviewPick)
     setIsUpdatingStatus(true)
     setError("")
     try {
+      const body =
+        nextStatus === "reviewing"
+          ? { status: "reviewing" as const, assets: reviewAssets, deliveryNote: statusReviewNote }
+          : { status: nextStatus }
       const response = await fetch(`/api/creator/orders/${encodeURIComponent(selectedOrder.id)}/order-status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: nextStatus }),
+        body: JSON.stringify(body),
       })
       const json = (await response.json()) as {
         error?: string
         order?: {
           id: string
-          status?: CreatorOrderStatus | "completed"
+          status?: OrderStatusPatch
           paymentStatus?: CreatorPaymentStatus
         }
       }
       if (!response.ok) {
         throw new Error(json.error || "Unable to update order status.")
       }
-      const nextLocalStatus: CreatorOrderStatus =
-        nextStatus === "pending"
-          ? "pending_payment"
-          : nextStatus === "processing"
-            ? "in_progress"
-            : nextStatus === "delivered"
-              ? "delivered"
-              : nextStatus === "on_hold"
-                ? "on_hold"
-                : "completed"
+      const resolvedPatch: OrderStatusPatch = json.order?.status ?? nextStatus
+      const nextLocalStatus = patchApiStatusToRowStatus(resolvedPatch)
       setOrders((current) =>
         current.map((order) =>
           order.id === selectedOrder.id
@@ -269,6 +513,9 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
         )
       )
       setSelectedOrder(null)
+      setStatusReviewPick({ ...EMPTY_ASSET_PICKS })
+      setStatusReviewNote("")
+      setStatusReviewOptions({})
     } catch (updateError) {
       setError(updateError instanceof Error ? updateError.message : "Unable to update order status.")
     } finally {
@@ -276,10 +523,62 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
     }
   }
 
+  async function submitDelivery() {
+    if (!deliveryOrder) return
+    const assets = picksToDeliverableAssets(deliveryPick)
+    if (assets.length === 0) {
+      setError("Select at least one asset to deliver (use any dropdown). You can leave the others empty.")
+      return
+    }
+    setIsSubmittingDelivery(true)
+    setError("")
+    try {
+      const response = await fetch(`/api/creator/orders/${encodeURIComponent(deliveryOrder.id)}/deliverables`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          deliveryNote,
+          assets,
+        }),
+      })
+      const json = (await response.json()) as {
+        error?: string
+        order?: {
+          id?: string
+          status?: CreatorOrderStatus
+          paymentStatus?: CreatorPaymentStatus
+        }
+      }
+      if (!response.ok) {
+        throw new Error(json.error || "Unable to submit delivery.")
+      }
+      setOrders((current) =>
+        current.map((order) =>
+          order.id === deliveryOrder.id
+            ? {
+                ...order,
+                status: json.order?.status ?? "delivered",
+                payment_status: json.order?.paymentStatus ?? order.payment_status,
+              }
+            : order
+        )
+      )
+      setDeliveryOrder(null)
+      setDeliveryPick({ ...EMPTY_ASSET_PICKS })
+      setDeliveryNote("")
+    } catch (deliveryError) {
+      setError(deliveryError instanceof Error ? deliveryError.message : "Unable to submit delivery.")
+    } finally {
+      setIsSubmittingDelivery(false)
+    }
+  }
+
   const openCount = useMemo(
     () =>
       orders.filter((o) =>
-        ["pending_payment", "funded", "in_progress", "delivered", "approved"].includes(o.status)
+        ["pending_payment", "funded", "in_progress", "delivered", "approved", "reviewing", "on_hold"].includes(
+          o.status
+        )
       ).length,
     [orders]
   )
@@ -288,6 +587,16 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
     () => orders.filter((o) => o.status === "completed").length,
     [orders]
   )
+  const missingPayoutFields = useMemo(() => {
+    if (!creatorPayoutProfile) return ["Stripe account ID"]
+    const missing: string[] = []
+    if (!creatorPayoutProfile.stripeConnectAccountId.trim()) missing.push("Stripe account ID")
+    if (!creatorPayoutProfile.payoutAccountHolderName.trim()) missing.push("Account holder name")
+    if (!creatorPayoutProfile.payoutCountry.trim()) missing.push("Payout country")
+    if (!creatorPayoutProfile.payoutCurrency.trim()) missing.push("Payout currency")
+    return missing
+  }, [creatorPayoutProfile])
+  const payoutReady = missingPayoutFields.length === 0
   const summaryCards = [
     {
       key: "total",
@@ -327,7 +636,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">Creator Orders</h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
           Accepted requests become orders here. Buyers fund them through Stripe escrow, then you
-          complete the work and receive the release payout.
+          deliver the work for buyer review and approval.
         </p>
       </section>
 
@@ -423,13 +732,38 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                     <TableCell className="text-sm text-muted-foreground">{formatCreatedAt(order.created_at)}</TableCell>
                     <TableCell className="text-center font-semibold text-foreground">{formatCurrency(order.package_price)}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => openViewModal(order)}>
-                          View
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => openStatusModal(order)}>
-                          Update status
-                        </Button>
+                      <div className="flex justify-end items-center gap-2">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button variant="outline" size="icon-sm" aria-label="Order actions">
+                                <MoreVertical className="size-4" />
+                              </Button>
+                            }
+                          />
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem onClick={() => openViewModal(order)}>
+                              <Eye className="size-4" />
+                              View
+                            </DropdownMenuItem>
+                            {(order.status === "funded" ||
+                              order.status === "in_progress" ||
+                              order.status === "on_hold" ||
+                              order.status === "approved") &&
+                            (order.payment_status === "pending" || order.payment_status === "paid") ? (
+                              <DropdownMenuItem onClick={() => openDeliveryDialog(order)}>
+                                <PackageCheck className="size-4" />
+                                Deliver order
+                              </DropdownMenuItem>
+                            ) : null}
+                            {order.payment_status === "pending" ? (
+                              <DropdownMenuItem onClick={() => openStatusModal(order)}>
+                                <NotebookPen className="size-4" />
+                                Update
+                              </DropdownMenuItem>
+                            ) : null}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -439,33 +773,130 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
           </Table>
         )}
       </section>
-      <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => (!open ? setSelectedOrder(null) : null)}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog
+        open={Boolean(selectedOrder)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedOrder(null)
+            setStatusReviewPick({ ...EMPTY_ASSET_PICKS })
+            setStatusReviewNote("")
+            setStatusReviewOptions({})
+            setError("")
+          }
+        }}
+      >
+        <DialogContent className={cn("max-h-[90vh] overflow-y-auto", nextStatus === "reviewing" ? "sm:max-w-2xl" : "sm:max-w-md")}>
           <DialogHeader>
             <DialogTitle>Update order status</DialogTitle>
             <DialogDescription>
               Confirm status update for <span className="font-medium text-foreground">{selectedOrder?.package_title ?? "order"}</span>.
-              Move to <span className="font-medium text-foreground">Delivered</span> when ready for buyer review.
+              {nextStatus === "reviewing" ? (
+                <>
+                  {" "}
+                  Choose character, persona, lorebook, and avatar (background optional). The buyer will open the in-app preview
+                  to approve or request changes.
+                </>
+              ) : (
+                <>
+                  {" "}
+                  Prefer <span className="font-medium text-foreground">Deliver order</span> from the table when submitting assets so
+                  delivery metadata is recorded. Use <span className="font-medium text-foreground">Delivered</span> here only when you
+                  need to correct status manually.
+                </>
+              )}
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">Next status</p>
-            <Select value={nextStatus} onValueChange={(value) => setNextStatus(value as "pending" | "processing" | "on_hold" | "delivered" | "completed")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="processing">Processing</SelectItem>
-                <SelectItem value="on_hold">On hold</SelectItem>
-                <SelectItem value="Reviewing">Go for review</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground">Next status</p>
+              <Select value={nextStatus} onValueChange={(value) => setNextStatus(value as OrderStatusPatch)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="processing">Processing</SelectItem>
+                  <SelectItem value="on_hold">On hold</SelectItem>
+                  <SelectItem value="reviewing">Under review (awaiting buyer)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {nextStatus === "reviewing" ? (
+              <div className="space-y-4 border-t border-border/60 pt-4">
+                <p className="text-xs font-semibold text-muted-foreground">
+                  All asset fields are optional. Select only what you want to send for review.
+                </p>
+                {isLoadingStatusReviewOptions ? (
+                  <p className="text-sm text-muted-foreground">Loading your workspace assets…</p>
+                ) : (
+                  REVIEW_ROWS.map(({ pickKey, optionsKey, label, required }) => {
+                    const items = statusReviewOptions[optionsKey] ?? []
+                    const current = statusReviewPick[pickKey]
+                    const selectValue = current || "Select an Asset"
+                    const noneLabel =
+                      pickKey === "background" ? "No background" : required ? `Select ${label.toLowerCase()}…` : "None"
+
+                    return (
+                      <div key={pickKey} className="space-y-2">
+                        <label className="text-sm font-semibold text-foreground" htmlFor={`review-pick-${pickKey}`}>
+                          {label}
+                        </label>
+                        {items.length === 0 ? (
+                          <p className="text-xs text-muted-foreground">No published {label.toLowerCase()} assets in workspace yet.</p>
+                        ) : (
+                          <Select
+                            value={selectValue}
+                            onValueChange={(value) =>
+                              setStatusReviewPick((prev) => ({
+                                ...prev,
+                                [pickKey]: value === "Select an Asset" ? "" : value,
+                              }))
+                            }
+                          >
+                            <SelectTrigger id={`review-pick-${pickKey}`} className="w-full">
+                              <span className={cn("truncate", !current && "text-muted-foreground")}>
+                                {selectedOptionLabel(items, current, noneLabel)}
+                              </span>
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Select an Asset">{noneLabel}</SelectItem>
+                              {items.map((item) => (
+                                <SelectItem key={item.assetId} value={item.assetId}>
+                                  {item.subtitle ? `${item.title} · ${item.subtitle}` : item.title}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold text-foreground">Note for buyer (optional)</p>
+                  <Textarea
+                    value={statusReviewNote}
+                    onChange={(event) => setStatusReviewNote(event.target.value)}
+                    placeholder="Help the buyer understand what to review."
+                    className="min-h-24"
+                  />
+                </div>
+              </div>
+            ) : null}
             {error ? <p className="text-xs text-rose-600">{error}</p> : null}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedOrder(null)} disabled={isUpdatingStatus}>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setSelectedOrder(null)
+                setStatusReviewPick({ ...EMPTY_ASSET_PICKS })
+                setStatusReviewNote("")
+                setStatusReviewOptions({})
+                setError("")
+              }}
+              disabled={isUpdatingStatus}
+            >
               Cancel
             </Button>
             <Button onClick={() => void confirmStatusUpdate()} disabled={isUpdatingStatus}>
@@ -549,6 +980,32 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                   </div>
 
                   <div className="mt-8 flex justify-end gap-2">
+                    {(orderToView.status === "funded" ||
+                      orderToView.status === "in_progress" ||
+                      orderToView.status === "on_hold" ||
+                      orderToView.status === "approved") &&
+                      (orderToView.payment_status === "pending" || orderToView.payment_status === "paid") ? (
+                      <Button
+                        onClick={() => {
+                          setIsViewDialogOpen(false)
+                          openDeliveryDialog(orderToView)
+                        }}
+                        className="px-6"
+                      >
+                        Deliver order
+                      </Button>
+                    ) : null}
+                    {(orderToView.status === "delivered" ||
+                      orderToView.status === "reviewing" ||
+                      orderToView.status === "approved" ||
+                      orderToView.status === "completed") ? (
+                      <Link
+                        href={`/orders/${orderToView.id}/preview`}
+                        className={cn(buttonVariants({ variant: "outline" }), "px-6")}
+                      >
+                        Open buyer preview
+                      </Link>
+                    ) : null}
                     <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} className="px-6">
                       Close
                     </Button>
@@ -563,6 +1020,163 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
               </>
             )
           })()}
+        </DialogContent>
+      </Dialog>
+      <Dialog
+        open={Boolean(deliveryOrder)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeliveryOrder(null)
+            setDeliveryPick({ ...EMPTY_ASSET_PICKS })
+            setDeliveryNote("")
+            setDeliveryOptions({})
+            setError("")
+          }
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Deliver order assets</DialogTitle>
+            <DialogDescription>
+              Each field starts empty—choose one asset per type where needed, or leave a row blank. Include at least one
+              attachment before submitting. The buyer will preview selections before approval.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {isLoadingDeliveryOptions ? (
+              <p className="text-sm text-muted-foreground">Loading your workspace assets…</p>
+            ) : (
+              DELIVERY_PICK_ROWS.map(({ pickKey, optionsKey, label }) => {
+                const items = deliveryOptions[optionsKey] ?? []
+                const current = deliveryPick[pickKey]
+                const selectValue = current || "Select an Asset"
+                const noneLabel = "Leave empty"
+
+                return (
+                  <div key={`delivery-${pickKey}`} className="space-y-2">
+                    <label className="text-sm font-semibold text-foreground" htmlFor={`delivery-pick-${pickKey}`}>
+                      {label} <span className="font-normal text-muted-foreground">(optional)</span>
+                    </label>
+                    {items.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        No {label.toLowerCase()} assets available in workspace.
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        <Select
+                          value={selectValue}
+                          onValueChange={(value) =>
+                            setDeliveryPick((prev) => ({
+                              ...prev,
+                              [pickKey]: value === "Select an Asset" ? "" : value,
+                            }))
+                          }
+                        >
+                          <SelectTrigger id={`delivery-pick-${pickKey}`} className="w-full">
+                            <span className={cn("truncate", !current && "text-muted-foreground")}>
+                              {selectedOptionLabel(items, current, noneLabel)}
+                            </span>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Select an Asset">{noneLabel}</SelectItem>
+                            {items.map((item) => (
+                              <SelectItem key={item.assetId} value={item.assetId}>
+                                {item.subtitle ? `${item.title} · ${item.subtitle}` : item.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {current ? (
+                          <div className="flex items-center gap-2">
+                            <Link
+                              href={creatorWorkspacePreviewHref(pickKey, current)}
+                              target="_blank"
+                              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5")}
+                            >
+                              <ExternalLink className="size-3.5" />
+                              Preview
+                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-2.5"
+                              onClick={() => void copyAssetSelection(pickKey, current)}
+                            >
+                              <Copy className="size-3.5" />
+                              Copy
+                            </Button>
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                )
+              })
+            )}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-foreground">Delivery note</p>
+              <Textarea
+                value={deliveryNote}
+                onChange={(event) => setDeliveryNote(event.target.value)}
+                placeholder="Add a note to help the buyer review the delivery."
+                className="min-h-28"
+              />
+            </div>
+            <div
+              className={cn(
+                "rounded-lg border p-3",
+                payoutReady
+                  ? "border-emerald-300/60 bg-emerald-50 text-emerald-800 dark:border-emerald-600/40 dark:bg-emerald-950/30 dark:text-emerald-200"
+                  : "border-rose-300/70 bg-rose-50 text-rose-700 dark:border-rose-600/40 dark:bg-rose-950/30 dark:text-rose-300"
+              )}
+            >
+              <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
+                <CreditCard className="size-4" />
+                Stripe payout setup
+              </p>
+              {isLoadingPayoutProfile ? (
+                <p className="mt-1 text-xs">Checking payout profile…</p>
+              ) : payoutReady ? (
+                <p className="mt-1 text-xs">Payout account is ready. Delivery can release funds automatically.</p>
+              ) : (
+                <p className="mt-1 text-xs">
+                  Missing: {missingPayoutFields.join(", ")}. Complete these in profile before delivering.
+                </p>
+              )}
+              <div className="mt-2">
+                <Link
+                  href="/dashboard/creator/profile"
+                  className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5")}
+                >
+                  <ExternalLink className="size-3.5" />
+                  Open profile
+                </Link>
+              </div>
+            </div>
+            {error ? <p className="text-xs text-rose-600">{error}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeliveryOrder(null)
+                setDeliveryPick({ ...EMPTY_ASSET_PICKS })
+                setDeliveryNote("")
+                setDeliveryOptions({})
+                setError("")
+              }}
+              disabled={isSubmittingDelivery}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void submitDelivery()}
+              disabled={isSubmittingDelivery || deliveredAssetCount === 0 || isLoadingPayoutProfile || !payoutReady}
+            >
+              {isSubmittingDelivery ? <LoaderCircle className="size-4 animate-spin" /> : null}
+              Deliver assets
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </main>

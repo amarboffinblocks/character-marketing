@@ -22,6 +22,7 @@ type CreatorReviewFormViewProps = {
     avatar: string
     tagline: string
   }
+  orderId?: string
 }
 
 function StarPicker({
@@ -57,7 +58,7 @@ function StarPicker({
   )
 }
 
-export function CreatorReviewFormView({ creator }: CreatorReviewFormViewProps) {
+export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFormViewProps) {
   const [rating, setRating] = useState(0)
   const [title, setTitle] = useState("")
   const [body, setBody] = useState("")
@@ -89,6 +90,7 @@ export function CreatorReviewFormView({ creator }: CreatorReviewFormViewProps) {
           rating,
           title,
           body,
+          orderId,
         }),
       })
       const json = (await response.json()) as { review?: CreatorReviewRecord; error?: string }

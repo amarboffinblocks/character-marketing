@@ -323,7 +323,7 @@ export async function releaseCreatorOrderEscrow(input: {
       return {
         id: order.id,
         paymentStatus: "paid" as EscrowPaymentStatus,
-        status: "completed",
+        status: "approved",
         transferId: order.stripe_transfer_id,
       }
     }
@@ -359,7 +359,7 @@ export async function releaseCreatorOrderEscrow(input: {
     await client.query(
       `update public.orders
        set
-         status = 'completed',
+         status = 'approved',
          payment_status = 'paid',
          stripe_transfer_id = $2,
          payout_released_at = now(),
@@ -414,7 +414,7 @@ export async function releaseCreatorOrderEscrow(input: {
     return {
       id: order.id,
       paymentStatus: "paid" as EscrowPaymentStatus,
-      status: "completed",
+      status: "approved",
       transferId: transfer.id,
     }
   } catch (error) {

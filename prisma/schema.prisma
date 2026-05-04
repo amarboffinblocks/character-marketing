@@ -227,6 +227,26 @@ model InboxNotification {
   @@schema("public")
 }
 
+model OrderDeliverable {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId       String   @map("order_id") @db.Uuid
+  buyerId       String   @map("buyer_id") @db.Uuid
+  creatorId     String   @map("creator_id") @db.Uuid
+  assetType     String   @map("asset_type")
+  assetId       String   @map("asset_id") @db.Uuid
+  assetTitle    String   @default("") @map("asset_title")
+  deliveryNote  String   @default("") @map("delivery_note")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([orderId, assetType, assetId], map: "order_deliverables_order_asset_unique")
+  @@index([orderId, createdAt(sort: Desc)], map: "order_deliverables_order_created_at_idx")
+  @@index([creatorId, createdAt(sort: Desc)], map: "order_deliverables_creator_created_at_idx")
+  @@index([buyerId, createdAt(sort: Desc)], map: "order_deliverables_buyer_created_at_idx")
+  @@map("order_deliverables")
+  @@schema("public")
+}
+
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model audit_log_entries {

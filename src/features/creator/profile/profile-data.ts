@@ -41,6 +41,10 @@ export type CreatorProfileForm = {
   buyerRequirements: string
   revisionPolicy: string
   refundPolicy: string
+  stripeConnectAccountId: string
+  payoutAccountHolderName: string
+  payoutCountry: string
+  payoutCurrency: string
 }
 
 export const defaultProfileForm: CreatorProfileForm = {
@@ -66,6 +70,10 @@ export const defaultProfileForm: CreatorProfileForm = {
   buyerRequirements: "",
   revisionPolicy: "",
   refundPolicy: "",
+  stripeConnectAccountId: "",
+  payoutAccountHolderName: "",
+  payoutCountry: "",
+  payoutCurrency: "USD",
 }
 
 export function computeCompletion(form: CreatorProfileForm) {

@@ -41,7 +41,6 @@ const stageLabels = [
   "Work Started",
   "Draft Delivered",
   "Under Review",
-  "Completed",
 ] as const
 
 function buyerInitials(name: string) {
