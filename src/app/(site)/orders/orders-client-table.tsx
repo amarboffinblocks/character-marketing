@@ -18,6 +18,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -29,6 +30,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 type OrderStatus =
@@ -251,6 +253,9 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [payingOrderId, setPayingOrderId] = useState<string | null>(null)
   const [actingOrderId, setActingOrderId] = useState<string | null>(null)
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false)
+  const [updateMessage, setUpdateMessage] = useState("")
+  const [orderToUpdate, setOrderToUpdate] = useState<BuyerOrderRow | null>(null)
   const totalPages = Math.max(1, Math.ceil(rows.length / ORDERS_PER_PAGE))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const paginatedRows = useMemo(() => {
@@ -261,6 +266,12 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
   const openDialog = (order: BuyerOrderRow) => {
     setSelectedOrder(order)
     setIsDialogOpen(true)
+  }
+
+  const openUpdateDialog = (order: BuyerOrderRow) => {
+    setOrderToUpdate(order)
+    setUpdateMessage("")
+    setIsUpdateDialogOpen(true)
   }
 
   const handlePayNow = async (order: BuyerOrderRow) => {
@@ -312,14 +323,14 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
     }
   }
 
-  const handleOrderAction = async (order: BuyerOrderRow, action: "approve" | "request_update") => {
+  const handleOrderAction = async (order: BuyerOrderRow, action: "approve" | "request_update", message?: string) => {
     if (actingOrderId || payingOrderId) return
     setActingOrderId(order.id)
     try {
       const response = await fetch(`/api/site/orders/${encodeURIComponent(order.id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, message }),
       })
       const json = (await response.json()) as {
         error?: string
@@ -460,7 +471,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                         size="sm"
                         className="h-8 cursor-pointer px-3 font-medium"
                         disabled={isActing}
-                        onClick={() => void handleOrderAction(req, "request_update")}
+                        onClick={() => void openUpdateDialog(req)}
                       >
                         {isActing ? <LoaderCircle className="size-3.5 animate-spin" /> : null}
                         New update
@@ -635,6 +646,43 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
               </>
             )
           })()}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={isUpdateDialogOpen} onOpenChange={setIsUpdateDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Request an update</DialogTitle>
+            <DialogDescription>
+              Tell the creator what you'd like to change.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-foreground">Revision instructions</p>
+              <Textarea
+                placeholder="e.g. Please change the hair color to blue..."
+                value={updateMessage}
+                onChange={(e) => setUpdateMessage(e.target.value)}
+                className="min-h-[120px] resize-none"
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex items-center sm:justify-between">
+            <Button variant="ghost" onClick={() => setIsUpdateDialogOpen(false)} disabled={actingOrderId === orderToUpdate?.id}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!updateMessage.trim() || actingOrderId === orderToUpdate?.id}
+              onClick={async () => {
+                if (!orderToUpdate) return
+                await handleOrderAction(orderToUpdate, "request_update", updateMessage)
+                setIsUpdateDialogOpen(false)
+              }}
+            >
+              {actingOrderId === orderToUpdate?.id ? <LoaderCircle className="size-4 animate-spin mr-2" /> : null}
+              Send request
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

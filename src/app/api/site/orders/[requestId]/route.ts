@@ -224,8 +224,10 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
     return NextResponse.json({ error: "orderId is required." }, { status: 400 })
   }
 
-  const payload = (await request.json().catch(() => ({}))) as { action?: unknown }
+  const payload = (await request.json().catch(() => ({}))) as { action?: unknown; message?: unknown }
   const action = asString(payload.action)
+  const message = asString(payload.message)
+
   if (action !== "approve" && action !== "request_update") {
     return NextResponse.json({ error: "Invalid action." }, { status: 400 })
   }
@@ -234,7 +236,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
   try {
     await client.connect()
     const orderResult = await client.query(
-      `select id, buyer_id, creator_id, status, payment_status
+      `select id, buyer_id, creator_id, status, payment_status, request_snapshot
        from public.orders
        where id = $1 and buyer_id = $2
        limit 1`,
@@ -247,6 +249,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
           creator_id: string
           status: string
           payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
+          request_snapshot: any
         }
       | undefined
     if (!order) {
@@ -254,11 +257,15 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
     }
 
     if (action === "request_update") {
+      const updatedSnapshot = typeof order.request_snapshot === 'object' && order.request_snapshot !== null 
+        ? { ...order.request_snapshot, revision_message: message }
+        : { revision_message: message }
+
       await client.query(
         `update public.orders
-         set status = 'in_progress', updated_at = now()
+         set status = 'in_progress', request_snapshot = $2, updated_at = now()
          where id = $1`,
-        [order.id]
+        [order.id, JSON.stringify(updatedSnapshot)]
       )
       return NextResponse.json({
         success: true,
