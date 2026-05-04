@@ -110,11 +110,11 @@ export function AdminOrdersView({ initialOrders }: { initialOrders: CreatorOrder
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1.5">
             <h2 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-              Orders
+              Order queue
             </h2>
             <p className="max-w-2xl text-sm text-muted-foreground">
-              Platform-wide queue with the same tools as creator orders—filters, saved views, and the
-              work queue table.
+              Platform-wide queue (not linked in the sidebar). Same filters and views as creator orders
+              for operational review.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">

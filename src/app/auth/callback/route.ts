@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
+import type { NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 
 import { isAuthRole, isSignInAllowedRole, resolveUserRole } from "@/lib/auth-roles"
 import { resolvePersistedRole, upsertProfileRole } from "@/lib/profile-role"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler"
 
 async function deleteAuthUserIfPossible(userId: string): Promise<void> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -20,7 +21,13 @@ async function deleteAuthUserIfPossible(userId: string): Promise<void> {
   await adminClient.auth.admin.deleteUser(userId)
 }
 
-export async function GET(request: Request) {
+function redirectWithCookies(applyAuthCookiesTo: (response: NextResponse) => void, destination: URL) {
+  const response = NextResponse.redirect(destination)
+  applyAuthCookiesTo(response)
+  return response
+}
+
+export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
   const oauthError = requestUrl.searchParams.get("error")
@@ -37,10 +44,10 @@ export async function GET(request: Request) {
     return NextResponse.redirect(signInUrl)
   }
 
-  const supabase = await createServerSupabaseClient()
+  const { supabase, applyAuthCookiesTo } = createRouteHandlerSupabaseClient(request)
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
-    return NextResponse.redirect(new URL("/sign-in?error=oauth_exchange_failed", request.url))
+    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=oauth_exchange_failed", request.url))
   }
 
   const {
@@ -48,7 +55,7 @@ export async function GET(request: Request) {
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.redirect(new URL("/sign-in?error=user_not_found", request.url))
+    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_found", request.url))
   }
 
   const isSelectedRoleAllowed = isSignInAllowedRole(selectedRole)
@@ -63,7 +70,7 @@ export async function GET(request: Request) {
   if (isSignInFlow && !userRole && !metadataRole && isRecentlyCreated) {
     await deleteAuthUserIfPossible(user.id)
     await supabase.auth.signOut()
-    return NextResponse.redirect(new URL("/sign-in?error=user_not_registered_oauth", request.url))
+    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_registered_oauth", request.url))
   }
 
   const { data: existingProfileRow } = await supabase
@@ -79,7 +86,7 @@ export async function GET(request: Request) {
     } else {
       await deleteAuthUserIfPossible(user.id)
       await supabase.auth.signOut()
-      return NextResponse.redirect(new URL("/sign-in?error=user_not_registered_oauth", request.url))
+      return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_registered_oauth", request.url))
     }
   }
 
@@ -97,7 +104,7 @@ export async function GET(request: Request) {
 
     if (updateError) {
       await supabase.auth.signOut()
-      return NextResponse.redirect(new URL("/sign-in?error=role_assignment_failed", request.url))
+      return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=role_assignment_failed", request.url))
     }
 
     if (data.user) {
@@ -113,7 +120,7 @@ export async function GET(request: Request) {
   if (!userRole && isSignInFlow) {
     await deleteAuthUserIfPossible(user.id)
     await supabase.auth.signOut()
-    return NextResponse.redirect(new URL("/sign-in?error=user_not_registered_oauth", request.url))
+    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_registered_oauth", request.url))
   }
 
   const isAllowed = isAuthRole(userRole)
@@ -121,11 +128,11 @@ export async function GET(request: Request) {
 
   if (!isAllowed || !roleMatches) {
     await supabase.auth.signOut()
-    return NextResponse.redirect(new URL("/sign-in?error=unauthorized_role", request.url))
+    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=unauthorized_role", request.url))
   }
 
   const defaultPath = userRole === "admin" ? "/dashboard/admin" : userRole === "creator" ? "/dashboard/creator" : "/"
   const safeNextPath = nextPath.startsWith("/") ? nextPath : defaultPath
   const destination = safeNextPath === "/" ? defaultPath : safeNextPath
-  return NextResponse.redirect(new URL(destination, request.url))
+  return redirectWithCookies(applyAuthCookiesTo, new URL(destination, request.url))
 }

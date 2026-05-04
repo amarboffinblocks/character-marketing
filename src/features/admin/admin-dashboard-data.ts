@@ -1,47 +1,4 @@
-import {
-  AlertTriangle,
-  CreditCard,
-  FolderKanban,
-  Headphones,
-  Shield,
-  Store,
-  TrendingUp,
-  Users,
-} from "lucide-react"
-
-import type { CreatorDashboardStat } from "@/features/creator/dashboard/types"
 import type { CreatorQuickAction } from "@/features/creator/dashboard/types"
-
-export const adminDashboardStats: CreatorDashboardStat[] = [
-  {
-    label: "Active users",
-    value: "2,412",
-    delta: "+128 this week",
-    trend: "up",
-    icon: Users,
-  },
-  {
-    label: "Verified creators",
-    value: "118",
-    delta: "+4 pending review",
-    trend: "up",
-    icon: Store,
-  },
-  {
-    label: "GMV (30d)",
-    value: "$184k",
-    delta: "+12% vs last month",
-    trend: "up",
-    icon: TrendingUp,
-  },
-  {
-    label: "Open orders",
-    value: "342",
-    delta: "28 need attention",
-    trend: "neutral",
-    icon: FolderKanban,
-  }
-]
 
 export type AdminActivityRow = {
   id: string
@@ -50,77 +7,13 @@ export type AdminActivityRow = {
   time: string
 }
 
-export const adminRecentActivity: AdminActivityRow[] = [
-  {
-    id: "a1",
-    label: "Creator application approved",
-    meta: "Nova Scribe · Application #CR-9081",
-    time: "12m ago",
-  },
-  {
-    id: "a2",
-    label: "Trust flag reviewed",
-    meta: "Order ORD-2999 · Chargeback inquiry",
-    time: "1h ago",
-  },
-  {
-    id: "a3",
-    label: "Payout batch released",
-    meta: "Batch #88 · 142 creators",
-    time: "3h ago",
-  },
-  {
-    id: "a4",
-    label: "User suspended (policy)",
-    meta: "usr-1004 · Spam / harassment",
-    time: "Yesterday",
-  },
-  {
-    id: "a5",
-    label: "API rate limit raised",
-    meta: "Partner integration · acme-widgets",
-    time: "Yesterday",
-  },
-  {
-    id: "a6",
-    label: "Refund approved",
-    meta: "ORD-3012 · Partial 40%",
-    time: "Yesterday",
-  },
-  {
-    id: "a7",
-    label: "Creator verification docs uploaded",
-    meta: "Echo Art · ID + tax form",
-    time: "2d ago",
-  },
-  {
-    id: "a8",
-    label: "Content strike issued",
-    meta: "Listing #LB-441 · Community guidelines",
-    time: "2d ago",
-  },
-  {
-    id: "a9",
-    label: "Feature flag toggled",
-    meta: "checkout_v2 → 25% rollout",
-    time: "3d ago",
-  },
-  {
-    id: "a10",
-    label: "Scheduled maintenance posted",
-    meta: "Apr 22 · 02:00–04:00 UTC",
-    time: "3d ago",
-  },
-]
-
 export const adminQuickActions: CreatorQuickAction[] = [
   { label: "Open user directory", href: "/dashboard/admin/users" },
   { label: "Review creator applications", href: "/dashboard/admin/creators" },
-  { label: "Platform orders queue", href: "/dashboard/admin/orders" },
+  { label: "Order queue (platform-wide)", href: "/dashboard/admin/orders" },
   { label: "Trust & analytics", href: "/dashboard/admin/reports" },
   { label: "Admin settings", href: "/dashboard/admin/settings" },
 ]
-
 export type AdminEscalation = {
   id: string
   title: string
@@ -253,3 +146,4 @@ export const adminAnnouncements = [
     body: "Tabletop exercise scheduled next Thursday; calendar invite sent to on-call.",
   },
 ]
+

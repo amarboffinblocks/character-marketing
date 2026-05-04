@@ -1,23 +1,27 @@
+"use client"
+
 import Link from "next/link"
-import { ArrowRight, Megaphone, Shield } from "lucide-react"
+import { useMemo } from "react"
+import { ArrowRight, FolderKanban, Megaphone, Shield, Store, TrendingUp, Users } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DashboardStatsGrid } from "@/features/creator/dashboard/components/dashboard-stats-grid"
 import { QuickActionsCard } from "@/features/creator/dashboard/components/quick-actions-card"
+import type { CreatorDashboardStat } from "@/features/creator/dashboard/types"
 import {
   adminAnnouncements,
-  adminDashboardStats,
   adminEscalations,
   adminModerationQueue,
   adminPlatformHealth,
-  adminRecentActivity,
   adminQuickActions,
   adminRegionalPulse,
   adminVolumeByCategory,
 } from "@/features/admin/admin-dashboard-data"
+import type { AdminDashboardLiveMetrics } from "@/features/admin/admin-metrics"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
+import { formatUsd } from "@/features/creator/earnings/earnings-data"
 import { cn } from "@/lib/utils"
 
 const severityClass: Record<(typeof adminEscalations)[number]["severity"], string> = {
@@ -32,7 +36,67 @@ const healthDot: Record<(typeof adminPlatformHealth)[number]["status"], string> 
   down: "bg-destructive",
 }
 
-export function AdminDashboardView() {
+function weekDeltaHint(current: number, prior: number): { text: string; trend: "up" | "down" | "neutral" } {
+  const d = current - prior
+  if (d === 0) return { text: "Flat vs prior week", trend: "neutral" }
+  if (d > 0) return { text: `+${d} vs prior week`, trend: "up" }
+  return { text: `${d} vs prior week`, trend: "down" }
+}
+
+function gmvTrendHint(current: number, prev: number): { text: string; trend: "up" | "down" | "neutral" } {
+  if (prev <= 0 && current <= 0) return { text: "No completed GMV in trailing windows", trend: "neutral" }
+  if (prev <= 0) return { text: "First completed GMV in window", trend: "up" }
+  const pct = ((current - prev) / prev) * 100
+  const r = Math.round(pct * 10) / 10
+  if (Math.abs(r) < 0.05) return { text: "Flat vs prior 30 days", trend: "neutral" }
+  return r > 0
+    ? { text: `+${r}% vs prior 30 days`, trend: "up" }
+    : { text: `${r}% vs prior 30 days`, trend: "down" }
+}
+
+export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboardLiveMetrics }) {
+  const stats = useMemo((): CreatorDashboardStat[] => {
+    const buyersW = weekDeltaHint(liveMetrics.buyersJoined7d, liveMetrics.buyersJoinedPrior7d)
+    const creatorsW = weekDeltaHint(liveMetrics.creatorsJoined7d, liveMetrics.creatorsJoinedPrior7d)
+    const gmvT = gmvTrendHint(liveMetrics.gmv30dUsd, liveMetrics.gmvPrev30dUsd)
+    const attn = liveMetrics.ordersNeedingAttention
+    const openDelta =
+      attn === 0
+        ? { text: "No payment or approval holds", trend: "neutral" as const }
+        : { text: `${attn} payment / approval holds`, trend: "neutral" as const }
+
+    return [
+      {
+        label: "Buyers & staff",
+        value: liveMetrics.buyerAdminCount.toLocaleString(),
+        delta: buyersW.text,
+        trend: buyersW.trend,
+        icon: Users,
+      },
+      {
+        label: "Creators",
+        value: liveMetrics.creatorCount.toLocaleString(),
+        delta: creatorsW.text,
+        trend: creatorsW.trend,
+        icon: Store,
+      },
+      {
+        label: "GMV (30d, completed)",
+        value: formatUsd(liveMetrics.gmv30dUsd),
+        delta: gmvT.text,
+        trend: gmvT.trend,
+        icon: TrendingUp,
+      },
+      {
+        label: "Open orders",
+        value: liveMetrics.openOrdersCount.toLocaleString(),
+        delta: openDelta.text,
+        trend: openDelta.trend,
+        icon: FolderKanban,
+      },
+    ]
+  }, [liveMetrics])
+
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHero
@@ -40,7 +104,7 @@ export function AdminDashboardView() {
         icon={Shield}
         badge="Admin console"
         title="Platform overview"
-        description="Monitor health, trust, and operations across Character Market. Demo data only."
+        description="Live counts from profiles and marketplace orders. Supplemental cards below remain illustrative until wired."
         actions={
           <>
             <Button render={<Link href="/dashboard/admin/users" />}>Review users</Button>
@@ -51,21 +115,21 @@ export function AdminDashboardView() {
               Open reports
             </Link>
             <Link href="/dashboard/admin/orders" className={cn(buttonVariants({ variant: "ghost" }), "h-8")}>
-              View orders
+              Order queue
               <ArrowRight className="size-4" />
             </Link>
           </>
         }
       />
 
-      <DashboardStatsGrid stats={adminDashboardStats} />
+      <DashboardStatsGrid stats={stats} />
 
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between border-b pb-4">
             <div>
               <CardTitle>Recent activity</CardTitle>
-              <CardDescription>Audit-style events across the marketplace.</CardDescription>
+              <CardDescription>Latest order status changes (from the orders table).</CardDescription>
             </div>
             <Link
               href="/dashboard/admin/reports"
@@ -75,20 +139,26 @@ export function AdminDashboardView() {
             </Link>
           </CardHeader>
           <CardContent className="p-0">
-            <ul className="divide-y divide-border">
-              {adminRecentActivity.map((row) => (
-                <li
-                  key={row.id}
-                  className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 sm:px-6"
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{row.label}</p>
-                    <p className="text-xs text-muted-foreground">{row.meta}</p>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">{row.time}</span>
-                </li>
-              ))}
-            </ul>
+            {liveMetrics.recentActivity.length === 0 ? (
+              <p className="px-4 py-10 text-center text-sm text-muted-foreground sm:px-6">
+                No order activity yet. Completed and in-flight orders will appear here as the marketplace grows.
+              </p>
+            ) : (
+              <ul className="divide-y divide-border">
+                {liveMetrics.recentActivity.map((row) => (
+                  <li
+                    key={row.id}
+                    className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 sm:px-6"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-foreground">{row.label}</p>
+                      <p className="text-xs text-muted-foreground">{row.meta}</p>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{row.time}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardContent>
         </Card>
 

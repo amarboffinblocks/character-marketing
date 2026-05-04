@@ -45,7 +45,9 @@ import {
   adminTopCreatorsByGmv,
   adminTrustFlagsSeries,
   type AdminExportRun,
+  type AdminReportKpi,
 } from "@/features/admin/admin-reports-data"
+import type { AdminReportsLiveMetrics } from "@/features/admin/admin-metrics"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
 import { cn } from "@/lib/utils"
 
@@ -64,15 +66,48 @@ const exportStatusLabel: Record<AdminExportRun["status"], string> = {
 type RangeFilter = "30d" | "90d" | "12m"
 type FormatFilter = "all" | AdminExportRun["format"]
 
-export function AdminReportsView() {
+export function AdminReportsView({ liveMetrics }: { liveMetrics: AdminReportsLiveMetrics }) {
   const [range, setRange] = useState<RangeFilter>("30d")
   const [search, setSearch] = useState("")
   const [formatFilter, setFormatFilter] = useState<FormatFilter>("all")
 
-  const gmvTotal = useMemo(
-    () => adminReportGmvSeries.reduce((a, b) => a + b, 0),
-    []
-  )
+  const kpiRows = useMemo((): AdminReportKpi[] => {
+    const base = [...adminReportKpis]
+    base[0] = {
+      label: "GMV (30d)",
+      value: formatUsd(liveMetrics.gmv30dUsd),
+      hint: liveMetrics.gmvHint.text,
+      hintTone:
+        liveMetrics.gmvHint.trend === "up"
+          ? "positive"
+          : liveMetrics.gmvHint.trend === "down"
+            ? "negative"
+            : "muted",
+      emphasis: true,
+    }
+    base[3] = {
+      label: "Completed orders (30d)",
+      value: String(liveMetrics.completedOrders30d),
+      hint: "Closed-won marketplace orders",
+      hintTone: "muted",
+    }
+    return base
+  }, [liveMetrics])
+
+  const chartSeries = useMemo(() => {
+    if (liveMetrics.dailyGmvUsd.length === 30) return liveMetrics.dailyGmvUsd
+    return adminReportGmvSeries
+  }, [liveMetrics.dailyGmvUsd])
+
+  const gmvChartTotal = useMemo(() => {
+    if (liveMetrics.dailyGmvUsd.length === 30) return liveMetrics.gmv30dUsd
+    return chartSeries.reduce((a, b) => a + b, 0)
+  }, [chartSeries, liveMetrics.dailyGmvUsd, liveMetrics.gmv30dUsd])
+
+  const topCreatorsRows = useMemo(() => {
+    if (liveMetrics.topCreators.length > 0) return liveMetrics.topCreators
+    return adminTopCreatorsByGmv
+  }, [liveMetrics.topCreators])
 
   const filteredExports = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -103,8 +138,8 @@ export function AdminReportsView() {
                 Reports
               </h2>
               <p className="max-w-2xl text-sm text-muted-foreground">
-                GMV, trust, and operational exports — same visual language as finance dashboards. Demo
-                data only.
+                GMV and order KPIs load from your database (trailing 30 days). Charts and exports below
+                mix live data with illustrative placeholders where noted.
               </p>
             </div>
           </div>
@@ -132,13 +167,23 @@ export function AdminReportsView() {
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {adminReportKpis.map((kpi) => (
+        {kpiRows.map((kpi) => (
           <ReportMetricCard key={kpi.label} kpi={kpi} />
         ))}
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[1.5fr_1fr]">
-        <ReportGmvAreaChart series={adminReportGmvSeries} total={gmvTotal} rangeLabel={range} />
+        <ReportGmvAreaChart
+          series={chartSeries}
+          total={gmvChartTotal}
+          rangeLabel={range}
+          comparisonHint={liveMetrics.dailyGmvUsd.length === 30 ? liveMetrics.gmvHint : undefined}
+          chartFootnote={
+            liveMetrics.dailyGmvUsd.length === 30
+              ? "Daily completed-order GMV from the database."
+              : "Synthetic daily series (fallback when live series is unavailable)."
+          }
+        />
         <GmvBreakdownCard />
       </section>
 
@@ -255,7 +300,9 @@ export function AdminReportsView() {
         <Card>
           <CardHeader className="border-b border-primary/15 pb-4">
             <CardTitle>Top creators by GMV</CardTitle>
-            <CardDescription>Trailing 30 days · demo rankings.</CardDescription>
+            <CardDescription>
+              Trailing 30 days · live rankings when orders exist; otherwise sample rows.
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="hidden md:block">
@@ -270,7 +317,7 @@ export function AdminReportsView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {adminTopCreatorsByGmv.map((r) => (
+                  {topCreatorsRows.map((r) => (
                     <TableRow key={r.creatorId}>
                       <TableCell className="text-muted-foreground">{r.rank}</TableCell>
                       <TableCell>
@@ -303,7 +350,7 @@ export function AdminReportsView() {
               </Table>
             </div>
             <ul className="divide-y divide-border md:hidden">
-              {adminTopCreatorsByGmv.map((r) => (
+              {topCreatorsRows.map((r) => (
                 <li key={r.creatorId} className="flex items-center justify-between gap-3 px-4 py-3">
                   <div>
                     <p className="text-sm font-medium">{r.name}</p>
@@ -399,10 +446,14 @@ function ReportGmvAreaChart({
   series,
   total,
   rangeLabel,
+  comparisonHint,
+  chartFootnote,
 }: {
   series: number[]
   total: number
   rangeLabel: RangeFilter
+  comparisonHint?: { trend: "up" | "down" | "neutral"; text: string }
+  chartFootnote?: string
 }) {
   const gradientId = useId()
   const rangeLabelText =
@@ -432,18 +483,30 @@ function ReportGmvAreaChart({
           .join(" L ")} L ${points[points.length - 1].x},${height - paddingY} Z`
       : ""
 
+  const trend = comparisonHint?.trend ?? "neutral"
+  const TrendIcon = trend === "down" ? ArrowDownRight : ArrowUpRight
+  const trendClass =
+    trend === "down"
+      ? "text-rose-600 dark:text-rose-400"
+      : trend === "up"
+        ? "text-emerald-600 dark:text-emerald-300"
+        : "text-muted-foreground"
+
   return (
     <Card className="border-primary/20 bg-linear-to-b from-primary/5 to-card">
       <CardHeader className="flex-row flex-wrap items-start justify-between gap-4 border-b border-primary/15 pb-4">
         <div className="space-y-1">
           <CardTitle>GMV trend</CardTitle>
-          <CardDescription>{rangeLabelText} · daily series (demo)</CardDescription>
+          <CardDescription>
+            {rangeLabelText}
+            {chartFootnote ? ` · ${chartFootnote}` : " · daily series"}
+          </CardDescription>
         </div>
         <div className="text-left">
           <p className="text-2xl font-semibold tracking-tight text-foreground">{formatUsd(total)}</p>
-          <p className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-300">
-            <ArrowUpRight className="size-3.5" />
-            Up vs synthetic prior period
+          <p className={cn("inline-flex items-center gap-1 text-xs", trendClass)}>
+            <TrendIcon className="size-3.5" />
+            {comparisonHint?.text ?? "Compare periods using KPIs above"}
           </p>
         </div>
       </CardHeader>

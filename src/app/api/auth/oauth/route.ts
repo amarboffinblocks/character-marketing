@@ -1,8 +1,9 @@
+import type { NextRequest } from "next/server"
 import { NextResponse } from "next/server"
 import type { Provider } from "@supabase/supabase-js"
 
 import { isSignInAllowedRole } from "@/lib/auth-roles"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler"
 
 type OAuthPayload = {
   provider?: string
@@ -11,12 +12,12 @@ type OAuthPayload = {
 
 const allowedProviders = new Set<Provider>(["google", "twitter", "x"])
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const body = (await request.json()) as OAuthPayload
-  const provider = body.provider as Provider
+  const rawProvider = body.provider as Provider
   const role = body.role
 
-  if (!allowedProviders.has(provider)) {
+  if (!allowedProviders.has(rawProvider)) {
     return NextResponse.json({ error: "Invalid OAuth payload." }, { status: 400 })
   }
 
@@ -30,7 +31,8 @@ export async function POST(request: Request) {
     callbackUrl.searchParams.set("role", role)
   }
 
-  const supabase = await createServerSupabaseClient()
+  const { supabase, applyAuthCookiesTo } = createRouteHandlerSupabaseClient(request)
+  const provider: Provider = rawProvider === "x" ? "twitter" : rawProvider
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -39,8 +41,12 @@ export async function POST(request: Request) {
   })
 
   if (error || !data.url) {
-    return NextResponse.json({ error: error?.message ?? "Unable to start OAuth." }, { status: 400 })
+    const res = NextResponse.json({ error: error?.message ?? "Unable to start OAuth." }, { status: 400 })
+    applyAuthCookiesTo(res)
+    return res
   }
 
-  return NextResponse.json({ url: data.url })
+  const res = NextResponse.json({ url: data.url })
+  applyAuthCookiesTo(res)
+  return res
 }

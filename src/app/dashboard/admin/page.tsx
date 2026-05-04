@@ -1,5 +1,7 @@
 import { AdminDashboardView } from "@/features/admin"
+import { fetchAdminDashboardLiveMetrics } from "@/features/admin/admin-metrics"
 
-export default function AdminDashboardPage() {
-  return <AdminDashboardView />
+export default async function AdminDashboardPage() {
+  const liveMetrics = await fetchAdminDashboardLiveMetrics()
+  return <AdminDashboardView liveMetrics={liveMetrics} />
 }

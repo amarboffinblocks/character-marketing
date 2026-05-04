@@ -4,20 +4,19 @@ export const adminSidebarGroups: AppSidebarGroup[] = [
   {
     label: "Overview",
     items: [
-      { title: "Dashboard", href: "/dashboard/admin", icon: "dashboard" },
+      { title: "Overview", href: "/dashboard/admin", icon: "dashboard" },
       { title: "Reports", href: "/dashboard/admin/reports", icon: "chart" },
     ],
   },
   {
-    label: "Platform",
+    label: "Directory",
     items: [
-      { title: "Users", href: "/dashboard/admin/users", icon: "users", badge: "2.4k" },
-      { title: "Creators", href: "/dashboard/admin/creators", icon: "store", badge: "120" },
-      { title: "Orders", href: "/dashboard/admin/orders", icon: "orders" },
+      { title: "Users", href: "/dashboard/admin/users", icon: "users", badge: "0" },
+      { title: "Creators", href: "/dashboard/admin/creators", icon: "store", badge: "0" },
     ],
   },
   {
-    label: "System",
+    label: "Preferences",
     items: [
       { title: "Profile", href: "/dashboard/admin/profile", icon: "profile" },
       { title: "Settings", href: "/dashboard/admin/settings", icon: "settings" },
