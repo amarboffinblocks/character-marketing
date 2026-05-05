@@ -59,7 +59,7 @@ export function HeaderNotifications({ userRole }: HeaderNotificationsProps) {
                 key={item.id}
                 onClick={() => markItemRead(item.id)}
                 className="h-auto cursor-pointer items-start gap-3 rounded-none px-3 py-2.5 data-highlighted:bg-accent"
-                render={<Link href={item.actionUrl} className="flex w-full min-w-0 gap-3 outline-none" />}
+                render={<Link href={item.actionUrl || "#"} className="flex w-full min-w-0 gap-3 outline-none" />}
               >
                 <span className="mt-0.5 inline-flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted ring-1 ring-border/60">
                   {item.type === "chat" ? <MessageSquare className="size-4 text-sky-600" /> : <Sparkles className="size-4 text-primary" />}
