@@ -171,8 +171,7 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
             </p>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
-            <Table className="min-w-[980px]">
+            <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30">
                   <TableHead>{role === "buyer" ? "Creator" : "Customer"}</TableHead>
@@ -190,11 +189,11 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
                   return (
                     <TableRow key={tx.id}>
                       <TableCell className="py-4">
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex min-w-0 items-center gap-2.5">
                           {counterparty.avatarUrl ? (
-                            <img src={counterparty.avatarUrl} alt={counterparty.displayName} className="size-9 rounded-full object-cover shadow-xs" />
+                            <img src={counterparty.avatarUrl} alt={counterparty.displayName} className="size-9 shrink-0 rounded-full object-cover shadow-xs" />
                           ) : (
-                            <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs" aria-hidden>
+                            <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs" aria-hidden>
                               <UserRound className="size-4.5" />
                             </span>
                           )}
@@ -227,7 +226,6 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
                 })}
               </TableBody>
             </Table>
-          </div>
         )}
       </section>
       {transactions.length > TRANSACTIONS_PER_PAGE ? (

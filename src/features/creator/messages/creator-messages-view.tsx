@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCheck, FileText, MessageSquare, MoreVertical, Search, Send } from "lucide-react"
+import { CheckCheck, ChevronLeft, FileText, Menu, MessageSquare, MoreVertical, Search, Send, Users } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -20,6 +20,13 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
   clearThreadMessages,
@@ -53,6 +60,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const [isSending, setIsSending] = useState(false)
   const [isClearing, setIsClearing] = useState(false)
   const [isClearDialogOpen, setIsClearDialogOpen] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [error, setError] = useState("")
   const scrollRef = useRef<HTMLDivElement>(null)
   const [isCounterpartTyping, setIsCounterpartTyping] = useState(false)
@@ -183,12 +191,12 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
               current.map((t) =>
                 t.id === threadId
                   ? {
-                      ...t,
-                      unreadCount: 0,
-                      status: "active",
-                      lastMessageText: nextMessage.text,
-                      lastMessageAt: nextMessage.createdAt,
-                    }
+                    ...t,
+                    unreadCount: 0,
+                    status: "active",
+                    lastMessageText: nextMessage.text,
+                    lastMessageAt: nextMessage.createdAt,
+                  }
                   : t
               )
             )
@@ -201,7 +209,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
             } finally {
               await loadThreads({ silent: true })
             }
-          })().catch(() => {})
+          })().catch(() => { })
         } else {
           void loadThreads({ silent: true })
         }
@@ -293,7 +301,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
           },
         })
       )
-        .catch(() => {})
+        .catch(() => { })
     },
     [currentUserSenderRole, supabase]
   )
@@ -368,8 +376,14 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   return (
     <TooltipProvider>
       <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-background/50">
-        <div className="flex h-full min-h-0 w-full overflow-hidden">
-          <aside className="flex min-h-0 w-full h-full overflow-y-auto flex-col border-r border-border/40 bg-muted/5 sm:w-[380px]">
+        <div className="relative flex h-full min-h-0 w-full overflow-hidden">
+          <aside className={cn(
+            "flex min-h-0 h-full flex-col border-r border-border/40 bg-muted/5 lg:w-[380px] shrink-0 transition-all",
+            "absolute inset-y-0 left-0 z-50 bg-background lg:relative lg:translate-x-0",
+            activeThreadId 
+              ? (isSidebarOpen ? "translate-x-0 w-[85%] sm:w-80 shadow-2xl" : "-translate-x-full w-[85%] sm:w-80") 
+              : "translate-x-0 w-full"
+          )}>
             <div className="p-6 pb-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -398,7 +412,10 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
                       key={thread.id}
-                      onClick={() => setActiveThreadId(thread.id)}
+                      onClick={() => {
+                        setActiveThreadId(thread.id)
+                        setIsSidebarOpen(false)
+                      }}
                       className={cn(
                         "flex w-full items-start gap-4 rounded-2xl p-4 text-left transition-colors hover:bg-accent/35",
                         activeThreadId === thread.id ? "bg-accent ring-1 ring-border/60" : "bg-transparent"
@@ -445,11 +462,23 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
             </div>
           </aside>
 
-          <main className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background/20">
+          <main className={cn(
+            "flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background/20 transition-all",
+            activeThreadId ? "flex" : "hidden lg:flex"
+          )}>
             {activeThread ? (
               <>
                 <header className="flex h-16 items-center justify-between border-b border-border/40 bg-background/60 px-6 py-4 backdrop-blur-md">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 sm:gap-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="lg:hidden -ml-2"
+                      onClick={() => setIsSidebarOpen(true)}
+                    >
+                      <Menu className="size-5" />
+                    </Button>
+
                     <div className="relative">
                       <Avatar className="size-12 shadow-sm">
                         <AvatarImage src={activeThread.counterpartAvatarUrl || undefined} />

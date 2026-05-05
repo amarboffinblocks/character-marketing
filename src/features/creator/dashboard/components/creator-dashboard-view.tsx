@@ -131,7 +131,7 @@ function buildActionItems(data: CreatorDashboardData): ActionItem[] {
       id: `hold-${blockedOrder.id}`,
       label: `Unblock order: ${blockedOrder.package_title}`,
       meta: `${buyerDisplayName(blockedOrder.buyer_profile_data)} · ${blockedOrder.id}`,
-      href: "/dashboard/creator/inbox",
+      href: "/dashboard/creator/messages",
       tone: "warning",
     })
   }

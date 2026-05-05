@@ -7,6 +7,7 @@ import { toast } from "sonner"
 import {
     AlertCircle,
     BarChart3,
+    Bell,
     BriefcaseBusiness,
     ChevronRight,
     ChevronsUpDown,
@@ -92,6 +93,7 @@ const sidebarIcons = {
     users: Users,
     store: Store,
     chart: BarChart3,
+    bell: Bell,
 } as const
 
 export type AppSidebarIconName = keyof typeof sidebarIcons

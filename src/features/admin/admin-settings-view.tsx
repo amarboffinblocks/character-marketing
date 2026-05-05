@@ -331,7 +331,6 @@ export function AdminSettingsView() {
               <CardDescription>Immutable-style log (demo rows).</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-primary/5 hover:bg-primary/5">
@@ -362,7 +361,6 @@ export function AdminSettingsView() {
                     ))}
                   </TableBody>
                 </Table>
-              </div>
             </CardContent>
           </Card>
 

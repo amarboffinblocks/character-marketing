@@ -20,6 +20,7 @@ import {
   adminVolumeByCategory,
 } from "@/features/admin/admin-dashboard-data"
 import type { AdminDashboardLiveMetrics } from "@/features/admin/admin-metrics"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
 import { cn } from "@/lib/utils"
@@ -215,34 +216,32 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
             <CardDescription>Oldest open reports first — dummy queue.</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/30 text-left text-xs text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">ID</th>
-                    <th className="px-4 py-3 font-medium">Type</th>
-                    <th className="px-4 py-3 font-medium">Subject</th>
-                    <th className="px-4 py-3 font-medium">Source</th>
-                    <th className="px-4 py-3 text-right font-medium">Age</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
+            <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30 text-xs text-muted-foreground">
+                    <TableHead className="px-4 py-3 font-medium">ID</TableHead>
+                    <TableHead className="px-4 py-3 font-medium">Type</TableHead>
+                    <TableHead className="px-4 py-3 font-medium">Subject</TableHead>
+                    <TableHead className="px-4 py-3 font-medium">Source</TableHead>
+                    <TableHead className="px-4 py-3 text-right font-medium">Age</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {adminModerationQueue.map((row) => (
-                    <tr key={row.id} className="hover:bg-accent/20">
-                      <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.id}</td>
-                      <td className="px-4 py-3">
+                    <TableRow key={row.id} className="hover:bg-accent/20">
+                      <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.id}</TableCell>
+                      <TableCell className="px-4 py-3">
                         <Badge variant="secondary">{row.type}</Badge>
-                      </td>
-                      <td className="max-w-[220px] px-4 py-3 text-foreground">{row.subject}</td>
-                      <td className="px-4 py-3 text-xs text-muted-foreground">{row.reporter}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
+                      </TableCell>
+                      <TableCell className="max-w-[220px] px-4 py-3 text-foreground">{row.subject}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-muted-foreground">{row.reporter}</TableCell>
+                      <TableCell className="px-4 py-3 text-right tabular-nums text-muted-foreground">
                         {row.age}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </TableBody>
+              </Table>
           </CardContent>
         </Card>
 

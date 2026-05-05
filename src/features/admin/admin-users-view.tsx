@@ -210,7 +210,6 @@ export function AdminUsersView({ users }: { users: AdminDirectoryUser[] }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/5">
@@ -297,7 +296,6 @@ export function AdminUsersView({ users }: { users: AdminDirectoryUser[] }) {
                 ))}
               </TableBody>
             </Table>
-          </div>
 
           <ul className="divide-y divide-border md:hidden">
             {filtered.map((u) => (

@@ -140,7 +140,7 @@ export function GlobalBidsView() {
         otherUserId: bid.requesterId,
         otherUserName: bid.requesterName,
       })
-      router.push(`/dashboard/creator/inbox?thread=${encodeURIComponent(thread.id)}`)
+      router.push(`/dashboard/creator/messages?thread=${encodeURIComponent(thread.id)}`)
     } catch (chatError) {
       setError(chatError instanceof Error ? chatError.message : "Unable to open chat.")
     } finally {

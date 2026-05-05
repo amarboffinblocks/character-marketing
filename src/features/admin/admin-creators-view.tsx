@@ -172,7 +172,6 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="bg-primary/5 hover:bg-primary/5">
@@ -271,7 +270,6 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
                 ))}
               </TableBody>
             </Table>
-          </div>
 
           <ul className="divide-y divide-border md:hidden">
             {filtered.map((c) => (

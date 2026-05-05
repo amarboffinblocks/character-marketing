@@ -426,7 +426,7 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
         thread: thread.id,
         order: request.id,
       })
-      router.push(`/dashboard/creator/inbox?${search.toString()}`)
+      router.push(`/dashboard/creator/messages?${search.toString()}`)
     } catch (chatError) {
       setError(chatError instanceof Error ? chatError.message : "Unable to open buyer chat.")
     } finally {
@@ -483,9 +483,9 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link href="/dashboard/creator/inbox" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-9")}>
-              <CalendarClock className="size-4" />
-              Open inbox
+            <Link href="/dashboard/creator/messages" className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-9")}>
+              <MessageSquare className="size-4" />
+              Open messages
             </Link>
           </div>
         </div>
@@ -575,17 +575,16 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
             </p>
           </div>
         ) : (
-          <div className="w-full overflow-x-auto">
-            <Table className="min-w-[980px] table-fixed">
+            <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
-                <TableHead className="w-[21%]">Buyer</TableHead>
-                <TableHead className="w-[21%]">Request</TableHead>
-                <TableHead className="w-[14%]">Categories</TableHead>
-                <TableHead className="w-[14%]">Status</TableHead>
-                <TableHead className="w-[14%]">Created</TableHead>
-                <TableHead className="w-[8%] text-center">Price</TableHead>
-                <TableHead className="w-[8%] text-right">Actions</TableHead>
+                <TableHead>Buyer</TableHead>
+                <TableHead>Request</TableHead>
+                <TableHead>Categories</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-center">Price</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -612,14 +611,14 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
                             alt={buyerName}
                             width={36}
                             height={36}
-                            className="size-9 rounded-full object-cover shadow-xs"
+                            className="size-9 shrink-0 rounded-full object-cover shadow-xs"
                           />
                         ) : (
-                          <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs" aria-hidden>
+                          <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs" aria-hidden>
                             <UserRound className="size-4.5" />
                           </span>
                         )}
-                        <div className="flex flex-col gap-0">
+                        <div className="flex min-w-0 flex-col gap-0">
                           <span className="text-sm font-semibold tracking-tight text-foreground">{buyerName}</span>
                           <span className="text-xs text-muted-foreground/85">
                             {buyer.email || buyer.handle || "—"}
@@ -702,7 +701,6 @@ export function CreatorOrdersView({ initialRequests }: CreatorOrdersViewProps) {
               })}
             </TableBody>
             </Table>
-          </div>
         )}
       </section>
       {filteredRequests.length > ORDERS_PER_PAGE ? (

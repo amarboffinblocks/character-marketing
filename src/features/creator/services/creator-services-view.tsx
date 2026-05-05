@@ -137,8 +137,7 @@ export function CreatorServicesView() {
               />
             </div>
 
-            <div className="overflow-x-auto rounded-md border">
-              <Table>
+            <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
                     <TableHead>Name</TableHead>
@@ -211,7 +210,6 @@ export function CreatorServicesView() {
                   )}
                 </TableBody>
               </Table>
-            </div>
           </CardContent>
         </Card>
       )}

@@ -22,7 +22,7 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
   {
     label: "Operations",
     items: [
-      { title: "Inbox", href: "/dashboard/creator/inbox", icon: "messages" },
+      { title: "Notifications", href: "/dashboard/creator/inbox", icon: "bell" },
       { title: "Services", href: "/dashboard/creator/services", icon: "services" },
       { title: "Requests", href: "/dashboard/creator/requests", icon: "orders" },
       { title: "Orders", href: "/dashboard/creator/orders", icon: "orders" },

@@ -412,20 +412,20 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                 <TableCell className="py-5">
                   <div className="flex items-center gap-3">
                     {creator.avatarUrl ? (
-                      <img
-                        src={creator.avatarUrl}
-                        alt={creatorName}
-                        className="size-9 rounded-full object-cover shadow-xs"
-                      />
+                        <img
+                          src={creator.avatarUrl}
+                          alt={creatorName}
+                          className="size-9 shrink-0 rounded-full object-cover shadow-xs"
+                        />
                     ) : (
                       <span
-                        className="inline-flex size-9 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs"
+                        className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs"
                         aria-hidden
                       >
                         <UserRound className="size-4.5" />
                       </span>
                     )}
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex min-w-0 flex-col gap-0.5">
                       <span className="text-sm font-semibold tracking-tight text-foreground">
                         {creatorName}
                       </span>

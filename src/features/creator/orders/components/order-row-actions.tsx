@@ -43,13 +43,13 @@ export function OrderRowActions({ order }: OrderRowActionsProps) {
         <DropdownMenuItem
           render={
             <Link
-              href={`/dashboard/creator/inbox?order=${encodeURIComponent(order.id)}`}
+              href={`/dashboard/creator/messages?order=${encodeURIComponent(order.id)}`}
               className="cursor-pointer"
             />
           }
         >
           <MessageSquareText className="size-4" />
-          Open inbox
+          Open messages
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={copyOrderId}>
