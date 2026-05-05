@@ -51,6 +51,7 @@ export function createCreatorReview(input: CreateCreatorReviewInput): CreatorRev
   const nextRecord: CreatorReviewRecord = {
     id: `review-${crypto.randomUUID()}`,
     creatorId: input.creatorId,
+    reviewerId: input.reviewerId,
     reviewerName: input.reviewerName.trim() || "Buyer",
     reviewerAvatar: input.reviewerAvatar ?? null,
     reviewerInitials: toInitials(input.reviewerName || "Buyer"),

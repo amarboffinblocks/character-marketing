@@ -28,7 +28,7 @@ export type CreatorProfileReview = {
   body: string
   dateLabel: string
   createdAt?: string
-  status?: "published" | "pending"
+  status?: "published" | "pending" | "hidden"
   creatorReply?: string
   creatorRepliedAt?: string
 }

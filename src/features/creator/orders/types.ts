@@ -6,6 +6,7 @@ export type CreatorOrderStatus =
   | "completed"
   | "cancelled"
   | "refunded"
+  | "waiting_on_buyer"
 
 export type CreatorOrderPriority = "low" | "medium" | "high"
 

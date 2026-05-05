@@ -36,8 +36,10 @@ function buyerDisplayName(profileData: unknown) {
 function mapStatus(input: CreatorOrderRow["status"]): CreatorOrder["status"] {
   if (input === "in_progress") return "in_progress"
   if (input === "on_hold" || input === "approved") return "waiting_on_buyer"
-  if (input === "delivered" || input === "reviewing") return "review"
-  if (input === "completed" || input === "cancelled" || input === "refunded") return "completed"
+  if (input === "delivered" || input === "reviewing") return "delivered"
+  if (input === "completed") return "completed"
+  if (input === "cancelled") return "cancelled"
+  if (input === "refunded") return "refunded"
   return "new"
 }
 

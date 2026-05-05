@@ -10,12 +10,15 @@ const Dialog = DialogPrimitive.Root
 const DialogTrigger = DialogPrimitive.Trigger
 const DialogClose = DialogPrimitive.Close
 
-function DialogContent({ className, children, ...props }: DialogPrimitive.Popup.Props) {
+function DialogContent({
+  className,
+  children,
+  showCloseButton = true,
+  ...props
+}: DialogPrimitive.Popup.Props & { showCloseButton?: boolean }) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Backdrop
-        className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0"
-      />
+      <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-background/70 backdrop-blur-sm data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0" />
       <div className="fixed inset-0 z-50 grid place-items-center p-4">
         <DialogPrimitive.Popup
           className={cn(
@@ -25,12 +28,14 @@ function DialogContent({ className, children, ...props }: DialogPrimitive.Popup.
           {...props}
         >
           {children}
-          <DialogPrimitive.Close
-            aria-label="Close"
-            className="absolute top-4 right-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            <X className="size-4" aria-hidden />
-          </DialogPrimitive.Close>
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              aria-label="Close"
+              className="absolute top-4 right-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            >
+              <X className="size-4" aria-hidden />
+            </DialogPrimitive.Close>
+          )}
         </DialogPrimitive.Popup>
       </div>
     </DialogPrimitive.Portal>

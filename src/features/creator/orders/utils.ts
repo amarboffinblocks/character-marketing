@@ -12,6 +12,7 @@ export const orderStatusLabelMap: Record<CreatorOrderStatus, string> = {
   completed: "Completed",
   cancelled: "Cancelled",
   refunded: "Refunded",
+  waiting_on_buyer: "Waiting on buyer",
 }
 
 export const orderStatusClassMap: Record<CreatorOrderStatus, string> = {
@@ -22,6 +23,7 @@ export const orderStatusClassMap: Record<CreatorOrderStatus, string> = {
   completed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   cancelled: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
   refunded: "bg-gray-500/10 text-gray-700 dark:text-gray-300",
+  waiting_on_buyer: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
 }
 
 export type OrderSortValue =

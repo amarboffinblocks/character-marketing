@@ -2,6 +2,8 @@ import { CreatorMarketplaceView, sortOptions } from "@/features/site/marketplace
 import { buildTags, getMarketplaceCreators } from "@/features/site/marketplace/data/marketplace-server-data"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
+export const dynamic = "force-dynamic"
+
 export default async function SavedCreatorsPage() {
   let savedCreatorIds: string[] = []
   

@@ -55,7 +55,7 @@ const statusOptions: { label: string; value: OrderStatusFilter }[] = [
   { label: orderStatusLabelMap.new, value: "new" },
   { label: orderStatusLabelMap.in_progress, value: "in_progress" },
   { label: orderStatusLabelMap.waiting_on_buyer, value: "waiting_on_buyer" },
-  { label: orderStatusLabelMap.review, value: "review" },
+  { label: orderStatusLabelMap.delivered, value: "delivered" },
   { label: orderStatusLabelMap.completed, value: "completed" },
 ]
 

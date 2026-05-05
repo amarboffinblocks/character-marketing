@@ -138,6 +138,8 @@ function mapCreator(row: ProfileRow): Creator {
     email: asString(creatorData.email),
     handle,
     tagline: asString(creatorData.tagline) || "Creator profile",
+    shortBio: asString(creatorData.shortBio) || asString(creatorData.tagline) || "Professional Creator",
+    longBio: asString(creatorData.longBio) || asString(creatorData.bio) || "No biography provided.",
     languages: asStringArray(creatorData.languages),
     avatar: asString(creatorData.avatarUrl) || "/placeholder.svg",
     coverImage: asString(creatorData.bannerUrl) || "/placeholder.svg",

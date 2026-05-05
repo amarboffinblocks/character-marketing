@@ -48,7 +48,7 @@ export const creatorOrders: CreatorOrder[] = [
     dueDateTime: "2026-04-23T17:00:00.000Z",
     updatedAt: "5 hours ago",
     updatedAtTime: "2026-04-17T12:00:00.000Z",
-    status: "review",
+    status: "delivered",
     priority: "low",
   },
   {

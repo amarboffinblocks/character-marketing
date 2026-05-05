@@ -368,7 +368,7 @@ function ReviewCard({
   }
   currentUserId: string | null
   onSubmitReply: (reply: string) => Promise<void>
-  onDeleteReview: () => Promise<void>
+  onDeleteReview: () => void
 }) {
   const [replyDraft, setReplyDraft] = useState(review.creatorReply || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
