@@ -1,9 +1,9 @@
-import { CircleCheckBig, Clock, PenLine, Sparkles } from "lucide-react"
+import { Check, Clock, PenLine, Sparkles } from "lucide-react"
 import Link from "next/link"
 
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import type { CreatorServicePackage } from "@/features/site/creator-profile/types"
 import { cn } from "@/lib/utils"
 
@@ -21,7 +21,7 @@ type CreatorServicePackageCardProps = {
 }
 
 /**
- * Sidebar pricing card with delivery details and purchase CTAs.
+ * Redesigned minimalist service package card.
  */
 export function CreatorServicePackageCard({
   pkg,
@@ -29,76 +29,91 @@ export function CreatorServicePackageCard({
   creatorName,
   className,
 }: CreatorServicePackageCardProps) {
-  const customHref = `mailto:support@character.market?subject=${encodeURIComponent(
-    `Purchase Custom Package from ${creatorName}`
-  )}`
-
   const preselectHref = `/creators/${creatorId}/purchase-preselect?packageId=${encodeURIComponent(pkg.id)}`
 
   return (
     <Card
       className={cn(
-        "border-border/80 bg-card shadow-sm transition-shadow hover:shadow-md",
+        "relative flex flex-col overflow-hidden border border-border/60 bg-card p-6 transition-all hover:shadow-lg hover:ring-1 hover:ring-primary/10",
+        pkg.isRecommended && "ring-2 ring-primary/20 bg-linear-to-b from-card to-primary/[0.02]",
         className
       )}
     >
-      <CardContent className="space-y-4 pt-6">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <h3 className="text-base font-semibold leading-snug text-foreground">{pkg.title}</h3>
-          <p className="text-lg font-semibold tabular-nums text-amber-600 dark:text-amber-400">
+      {pkg.isRecommended && (
+        <div className="absolute top-0 right-6 -translate-y-1/2">
+          <Badge className="bg-foreground text-background hover:bg-foreground font-medium px-3 py-0.5 text-[10px] uppercase tracking-wider rounded-sm shadow-sm">
+            Most popular
+          </Badge>
+        </div>
+      )}
+
+      <div className="space-y-1">
+        <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground/80">
+          {pkg.title}
+        </h3>
+        <div className="flex items-baseline gap-1">
+          <span className="text-4xl font-extrabold tracking-tight text-foreground">
             {priceFormatter.format(pkg.price)}
-          </p>
-        </div>
-
-        <p className="text-sm leading-relaxed text-muted-foreground">{pkg.description}</p>
-
-        <div className="flex flex-col gap-2">
-          <Badge variant="secondary" className="h-auto justify-start rounded-lg px-3 py-2 text-left font-normal">
-            {pkg.scopeLabel}
-          </Badge>
-          <Badge variant="secondary" className="h-auto justify-start gap-1.5 rounded-lg px-3 py-2 text-left font-normal">
-            <Sparkles className="size-3.5 shrink-0 text-primary" aria-hidden />
-            {pkg.tokensLabel}
-          </Badge>
-        </div>
-
-        <div className="flex flex-wrap gap-4 border-y border-border/60 py-3 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <Clock className="size-4 shrink-0" aria-hidden />
-            {pkg.deliveryDays} day{pkg.deliveryDays === 1 ? "" : "s"} delivery
           </span>
-          <span className="inline-flex items-center gap-1.5">
-            <PenLine className="size-4 shrink-0" aria-hidden />
-            {pkg.revisionCount} revision{pkg.revisionCount === 1 ? "" : "s"}
-          </span>
+          <span className="text-xs text-muted-foreground font-medium">starting price</span>
         </div>
+      </div>
 
+      <div className="mt-6 space-y-3">
+        <Link
+          href={preselectHref}
+          className={cn(
+            buttonVariants({ variant: pkg.isRecommended ? "default" : "outline", size: "lg" }),
+            "w-full font-bold h-11 transition-all",
+            !pkg.isRecommended && "hover:bg-foreground hover:text-background"
+          )}
+        >
+          Get started
+        </Link>
+
+        <p className="text-[11px] text-center text-muted-foreground px-2 italic">
+          {pkg.description || "Perfect for starting your project"}
+        </p>
+      </div>
+
+      <div className="my-6 border-t border-border/50" />
+
+      <div className="space-y-4">
         <div>
-          <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-muted-foreground">
-            {pkg.includedHeading}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-foreground/70">
+            {pkg.includedHeading || "Features"}
           </p>
-          <ul className="mt-3 space-y-2">
+          <ul className="mt-4 space-y-3">
             {pkg.includedItems.map((item) => (
-              <li key={item} className="flex gap-2 text-sm text-foreground">
-                <CircleCheckBig className="mt-0.5 size-4 shrink-0 text-emerald-600 dark:text-emerald-500" aria-hidden />
-                <span>{item}</span>
+              <li key={item} className="flex items-start gap-3 text-sm text-foreground/90">
+                <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-foreground/5 ring-1 ring-foreground/10">
+                  <Check className="size-2.5 text-foreground" strokeWidth={3} />
+                </div>
+                <span className="leading-tight">{item}</span>
               </li>
             ))}
+            {pkg.tokensLabel && (
+              <li className="flex items-start gap-3 text-sm text-foreground/90">
+                <div className="mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full bg-primary/10 ring-1 ring-primary/20">
+                  <Sparkles className="size-2.5 text-primary" strokeWidth={3} />
+                </div>
+                <span className="leading-tight font-medium text-primary">{pkg.tokensLabel}</span>
+              </li>
+            )}
           </ul>
         </div>
 
-        <div className="space-y-2 border-t border-border/60 pt-4">
-          <Link href={preselectHref} className={cn(buttonVariants({ size: "lg" }), "h-10 w-full")}>
-            Purchase Pre-Select
-          </Link>
-          <Link
-            href={customHref}
-            className={cn(buttonVariants({ variant: "outline", size: "lg" }), "h-10 w-full")}
-          >
-            Purchase Custom
-          </Link>
+        <div className="flex flex-wrap gap-x-4 gap-y-2 pt-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+            <Clock className="size-3.5" />
+            {pkg.deliveryDays}d delivery
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+            <PenLine className="size-3.5" />
+            {pkg.revisionCount} revisions
+          </div>
         </div>
-      </CardContent>
+      </div>
     </Card>
   )
 }

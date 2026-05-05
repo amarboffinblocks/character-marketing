@@ -27,6 +27,7 @@ type CreatorProfileData = {
   profileVisibility?: unknown
   skills?: unknown
   niche?: unknown
+  startingPrice?: unknown
 }
 
 type CreatorServiceRow = {
@@ -101,6 +102,7 @@ function toCreatorCompletionForm(creatorData: Record<string, unknown>): CreatorP
     revisionPolicy: asString(creatorData.revisionPolicy),
     refundPolicy: asString(creatorData.refundPolicy),
     email: asString(creatorData.email),
+    startingPrice: asNumber(creatorData.startingPrice, 0),
   }
 }
 
@@ -133,7 +135,7 @@ function toCreator(row: ProfilesRow): Creator | null {
     coverImage: asString(creatorData.bannerUrl) || "/placeholder.svg",
     rating: 4.8,
     reviewCount: 0,
-    startingPrice: 25,
+    startingPrice: asNumber(creatorData.startingPrice, 25),
     responseTime,
     isVerified: true,
     isAvailable: true,

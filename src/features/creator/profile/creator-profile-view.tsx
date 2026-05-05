@@ -744,6 +744,13 @@ function ProfilePreviewCard({
                 </Badge>
               ) : null}
             </div>
+
+            <div className="mt-4 border-t border-border/50 pt-3">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Starting at</p>
+              <p className="text-lg font-bold text-foreground">
+                ${form.startingPrice || 0}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -776,6 +783,7 @@ function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
     { label: "Language", done: form.languages.length >= 1 },
     { label: "3+ portfolio items", done: form.portfolio.length >= 3 },
     { label: "Social link", done: form.socialLinks.length >= 1 },
+    { label: "Basic pricing", done: form.startingPrice > 0 },
   ]
 
   return (
@@ -834,6 +842,26 @@ function BasicInfoSection({
             onChange={(event) => updateField("email", event.target.value)}
             type="email"
           />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Basic pricing (Starting at)</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+            <Input
+              type="number"
+              min="1"
+              value={form.startingPrice || ""}
+              onChange={(event) => {
+                const val = parseInt(event.target.value, 10)
+                updateField("startingPrice", isNaN(val) ? 0 : val)
+              }}
+              className="pl-7"
+              placeholder="25"
+            />
+          </div>
+          {form.startingPrice <= 0 && (
+            <p className="text-[10px] text-destructive">Price cannot be zero or empty.</p>
+          )}
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-medium text-muted-foreground">Tagline</label>

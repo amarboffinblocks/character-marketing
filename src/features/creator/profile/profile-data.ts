@@ -45,6 +45,7 @@ export type CreatorProfileForm = {
   payoutAccountHolderName: string
   payoutCountry: string
   payoutCurrency: string
+  startingPrice: number
 }
 
 export const defaultProfileForm: CreatorProfileForm = {
@@ -74,6 +75,7 @@ export const defaultProfileForm: CreatorProfileForm = {
   payoutAccountHolderName: "",
   payoutCountry: "",
   payoutCurrency: "USD",
+  startingPrice: 25,
 }
 
 export function computeCompletion(form: CreatorProfileForm) {
@@ -86,6 +88,7 @@ export function computeCompletion(form: CreatorProfileForm) {
     form.languages.length >= 1,
     form.portfolio.length >= 3,
     form.socialLinks.length >= 1,
+    form.startingPrice > 0,
   ]
   const done = checks.filter(Boolean).length
   return {

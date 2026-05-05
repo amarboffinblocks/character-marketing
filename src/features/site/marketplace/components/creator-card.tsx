@@ -123,7 +123,7 @@ export function CreatorProfileCard({ creator, featured = false, onUnsave }: Crea
         </div>
 
         <CardContent className="relative flex flex-1 flex-col gap-0 pt-4 pb-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-start  gap-3">
             <div className="relative shrink-0">
               <Image
                 src={creator.avatar}
@@ -143,11 +143,11 @@ export function CreatorProfileCard({ creator, featured = false, onUnsave }: Crea
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="truncate font-semibold leading-snug text-card-foreground">{creator.name}</h3>
-              <p className="text-sm text-muted-foreground">{creator.tagline}</p>
+              <p className="text-sm line-clamp-3 text-muted-foreground">{creator.tagline}</p>
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+          {/* <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
             <div role="group" aria-label={ratingLabel} className="flex items-center gap-1">
               <Star className="size-4 fill-accent text-accent" aria-hidden />
               <span className="font-medium tabular-nums">{displayRating.toFixed(1)}</span>
@@ -157,20 +157,20 @@ export function CreatorProfileCard({ creator, featured = false, onUnsave }: Crea
               <Clock className="size-3.5 shrink-0" aria-hidden />
               <span>{creator.responseTime}</span>
             </div>
-          </div>
+          </div> */}
 
           <div className="flex flex-wrap gap-1.5 py-3">
             {creator.specialties.slice(0, 3).map((specialty) => (
-              <Badge key={specialty} variant="secondary" className="text-xs font-normal">
+              <Badge key={specialty} variant="secondary" className="text-xs bg-primary/20 text-primary/80 font-medium">
                 {specialty}
               </Badge>
             ))}
           </div>
 
-          <div className="mt-auto flex items-center justify-end gap-1 text-muted-foreground">
+          {/* <div className="mt-auto flex items-center justify-end gap-1 text-muted-foreground">
             <Package className="size-3 shrink-0" aria-hidden />
             <span className="tabular-nums text-xs">{creator.completedOrders} orders</span>
-          </div>
+          </div> */}
         </CardContent>
 
         <CardFooter className="mt-auto flex flex-row items-center justify-between gap-3 border-border/70 bg-muted/30 py-3">
