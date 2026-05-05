@@ -32,6 +32,7 @@ const bidInputSchema = z.object({
   description: z.string().trim().min(1),
   isPriceNegotiable: z.boolean(),
   visibility: z.enum(["open", "closed"]).default("open"),
+  requestPayload: z.record(z.string(), z.unknown()).optional().default({}),
   status: z.enum(["global_bid", "pending", "processing", "completed", "rejected"]).default("global_bid"),
 })
 
@@ -126,9 +127,9 @@ export async function POST(request: Request) {
     const result = await client.query(
       `insert into public.bid_posts
        (requester_id, title, duration, budget, token_count, character_count, persona_count, lorebook_count, background_count, avatar_count,
-        skills_needed, description, is_price_negotiable, status)
+        skills_needed, description, is_price_negotiable, status, request_payload)
        values
-       ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        returning id`,
       [
         user.id,
@@ -145,6 +146,7 @@ export async function POST(request: Request) {
         payload.description,
         payload.isPriceNegotiable,
         nextStatus,
+        JSON.stringify(payload.requestPayload ?? {}),
       ]
     )
     return NextResponse.json({ id: result.rows[0]?.id })

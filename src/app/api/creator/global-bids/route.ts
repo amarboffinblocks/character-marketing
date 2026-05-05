@@ -47,7 +47,7 @@ export async function GET() {
   try {
     const { data: bidRows, error: bidsError } = await admin
       .from("bid_posts")
-      .select("id, requester_id, title, duration, budget, skills_needed, description, status, is_price_negotiable, created_at")
+      .select("id, requester_id, title, duration, budget, skills_needed, description, status, is_price_negotiable, created_at, token_count, character_count, persona_count, lorebook_count, background_count, avatar_count, request_payload")
       .order("created_at", { ascending: false })
 
     if (bidsError) {
@@ -137,6 +137,13 @@ export async function GET() {
         interestedCount: interestedCountByBid.get(bidId) ?? 0,
         creatorInterestStatus: selfStatusByBid.get(bidId) ?? null,
         isOwnBid: requesterId === userId,
+        tokenCount: asString(row.token_count),
+        character: Number(row.character_count) || 0,
+        persona: Number(row.persona_count) || 0,
+        lorebook: Number(row.lorebook_count) || 0,
+        background: Number(row.background_count) || 0,
+        avatar: Number(row.avatar_count) || 0,
+        requestPayload: row.request_payload ?? null,
       }
     })
 
