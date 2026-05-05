@@ -1,11 +1,11 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { BriefcaseBusiness, CircleCheckBig, CheckCircle2, LoaderCircle, MessageCircle, MoreVertical, Search, XCircle } from "lucide-react"
+import { BriefcaseBusiness, ChevronDown, CircleCheckBig, CheckCircle2, Eye, LoaderCircle, MessageCircle, MoreVertical, Search, XCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
 
 import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,13 @@ type GlobalBid = {
   interestedCount: number
   creatorInterestStatus: string | null
   isOwnBid: boolean
+  tokenCount: string
+  character: number
+  persona: number
+  lorebook: number
+  background: number
+  avatar: number
+  requestPayload: Record<string, unknown> | null
 }
 
 const bidTabs = [
@@ -74,6 +81,35 @@ function formatDuration(value: string) {
   return /day/i.test(trimmed) ? trimmed : `${trimmed} days`
 }
 
+function CollapsibleAssetItem({ name, safety, item }: { name: string; safety: string; item: Record<string, string> }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/30 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-muted/50 transition-colors"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-primary">{name || "Unnamed Asset"}</span>
+          {safety && <Badge variant={safety === "NSFW" ? "destructive" : "secondary"} className="text-[10px] px-1.5 py-0">{safety}</Badge>}
+        </div>
+        <ChevronDown className={cn("size-4 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div className="space-y-1 border-t border-border/40 px-3 py-3">
+          {Object.entries(item).filter(([, v]) => v && v !== "SFW").map(([key, value]) => (
+            <div key={key} className="text-sm">
+              <span className="text-muted-foreground capitalize">{key.replace(/([A-Z])/g, " $1").trim()}: </span>
+              <span className="text-foreground">{value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function GlobalBidsView() {
   const router = useRouter()
   const [bids, setBids] = useState<GlobalBid[]>([])
@@ -87,6 +123,7 @@ export function GlobalBidsView() {
   const [biddingBid, setBiddingBid] = useState<GlobalBid | null>(null)
   const [proposedPrice, setProposedPrice] = useState("")
   const [bidMessage, setBidMessage] = useState("")
+  const [viewingBid, setViewingBid] = useState<GlobalBid | null>(null)
 
   const filteredBids = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -318,6 +355,10 @@ export function GlobalBidsView() {
                           )}
                           Chat with client
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setViewingBid(bid)}>
+                          <Eye className="size-4" />
+                          View Details
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           className="text-emerald-700 focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
                           disabled={
@@ -389,6 +430,87 @@ export function GlobalBidsView() {
               ) : null}
               Submit Bid
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details dialog */}
+      <Dialog open={!!viewingBid} onOpenChange={(open) => !open && setViewingBid(null)}>
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{viewingBid?.title}</DialogTitle>
+            <DialogDescription>Full bid details from {viewingBid?.requesterName}</DialogDescription>
+          </DialogHeader>
+          {viewingBid && (
+            <div className="space-y-5">
+              {/* Meta info */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Budget</p>
+                  <p className="font-semibold text-foreground">{formatBudget(viewingBid.budget)}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Duration</p>
+                  <p className="font-semibold text-foreground">{formatDuration(viewingBid.duration)}</p>
+                </div>
+                {viewingBid.tokenCount && (
+                  <div className="rounded-lg bg-muted/50 p-3 col-span-2">
+                    <p className="text-xs text-muted-foreground">Token Count</p>
+                    <p className="font-semibold text-foreground">{viewingBid.tokenCount}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-foreground">Description</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/80">{viewingBid.description}</p>
+              </div>
+
+              {/* Skills */}
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-foreground">Skills Needed</p>
+                <div className="flex flex-wrap gap-2">
+                  {viewingBid.skillsNeeded.split(",").map((s) => s.trim()).filter(Boolean).map((skill) => (
+                    <Badge key={skill} variant="secondary" className="rounded-full">{skill}</Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Asset counts */}
+              <div className="space-y-1.5">
+                <p className="text-sm font-medium text-foreground">Requested Assets</p>
+                <div className="flex flex-wrap gap-2">
+                  {viewingBid.character > 0 && <Badge variant="outline">Character × {viewingBid.character}</Badge>}
+                  {viewingBid.persona > 0 && <Badge variant="outline">Persona × {viewingBid.persona}</Badge>}
+                  {viewingBid.lorebook > 0 && <Badge variant="outline">Lorebook × {viewingBid.lorebook}</Badge>}
+                  {viewingBid.background > 0 && <Badge variant="outline">Background × {viewingBid.background}</Badge>}
+                  {viewingBid.avatar > 0 && <Badge variant="outline">Avatar × {viewingBid.avatar}</Badge>}
+                </div>
+              </div>
+
+              {/* Request payload details */}
+              {viewingBid.requestPayload && Object.keys(viewingBid.requestPayload).length > 0 && (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-foreground">Detailed Asset Requirements</p>
+                  {(["character", "persona", "lorebook", "background", "avatar"] as const).map((assetType) => {
+                    const items = viewingBid.requestPayload?.[assetType]
+                    if (!Array.isArray(items) || items.length === 0) return null
+                    return (
+                      <div key={assetType} className="space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{assetType}</p>
+                        {items.map((item: Record<string, string>, i: number) => (
+                          <CollapsibleAssetItem key={i} name={item.characterName || item.personaName || item.lorebookName || item.backgroundName || item.avatarName || ""} safety={item.safety} item={item} />
+                        ))}
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewingBid(null)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
