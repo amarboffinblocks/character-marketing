@@ -288,44 +288,36 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
       })
     }
 
-    if (order.payment_status !== "pending") {
-      return NextResponse.json(
-        { error: "Escrow must be funded before approval and payout release." },
-        { status: 400 }
+    if (action === "approve") {
+      if (order.status === "approved" || order.status === "completed") {
+        return NextResponse.json({ error: "Order is already approved or completed." }, { status: 400 })
+      }
+
+      await client.query(
+        `update public.orders
+         set status = 'approved', updated_at = now()
+         where id = $1`,
+        [order.id]
       )
-    }
 
-    await client.end().catch(() => {})
-    const updated = await releaseCreatorOrderEscrow({
-      orderId: order.id,
-      creatorId: order.creator_id,
-    })
+      // Create notifications for the creator
+      await client.query(
+        `insert into public.inbox_notifications (user_id, category, title, body, action_url)
+         values ($1, $2, $3, $4, $5)`,
+        [
+          order.creator_id,
+          "order",
+          "Draft approved",
+          `The buyer approved your draft for order #${order.id.slice(0, 8)}. You can now perform the final delivery.`,
+          `/dashboard/creator/orders`
+        ]
+      ).catch(err => console.error("Failed to create notification:", err))
 
-    const notificationClient = getPaymentsDbClient()
-    try {
-      await notificationClient.connect()
-      await insertInboxNotification(notificationClient, {
-        userId: order.creator_id,
-        category: "payment",
-        title: "Order approved",
-        body: `The buyer approved order #${order.id.slice(0, 8)}. Escrow funds were released to your connected account.`,
-        actionUrl: "/dashboard/creator/transactions",
+      return NextResponse.json({
+        success: true,
+        order: { id: order.id, status: "approved", paymentStatus: order.payment_status },
       })
-      await insertInboxNotification(notificationClient, {
-        userId: order.creator_id,
-        category: "order",
-        title: "Order status updated",
-        body: `Order #${order.id.slice(0, 8)} was approved by the buyer.`,
-        actionUrl: "/dashboard/creator/orders",
-      })
-    } finally {
-      await notificationClient.end().catch(() => {})
     }
-
-    return NextResponse.json({
-      success: true,
-      order: { id: updated.id, status: "approved", paymentStatus: updated.paymentStatus },
-    })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to update order."
     return NextResponse.json({ error: message }, { status: 400 })

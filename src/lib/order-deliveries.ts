@@ -443,3 +443,56 @@ export async function fetchOrderDeliverableItemForViewer(input: {
     await client.end().catch(() => {})
   }
 }
+
+export async function transferOrderAssetsToBuyer(input: {
+  orderId: string
+  buyerId: string
+  creatorId: string
+}) {
+  const client = getOrdersDbClient()
+  try {
+    await client.connect()
+    await client.query("begin")
+
+    const deliverablesResult = await client.query(
+      `select asset_type, asset_id from public.order_deliverables where order_id = $1`,
+      [input.orderId]
+    )
+
+    const deliverables = deliverablesResult.rows as Array<{ asset_type: string; asset_id: string }>
+    
+    for (const item of deliverables) {
+      const assetType = normalizeText(item.asset_type)
+      const assetId = normalizeText(item.asset_id)
+      
+      if (!isAssetType(assetType) || !assetId) continue
+
+      const tableMap: Record<DeliverableAssetType, string> = {
+        character: "characters",
+        persona: "personas",
+        lorebook: "lorebooks",
+        avatar: "avatars",
+        background: "backgrounds",
+      }
+
+      const table = tableMap[assetType]
+      
+      // Update owner_id to buyer, and set visibility to private by default for the buyer
+      // unless it was already public, but usually commissions are private.
+      await client.query(
+        `update public.${table}
+         set owner_id = $2, updated_at = now()
+         where id = $1`,
+        [assetId, input.buyerId]
+      )
+    }
+
+    await client.query("commit")
+  } catch (error) {
+    await client.query("rollback").catch(() => {})
+    throw error
+  } finally {
+    await client.end().catch(() => {})
+  }
+}
+

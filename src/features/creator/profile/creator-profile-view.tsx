@@ -10,6 +10,7 @@ import {
   ExternalLink,
   FileText,
   Globe2,
+  HelpCircle,
   Image as ImageLucide,
   Images,
   Languages,
@@ -53,16 +54,33 @@ import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/sect
 import type { SignInAllowedRole } from "@/lib/auth-roles"
 import { cn } from "@/lib/utils"
 
-type ProfileTab = "basic" | "professional" | "portfolio" | "links"
+type ProfileTab = "basic" | "professional" | "portfolio" | "links" | "faq"
 
 const profileTabs: SectionTabItem<ProfileTab>[] = [
   { value: "basic", label: "Basic info", icon: UserRound },
   { value: "professional", label: "Professional", icon: BadgeCheck },
   { value: "portfolio", label: "Portfolio", icon: Images },
   { value: "links", label: "Links & visibility", icon: LinkIcon },
+  { value: "faq", label: "FAQ", icon: HelpCircle },
 ]
 
 const MARKETPLACE_MIN_COMPLETION_PERCENT = 80
+
+const TIMEZONES = [
+  "Etc/UTC",
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Asia/Tokyo",
+  "Asia/Singapore",
+  "Asia/Shanghai",
+  "Australia/Sydney",
+  "Asia/Kolkata",
+]
 
 function initialsFromName(name: string) {
   const trimmed = name.trim()
@@ -206,6 +224,22 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
     }
 
     void loadProfile()
+
+    async function loadFaqs() {
+      try {
+        const response = await fetch("/api/profile/faq")
+        if (response.ok) {
+          const data = await response.json()
+          if (Array.isArray(data) && data.length > 0) {
+            updateField("faqItems", data)
+          }
+        }
+      } catch {
+        // Fallback to profile_data JSON FAQs
+      }
+    }
+    void loadFaqs()
+
     return () => {
       isMounted = false
     }
@@ -279,6 +313,14 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
 
       setSaved(JSON.stringify(nextForm))
       setLastSavedAt(new Date().toLocaleString())
+
+      // Also persist to Prisma Faq table
+      await fetch("/api/profile/faq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ faqs: nextForm.faqItems }),
+      })
+
       router.refresh()
     } finally {
       setIsSaving(false)
@@ -466,6 +508,10 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
 
           {activeTab === "links" ? (
             <LinksSection form={form} updateField={updateField} />
+          ) : null}
+
+          {activeTab === "faq" ? (
+            <FaqSection form={form} updateField={updateField} />
           ) : null}
         </div>
       </section>
@@ -784,6 +830,7 @@ function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
     { label: "3+ portfolio items", done: form.portfolio.length >= 3 },
     { label: "Social link", done: form.socialLinks.length >= 1 },
     { label: "Basic pricing", done: form.startingPrice > 0 },
+    { label: "2+ FAQ items", done: form.faqItems.length >= 2 },
   ]
 
   return (
@@ -926,17 +973,50 @@ function ProfessionalSection({
       <CardContent className="grid gap-4 py-4 md:grid-cols-2">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">Timezone</label>
-          <Input
-            value={form.timezone}
-            onChange={(event) => updateField("timezone", event.target.value)}
-          />
+          <Select value={form.timezone} onValueChange={(v) => updateField("timezone", v ?? "")}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select timezone" />
+            </SelectTrigger>
+            <SelectContent>
+              {TIMEZONES.map((tz) => (
+                <SelectItem key={tz} value={tz}>
+                  {tz}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground">Response time</label>
-          <Input
-            value={form.responseTime}
-            onChange={(event) => updateField("responseTime", event.target.value)}
-          />
+          <div className="flex gap-2">
+            <Input
+              type="number"
+              min="1"
+              placeholder="2"
+              value={form.responseTime.split(" ")[0] || ""}
+              onChange={(event) => {
+                const val = event.target.value
+                const unit = form.responseTime.split(" ")[1] || "hours"
+                updateField("responseTime", val ? `${val} ${unit}` : "")
+              }}
+              className="flex-1"
+            />
+            <Select
+              value={form.responseTime.split(" ")[1] || "hours"}
+              onValueChange={(v) => {
+                const val = form.responseTime.split(" ")[0] || "2"
+                updateField("responseTime", `${val} ${v ?? ""}`)
+              }}
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="hours">hours</SelectItem>
+                <SelectItem value="days">days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-medium text-muted-foreground">Niche focus</label>
@@ -1456,6 +1536,126 @@ function LinksSection({
               </SelectContent>
             </Select>
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function FaqSection({
+  form,
+  updateField,
+}: {
+  form: CreatorProfileForm
+  updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+          <div className="space-y-1">
+            <CardTitle>Frequently Asked Questions</CardTitle>
+            <CardDescription>Add questions and answers to show on your profile.</CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5"
+            onClick={() =>
+              updateField("faqItems", [
+                ...form.faqItems,
+                { id: `faq-${crypto.randomUUID()}`, question: "", answer: "" },
+              ])
+            }
+          >
+            <Plus className="size-3.5" />
+            Add FAQ
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-4 py-4">
+          {form.faqItems.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-border/80 bg-muted/20 p-8 text-center">
+              <HelpCircle className="mx-auto size-8 text-muted-foreground/50" />
+              <p className="mt-2 text-sm text-muted-foreground">No FAQs added yet.</p>
+              <Button
+                type="button"
+                variant="link"
+                className="mt-1 h-auto p-0 text-primary"
+                onClick={() =>
+                  updateField("faqItems", [
+                    { id: `faq-${crypto.randomUUID()}`, question: "", answer: "" },
+                  ])
+                }
+              >
+                Create your first FAQ
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {form.faqItems.map((faq) => (
+                <div
+                  key={faq.id}
+                  className="group relative rounded-lg border border-border/70 p-4 transition-colors hover:bg-muted/5"
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1.5">
+                        <label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          Question
+                        </label>
+                        <Input
+                          value={faq.question}
+                          onChange={(e) =>
+                            updateField(
+                              "faqItems",
+                              form.faqItems.map((item) =>
+                                item.id === faq.id ? { ...item, question: e.target.value } : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. What do you need to get started?"
+                          className="font-medium"
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="mt-6 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() =>
+                          updateField(
+                            "faqItems",
+                            form.faqItems.filter((item) => item.id !== faq.id)
+                          )
+                        }
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        Answer
+                      </label>
+                      <Textarea
+                        value={faq.answer}
+                        onChange={(e) =>
+                          updateField(
+                            "faqItems",
+                            form.faqItems.map((item) =>
+                              item.id === faq.id ? { ...item, answer: e.target.value } : item
+                            )
+                          )
+                        }
+                        placeholder="Provide a clear and helpful answer..."
+                        className="min-h-[80px] resize-none"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -1,3 +1,6 @@
+"use client"
+
+import { useState } from "react"
 import Link from "next/link"
 import {
   CalendarClock,
@@ -57,6 +60,30 @@ type HeaderProps = {
 }
 
 export function OrderDetailsHeader({ order }: HeaderProps) {
+  const [isFinalizing, setIsFinalizing] = useState(false)
+
+  async function handleFinalize() {
+    if (!confirm("Are you sure you want to finalize this order? This will transfer the assets to the buyer and release your payment.")) {
+      return
+    }
+
+    setIsFinalizing(true)
+    try {
+      const response = await fetch(`/api/creator/orders/${encodeURIComponent(order.id)}/finalize`, {
+        method: "POST",
+      })
+      if (!response.ok) {
+        const json = await response.json()
+        throw new Error(json.error || "Failed to finalize order.")
+      }
+      window.location.reload()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Unable to finalize order.")
+    } finally {
+      setIsFinalizing(false)
+    }
+  }
+
   return (
     <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
@@ -71,16 +98,25 @@ export function OrderDetailsHeader({ order }: HeaderProps) {
           <OrderStatusBadge status={order.status} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button className="h-9">
-            <CheckCheck className="size-4" />
-            Mark as Completed
-          </Button>
+          {order.status === "approved" && (
+            <Button className="h-9" onClick={handleFinalize} disabled={isFinalizing}>
+              {isFinalizing ? (
+                <RefreshCcw className="size-4 animate-spin" />
+              ) : (
+                <CheckCheck className="size-4" />
+              )}
+              Finalize Delivery
+            </Button>
+          )}
+          {order.status !== "approved" && order.status !== "completed" && (
+            <Button className="h-9" variant="outline" disabled>
+              <Clock3 className="size-4" />
+              In Progress
+            </Button>
+          )}
           <Button variant="outline" className="h-9">
             <MessageSquare className="size-4" />
             Message Buyer
-          </Button>
-          <Button variant="ghost" className="h-9">
-            Request Revision
           </Button>
         </div>
       </div>

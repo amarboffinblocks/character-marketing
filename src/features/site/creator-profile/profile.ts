@@ -136,11 +136,11 @@ export function buildCreatorProfile(creator: Creator): CreatorProfile {
 
   const displaySpecialties = o.displaySpecialties ?? [...creator.specialties]
   const packages = o.packages ?? defaultPackages(creator)
-  const faqItems = o.faqItems ?? defaultFaq(creator)
+  const faqItems = creator.faqItems ?? o.faqItems ?? defaultFaq(creator)
 
   return {
     ...creator,
-    bio: o.bio ?? defaultBio(creator),
+    bio: o.bio || creator.longBio || defaultBio(creator),
     location: o.location ?? "Remote",
     memberSinceLabel: o.memberSinceLabel ?? defaultMemberSince(creator),
     completionRate: o.completionRate ?? defaultCompletionRate(creator),
@@ -149,7 +149,7 @@ export function buildCreatorProfile(creator: Creator): CreatorProfile {
     packages,
     portfolioImageUrls: o.portfolioImageUrls ?? defaultPortfolioUrls(creator),
     portfolioItems: defaultPortfolioItems(creator),
-    reviews: defaultReviews(creator),
+    reviews: [],
     faqItems,
   }
 }

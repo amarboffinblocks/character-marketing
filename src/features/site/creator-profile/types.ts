@@ -29,6 +29,8 @@ export type CreatorProfileReview = {
   dateLabel: string
   createdAt?: string
   status?: "published" | "pending"
+  creatorReply?: string
+  creatorRepliedAt?: string
 }
 
 export type CreatorProfileFaqItem = {

@@ -1,15 +1,18 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Bell,
   ClipboardList,
+  HelpCircle,
   KeyRound,
+  Plus,
   Save,
   Settings as SettingsIcon,
   Shield,
   ShieldAlert,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -35,12 +38,15 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
 import { cn } from "@/lib/utils"
+import { faqItems as initialGlobalFaq, type FAQItem } from "@/features/site/faq"
 
-type AdminSettingsTab = "operations" | "alerts" | "audit"
+
+type AdminSettingsTab = "operations" | "alerts" | "faq" | "audit"
 
 const settingsTabs: SectionTabItem<AdminSettingsTab>[] = [
   { value: "operations", label: "Operations", icon: SlidersHorizontal },
   { value: "alerts", label: "Alerts & channels", icon: Bell },
+  { value: "faq", label: "Global FAQ", icon: HelpCircle },
   { value: "audit", label: "Audit log", icon: Shield },
 ]
 
@@ -131,6 +137,46 @@ export function AdminSettingsView() {
   const [maintenanceMessage, setMaintenanceMessage] = useState(
     "We’re upgrading payments — checkout is paused until 04:00 UTC."
   )
+  const [globalFaqs, setGlobalFaqs] = useState<FAQItem[]>(initialGlobalFaq)
+  const [isFaqLoading, setIsFaqLoading] = useState(false)
+  const [isFaqSaving, setIsFaqSaving] = useState(false)
+
+  useEffect(() => {
+    async function loadFaqs() {
+      setIsFaqLoading(true)
+      try {
+        const response = await fetch("/api/admin/faq")
+        if (response.ok) {
+          const data = await response.json()
+          if (Array.isArray(data) && data.length > 0) {
+            setGlobalFaqs(data)
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load FAQs:", error)
+      } finally {
+        setIsFaqLoading(false)
+      }
+    }
+    loadFaqs()
+  }, [])
+
+  async function handleSaveFaqs() {
+    setIsFaqSaving(true)
+    try {
+      const response = await fetch("/api/admin/faq", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ faqs: globalFaqs }),
+      })
+      if (!response.ok) throw new Error("Save failed")
+    } catch (error) {
+      console.error("Failed to save FAQs:", error)
+    } finally {
+      setIsFaqSaving(false)
+    }
+  }
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -382,6 +428,139 @@ export function AdminSettingsView() {
           </Card>
         </div>
       ) : null}
+
+      {tab === "faq" ? (
+        <AdminFaqSection
+          faqs={globalFaqs}
+          setFaqs={setGlobalFaqs}
+          onSave={handleSaveFaqs}
+          isLoading={isFaqLoading}
+          isSaving={isFaqSaving}
+        />
+      ) : null}
+    </div>
+  )
+}
+
+function AdminFaqSection({
+  faqs,
+  setFaqs,
+  onSave,
+  isLoading,
+  isSaving,
+}: {
+  faqs: FAQItem[]
+  setFaqs: (faqs: FAQItem[]) => void
+  onSave: () => void
+  isLoading: boolean
+  isSaving: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+          <div className="space-y-1">
+            <CardTitle>Site-wide FAQ Management</CardTitle>
+            <CardDescription>These questions appear on the main FAQ page and home preview.</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={() =>
+                setFaqs([
+                  { question: "", answer: "" },
+                  ...faqs,
+                ])
+              }
+              disabled={isLoading || isSaving}
+            >
+              <Plus className="size-3.5" />
+              Add Global FAQ
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              size="sm"
+              className="h-8 gap-1.5"
+              onClick={onSave}
+              disabled={isLoading || isSaving}
+            >
+              <Save className="size-3.5" />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 py-4">
+          {isLoading ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">Loading FAQs...</div>
+          ) : (
+            <div className="space-y-3">
+              {faqs.map((faq, index) => (
+                <div
+                  key={index}
+                  className="group relative rounded-lg border border-border/70 p-4 transition-colors hover:bg-muted/5"
+                >
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 space-y-1.5">
+                        <label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                          Question
+                        </label>
+                        <Input
+                          value={faq.question}
+                          onChange={(e) =>
+                            setFaqs(
+                              faqs.map((item, i) =>
+                                i === index ? { ...item, question: e.target.value } : item
+                              )
+                            )
+                          }
+                          placeholder="Site-wide question..."
+                          className="font-medium"
+                          disabled={isSaving}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="mt-6 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() =>
+                          setFaqs(faqs.filter((_, i) => i !== index))
+                        }
+                        disabled={isSaving}
+                      >
+                        <Trash2 className="size-4 text-destructive" />
+                      </Button>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                        Answer
+                      </label>
+                      <Textarea
+                        value={faq.answer}
+                        onChange={(e) =>
+                          setFaqs(
+                            faqs.map((item, i) =>
+                              i === index ? { ...item, answer: e.target.value } : item
+                            )
+                          )
+                        }
+                        placeholder="Site-wide answer..."
+                        className="min-h-[60px] resize-none"
+                        disabled={isSaving}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

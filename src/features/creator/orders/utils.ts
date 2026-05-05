@@ -7,17 +7,21 @@ import type {
 export const orderStatusLabelMap: Record<CreatorOrderStatus, string> = {
   new: "New",
   in_progress: "In progress",
-  waiting_on_buyer: "Waiting on buyer",
-  review: "Review",
+  delivered: "Delivered (Reviewing)",
+  approved: "Approved (Pending Final)",
   completed: "Completed",
+  cancelled: "Cancelled",
+  refunded: "Refunded",
 }
 
 export const orderStatusClassMap: Record<CreatorOrderStatus, string> = {
   new: "bg-primary/10 text-primary",
   in_progress: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
-  waiting_on_buyer: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
-  review: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  delivered: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  approved: "bg-blue-500/10 text-blue-700 dark:text-blue-300",
   completed: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  cancelled: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  refunded: "bg-gray-500/10 text-gray-700 dark:text-gray-300",
 }
 
 export type OrderSortValue =

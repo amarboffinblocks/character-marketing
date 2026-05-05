@@ -46,6 +46,7 @@ export type CreatorProfileForm = {
   payoutCountry: string
   payoutCurrency: string
   startingPrice: number
+  faqItems: { id: string; question: string; answer: string }[]
 }
 
 export const defaultProfileForm: CreatorProfileForm = {
@@ -76,6 +77,7 @@ export const defaultProfileForm: CreatorProfileForm = {
   payoutCountry: "",
   payoutCurrency: "USD",
   startingPrice: 25,
+  faqItems: [],
 }
 
 export function computeCompletion(form: CreatorProfileForm) {
@@ -89,6 +91,7 @@ export function computeCompletion(form: CreatorProfileForm) {
     form.portfolio.length >= 3,
     form.socialLinks.length >= 1,
     form.startingPrice > 0,
+    form.faqItems.length >= 2,
   ]
   const done = checks.filter(Boolean).length
   return {

@@ -110,7 +110,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
       if (!response.ok) {
         throw new Error(json.error || "Unable to approve.")
       }
-      setActionSuccess("Order approved. Escrow payout will complete shortly.")
+      setActionSuccess("Draft approved. The creator will now perform the final delivery.")
       router.refresh()
       const reload = async () => {
         const r = await fetch(`/api/site/orders/${encodeURIComponent(orderId)}/deliverables`)
@@ -275,10 +275,10 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
                   <p className="whitespace-pre-wrap text-foreground">{deliveryNote}</p>
                 </div>
               ) : null}
-              {/* {showBuyerActions ? (
+              {showBuyerActions ? (
                 <div className="space-y-3 rounded-xl border border-border/70 bg-background p-3">
                   <p className="text-xs font-semibold text-foreground">Your decision</p>
-                  {canApproveFromPreview ? (
+                  {canApproveFromPreview && orderStatus === "delivered" ? (
                     <Button
                       type="button"
                       className="inline-flex w-full items-center justify-center gap-2"
@@ -286,15 +286,18 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
                       onClick={() => void handleApprove()}
                     >
                       {actionBusy === "approve" ? <LoaderCircle className="size-4 animate-spin shrink-0" /> : null}
-                      <span>Approve &amp; release escrow</span>
+                      <span>Approve Draft</span>
                     </Button>
+                  ) : orderStatus === "approved" ? (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      You have approved the draft. Waiting for the creator to perform the final delivery of assets to your inventory.
+                    </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Approval is available when payment is still in escrow. If you already approved or funds were released,
-                      refresh the page.
+                      Approval is available when a delivery is pending review and payment is in escrow.
                     </p>
                   )}
-                  {canRequestRevision ? (
+                  {canRequestRevision && orderStatus === "delivered" ? (
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-foreground" htmlFor="revision-note">
                         Request changes
@@ -321,7 +324,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
                   {actionError ? <p className="text-xs text-rose-600">{actionError}</p> : null}
                   {actionSuccess ? <p className="text-xs text-emerald-700 dark:text-emerald-300">{actionSuccess}</p> : null}
                 </div>
-              ) : null} */}
+              ) : null}
             </CardContent>
           </Card>
         </div>

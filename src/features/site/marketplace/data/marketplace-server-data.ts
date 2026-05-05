@@ -11,6 +11,8 @@ import {
   type CreatorProfileForm,
 } from "@/features/creator/profile/profile-data"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import { prisma } from "@/lib/prisma"
+
 
 type ProfilesRow = {
   id: string
@@ -27,7 +29,10 @@ type CreatorProfileData = {
   profileVisibility?: unknown
   skills?: unknown
   niche?: unknown
+  shortBio?: unknown
+  longBio?: unknown
   startingPrice?: unknown
+  faqItems?: unknown
 }
 
 type CreatorServiceRow = {
@@ -103,6 +108,7 @@ function toCreatorCompletionForm(creatorData: Record<string, unknown>): CreatorP
     refundPolicy: asString(creatorData.refundPolicy),
     email: asString(creatorData.email),
     startingPrice: asNumber(creatorData.startingPrice, 0),
+    faqItems: Array.isArray(creatorData.faqItems) ? (creatorData.faqItems as any[]) : [],
   }
 }
 
@@ -123,6 +129,8 @@ function toCreator(row: ProfilesRow): Creator | null {
 
   const name = asString(creatorData.displayName) || toHandle(row.id)
   const tagline = asString(creatorData.tagline)
+  const shortBio = asString(creatorData.shortBio)
+  const longBio = asString(creatorData.longBio)
   const responseTime = asString(creatorData.responseTime) || "< 24 hrs"
 
   return {
@@ -130,6 +138,8 @@ function toCreator(row: ProfilesRow): Creator | null {
     name,
     handle: toHandle(row.id),
     tagline: tagline || "Creator profile",
+    shortBio,
+    longBio,
     languages,
     avatar: asString(creatorData.avatarUrl) || "/placeholder.svg",
     coverImage: asString(creatorData.bannerUrl) || "/placeholder.svg",
@@ -141,6 +151,7 @@ function toCreator(row: ProfilesRow): Creator | null {
     isAvailable: true,
     specialties: specialties.length > 0 ? specialties : ["Creator"],
     completedOrders: 0,
+    faqItems: Array.isArray(creatorData.faqItems) ? (creatorData.faqItems as any[]) : [],
   }
 }
 
@@ -289,7 +300,20 @@ export async function getMarketplaceCreatorProfileById(creatorId: string): Promi
     .order("updated_at", { ascending: false })
     .returns<CreatorServiceRow[]>()
 
+  const dbFaqs = await prisma.faq.findMany({
+    where: { creatorId },
+    orderBy: { order: "asc" },
+  })
+
   const profile = buildCreatorProfile(creator)
+  // Merge DB FAQs if they exist
+  if (dbFaqs.length > 0) {
+    profile.faqItems = dbFaqs.map((f) => ({
+      id: f.id,
+      question: f.question,
+      answer: f.answer,
+    }))
+  }
   const creatorData =
     data.profile_data &&
     typeof data.profile_data === "object" &&

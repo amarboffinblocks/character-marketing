@@ -59,7 +59,14 @@ export function CreatorProfileHeader({ profile, profilePath, isAuthenticated }: 
                   <Badge variant="secondary">Away</Badge>
                 )}
               </div>
-              <p className="mt-1 text-muted-foreground">@{profile.handle}</p>
+              <p className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                {/* <span className="font-medium">@{profile.handle}</span> */}
+                {profile.tagline && (
+                  <>
+                    <span className="truncate">{profile.tagline}</span>
+                  </>
+                )}
+              </p>
             </div>
           </div>
 

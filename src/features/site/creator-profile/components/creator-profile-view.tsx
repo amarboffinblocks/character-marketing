@@ -10,9 +10,9 @@ import {
   isFeatureIncluded,
 } from "@/features/site/packages/package-utils"
 import type { CreatorProfile } from "@/features/site/creator-profile/types"
-import { buttonVariants } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { BadgeCheck, Calendar, FileCheck2, MapPin, Plus, Star, UserRound } from "lucide-react"
+import { BadgeCheck, Calendar, FileCheck2, MapPin, MessageSquareText, Pencil, Plus, RefreshCcw, Reply, Star, Trash2, UserRound, X } from "lucide-react"
 import { IconTextRow } from "./icon-text-row"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
@@ -22,7 +22,19 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle2, XCircle } from "lucide-react"
+import { Textarea } from "@/components/ui/textarea"
 import { useCreatorReviewAggregate, useCreatorReviews } from "@/features/reviews/use-creator-reviews"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
+import { useEffect } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Loader2 } from "lucide-react"
 type CreatorProfileViewProps = {
   profile: CreatorProfile
   isAuthenticated: boolean
@@ -67,7 +79,20 @@ const priceFormatter = new Intl.NumberFormat("en-US", {
  */
 export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileViewProps) {
   const [renderedAt] = useState(() => Date.now())
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [reviewToDelete, setReviewToDelete] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const localReviews = useCreatorReviews(profile.id)
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    const supabase = createClientSupabaseClient()
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user?.id) setCurrentUserId(user.id)
+    })()
+  }, [isAuthenticated])
   const { averageRating, reviewCount } = useCreatorReviewAggregate({
     creatorId: profile.id,
     baseRating: profile.rating,
@@ -78,6 +103,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
       id: review.id,
       authorName: review.reviewerName,
       reviewerName: review.reviewerName,
+      reviewerId: review.reviewerId,
       reviewerInitials: review.reviewerInitials,
       reviewerAvatar: review.reviewerAvatar,
       rating: review.rating,
@@ -89,6 +115,8 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
       ),
       createdAt: review.createdAt,
       status: review.status,
+      creatorReply: review.creatorReply,
+      creatorRepliedAt: review.creatorRepliedAt,
     }))
     return [...mappedLocal, ...profile.reviews]
   }, [localReviews, profile.reviews, renderedAt])
@@ -101,6 +129,23 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
     }),
     [averageRating, mergedReviews, profile, reviewCount]
   )
+
+  const handleDeleteReview = async () => {
+    if (!reviewToDelete) return
+    setIsDeleting(true)
+    setDeleteError(null)
+    try {
+      const res = await fetch(`/api/site/reviews/${encodeURIComponent(reviewToDelete)}`, {
+        method: "DELETE",
+      })
+      if (!res.ok) throw new Error("Failed to delete review")
+      window.location.reload()
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Unable to delete review")
+      setIsDeleting(false)
+    }
+  }
+
   const profilePath = `/creators/${profile.id}`
   const preselectPackage = profileWithReviewStats.packages[0]
   const displayedCustomPackages = getCustomPackages(profileWithReviewStats.packages, { includeFallback: false })
@@ -140,10 +185,19 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
               <TabsContent value="about">
                 <section className="space-y-8" aria-labelledby="about-me-heading">
                   <div>
-                    <h2 id="about-me-heading" className="text-lg font-semibold text-foreground">
+                    <h2 id="creator-bio-heading" className="text-lg font-semibold text-foreground">
+                      Creater Bio
+                    </h2>
+                   
+                    {profileWithReviewStats.shortBio && (
+                      <p className="mb-5 mt-1 text-pretty text-sm  leading-relaxed text-muted-foreground sm:text-base">
+                        {profileWithReviewStats.shortBio}
+                      </p>
+                    )}
+                     <h2 id="about-me-heading" className="text-lg font-semibold text-foreground">
                       About Me
                     </h2>
-                    <p className="mt-3 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+                    <p className="mt-1 text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
                       {profileWithReviewStats.bio}
                     </p>
                     <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-x-8 sm:gap-y-3">
@@ -159,7 +213,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                         <li key={tag}>
                           <Badge
                             variant="secondary"
-                            className="border-primary/15 bg-primary/8 font-normal text-foreground hover:bg-primary/12"
+                            className="border-primary/15 p-4 text-black/70 bg-primary/8 font-medium hover:bg-primary/12"
                           >
                             {tag}
                           </Badge>
@@ -175,7 +229,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                         <li>
                           <Badge
                             variant="secondary"
-                            className="border-primary/15 bg-primary/8 font-normal text-foreground hover:bg-primary/12"
+                            className="border-primary/15 p-4 text-black/70 bg-primary/8 font-medium hover:bg-primary/12"
                           >
                             {niche}
                           </Badge>
@@ -189,7 +243,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                     <ul className="mt-3 flex list-none flex-wrap gap-2">
                       {profileWithReviewStats.languages.map((lang) => (
                         <li key={lang}>
-                          <Badge variant="secondary" className="font-normal">
+                          <Badge variant="secondary" className="border-primary/15 p-4 text-black/70 bg-primary/8 font-medium hover:bg-primary/12">
                             {lang}
                           </Badge>
                         </li>
@@ -199,7 +253,14 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                 </section>
               </TabsContent>
 
-              <TabsContent value="portfolio">
+              <TabsContent value="portfolio" className="mt-4">
+                <div className="px-2 pb-5">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">Featured portfolio</h2>
+                  <p className="text-sm text-muted-foreground">
+                    A showcase of my recent work and character designs.
+                  </p>
+                </div>
+
                 {profileWithReviewStats.portfolioItems.length > 0 ? (
                   <ul className="grid list-none grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                     {profileWithReviewStats.portfolioItems.map((item) => (
@@ -244,41 +305,49 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                 )}
               </TabsContent>
 
-              <TabsContent value="reviews">
-                <ul className="space-y-4">
-                  {profileWithReviewStats.reviews.map((r) => (
-                    <li
-                      key={r.id}
-                      className="rounded-xl border border-border/60 bg-card p-4 shadow-sm"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="flex items-start gap-3">
-                          <span className="inline-flex size-10 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
-                            {r.reviewerInitials || "BY"}
-                          </span>
-                          <div>
-                            <p className="font-medium text-foreground">{r.reviewerName || r.authorName}</p>
-                            {r.title ? (
-                              <p className="text-sm text-foreground/90">{r.title}</p>
-                            ) : null}
-                          </div>
-                        </div>
-                        <time className="text-xs text-muted-foreground">{r.dateLabel}</time>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <StarRating value={r.rating} />
-                        <span className="text-sm tabular-nums text-muted-foreground">{r.rating.toFixed(1)}</span>
-                      </div>
-                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{r.body}</p>
-                    </li>
-                  ))}
-                </ul>
+              <TabsContent value="reviews" className="mt-4">
+                <div className="px-2 pb-5">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">Client reviews</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Honest feedback from people I've worked with on previous projects.
+                  </p>
+                </div>
+
+                {profileWithReviewStats.reviews.length > 0 ? (
+                  <ul className="space-y-4">
+                    {profileWithReviewStats.reviews.map((r) => (
+                      <ReviewItem
+                        key={r.id}
+                        review={r}
+                        currentUserId={currentUserId}
+                        creatorId={profile.id}
+                        onDelete={() => setReviewToDelete(r.id)}
+                      />
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-12 px-4 text-center border border-dashed border-border/60 rounded-xl bg-muted/5">
+                    <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-4">
+                      <Star className="size-6 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm font-medium text-foreground">No reviews yet</p>
+                    <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
+                      This creator hasn't received any reviews from buyers yet.
+                    </p>
+                  </div>
+                )}
               </TabsContent>
 
-              <TabsContent value="faq">
-                <Accordion defaultValue={[]} className="rounded-xl border border-border/60 bg-card px-2 shadow-sm">
+              <TabsContent value="faq" className="mt-4">
+                <div className="px-2 pb-5">
+                  <h2 className="text-lg font-semibold tracking-tight text-foreground">Frequently asked questions</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Here are some answers to common questions about my profile and what I offer.
+                  </p>
+                </div>
+                <Accordion defaultValue={[]} className="rounded-xl border border-border/60 bg-card px-2  shadow-sm">
                   {profileWithReviewStats.faqItems.map((item) => (
-                    <AccordionItem key={item.id} value={item.id}>
+                    <AccordionItem key={item.id} value={item.id} className="py-2">
                       <AccordionTrigger className="px-3 text-left">{item.question}</AccordionTrigger>
                       <AccordionContent className="px-3 pb-4 text-muted-foreground">{item.answer}</AccordionContent>
                     </AccordionItem>
@@ -294,11 +363,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                 </div>
                 <div className="mt-5 space-y-6">
                   <section className="space-y-3" aria-labelledby="preselect-package-heading">
-                    <div className="flex items-center gap-2">
-                      <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs font-semibold">
-                        Pre-Select Package
-                      </Badge>
-                    </div>
+                  
                     {preselectPackage ? (
                       <Card className="relative overflow-hidden border-primary/25 bg-linear-to-br from-primary/10 via-card to-card shadow-sm">
                         <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-primary/70 via-amber-400/60 to-primary/70" />
@@ -380,10 +445,10 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                   </section>
 
                   <section className="space-y-3" aria-labelledby="custom-package-heading">
-                    <div className="flex items-center gap-2">
-                      <Badge className="rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-500/90">
+                    <div className="flex flex-col  gap-1 py-4">
+                      <h2 className="text-lg font-semibold text-foreground">
                         Custom Package
-                      </Badge>
+                      </h2>
                       <p className="text-xs text-muted-foreground">Flexible and tailored package options</p>
                     </div>
                     <h3 id="custom-package-heading" className="sr-only">
@@ -410,12 +475,13 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                               <Card
                                 className={cn(
                                   "relative flex flex-col border border-border/60 bg-card rounded-[2rem] p-6 shadow-sm transition-all duration-300 hover:shadow-xl h-full",
-                                  pkg.isRecommended && "ring-1 ring-primary/10 bg-linear-to-b from-primary/20 to-white/5"
+                                  pkg.isRecommended && "ring-1 ring-primary/10 bg-linear-to-b from-primary/10 to-white/5"
                                 )}
                               >
+                                 <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-linear-to-r from-primary/70 via-amber-400/60 to-primary/70" />
                                 {pkg.isRecommended ? (
                                   <div className="absolute top-6 right-6">
-                                    <Badge variant="secondary" className="bg-muted/80 text-[10px] font-medium text-foreground px-2 py-0.5 rounded-lg border-none shadow-xs">
+                                    <Badge variant="secondary" className="bg-primary/80 text-[10px] font-medium text-white px-2 py-0.5 rounded-lg border-none shadow-xs">
                                       Most popular
                                     </Badge>
                                   </div>
@@ -525,6 +591,217 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
         </div>
       </Container>
 
+      <Dialog open={!!reviewToDelete} onOpenChange={(open) => !open && setReviewToDelete(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Review</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete your review? This action cannot be undone.
+            </DialogDescription>
+            {deleteError && (
+              <p className="mt-2 text-sm text-destructive">{deleteError}</p>
+            )}
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setReviewToDelete(null)
+                setDeleteError(null)
+              }}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteReview}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
+  )
+}
+
+function ReviewItem({
+  review,
+  currentUserId,
+  creatorId,
+  onDelete,
+}: {
+  review: any
+  currentUserId: string | null
+  creatorId: string
+  onDelete: () => void
+}) {
+  const [isEditingReply, setIsEditingReply] = useState(false)
+  const [replyDraft, setReplyDraft] = useState(review.creatorReply || "")
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const isCreator = currentUserId === creatorId
+  const isReviewer = currentUserId === review.reviewerId
+  const canDelete = isCreator || isReviewer
+  const canManageReply = isCreator
+
+  const handleUpdateReply = async (newReply: string) => {
+    setIsSubmitting(true)
+    setSubmitError(null)
+    try {
+      const res = await fetch(`/api/creator/reviews/${encodeURIComponent(review.id)}/reply`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reply: newReply }),
+      })
+      if (!res.ok) throw new Error("Failed to update reply")
+      window.location.reload()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Unable to update reply")
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <li className="rounded-xl border border-border/60 bg-card p-4 shadow-sm group">
+      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground">
+            {review.reviewerInitials || "BY"}
+          </span>
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-foreground">{review.reviewerName || review.authorName}</p>
+        <time className="text-xs text-muted-foreground shrink-0">{review.dateLabel}</time>
+            
+            </div>
+            <div className="flex items-center gap-2">
+              <StarRating value={review.rating} />
+              <span className="text-xs tabular-nums text-muted-foreground">{review.rating.toFixed(1)}</span>
+            </div>
+            {/* {review.title && <p className="text-sm font-medium text-foreground">{review.title}</p>} */}
+            <p className="text-sm leading-relaxed text-muted-foreground">{review.body}</p>
+          </div>
+        </div>
+          {canDelete && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={onDelete}
+                  title="Delete review"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              )}
+      </div>
+
+      {review.creatorReply && !isEditingReply ? (
+        <div className="mt-4 rounded-lg bg-muted/30 p-3 border border-border/40 ml-4 relative group/reply">
+          <div className="absolute -top-2 left-4 h-2 w-2 rotate-45 border-l border-t border-border/40 bg-muted/30" />
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Reply className="size-3.5 text-primary" />
+              <span className="text-xs font-semibold text-foreground">Creator's response</span>
+            </div>
+            {canManageReply && (
+              <div className="flex items-center gap-1 opacity-0 group-hover/reply:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7"
+                  onClick={() => setIsEditingReply(true)}
+                  title="Edit reply"
+                >
+                  <Pencil className="size-3.5 text-muted-foreground" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-7 hover:text-destructive"
+                  onClick={() => {
+                    handleUpdateReply("")
+                  }}
+                  title="Delete reply"
+                  disabled={isSubmitting}
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed italic">
+            "{review.creatorReply}"
+          </p>
+        </div>
+      ) : isEditingReply ? (
+        <div className="mt-4 ml-4 space-y-2 rounded-lg border border-dashed border-border/80 bg-muted/10 p-3">
+          <div className="flex items-center justify-between">
+            <p className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+              {review.creatorReply ? <Pencil className="size-3.5" /> : <MessageSquareText className="size-3.5" />}
+              {review.creatorReply ? "Edit your reply" : "Reply to this review"}
+            </p>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              onClick={() => {
+                setIsEditingReply(false)
+                setReplyDraft(review.creatorReply || "")
+              }}
+            >
+              <X className="size-3.5 text-muted-foreground" />
+            </Button>
+          </div>
+          <Textarea
+            value={replyDraft}
+            onChange={(event) => setReplyDraft(event.target.value)}
+            placeholder="Thank the buyer and add context..."
+            className="min-h-20 text-sm"
+            disabled={isSubmitting}
+          />
+          {submitError && (
+            <p className="text-xs text-destructive mt-1">{submitError}</p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={isSubmitting || (review.creatorReply ? false : !replyDraft.trim())}
+              onClick={() => handleUpdateReply(replyDraft.trim())}
+            >
+              {isSubmitting ? (
+                <RefreshCcw className="size-3.5 animate-spin" />
+              ) : (
+                <Reply className="size-3.5" />
+              )}
+              {review.creatorReply ? "Save changes" : "Publish reply"}
+            </Button>
+          </div>
+        </div>
+      ) : isCreator && !review.creatorReply ? (
+        <div className="mt-4 ml-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1.5 text-xs border-dashed"
+            onClick={() => setIsEditingReply(true)}
+          >
+            <MessageSquareText className="size-3.5" />
+            Reply to review
+          </Button>
+        </div>
+      ) : null}
+    </li>
   )
 }

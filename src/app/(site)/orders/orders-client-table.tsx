@@ -78,10 +78,10 @@ function formatCreatedAt(value: string) {
 
 const orderStatusLabel: Record<OrderStatus, string> = {
   pending_payment: "Pending payment",
-  funded: "Funded",
-  in_progress: "In progress",
-  delivered: "Delivered",
-  approved: "Approved",
+  funded: "Work in progress",
+  in_progress: "Work in progress",
+  delivered: "Review pending",
+  approved: "Draft approved",
   completed: "Completed",
   cancelled: "Cancelled",
   refunded: "Refunded",
@@ -108,9 +108,12 @@ const paymentStatusLabel: Record<PaymentStatus, string> = {
 
 function buyerFacingOrderStatusLabel(order: BuyerOrderRow): string {
   if (order.status === "delivered" && order.payment_status === "pending") {
-    return "Review"
+    return "Review pending"
   }
-  return orderStatusLabel[order.status]
+  if (order.status === "approved") {
+    return "Draft approved"
+  }
+  return orderStatusLabel[order.status] || order.status
 }
 
 function safeCreatorSummary(profileData: unknown) {

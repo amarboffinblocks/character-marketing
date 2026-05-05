@@ -1,9 +1,11 @@
 export type CreatorOrderStatus =
   | "new"
   | "in_progress"
-  | "waiting_on_buyer"
-  | "review"
+  | "delivered"
+  | "approved"
   | "completed"
+  | "cancelled"
+  | "refunded"
 
 export type CreatorOrderPriority = "low" | "medium" | "high"
 

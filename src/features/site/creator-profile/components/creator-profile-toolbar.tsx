@@ -5,6 +5,7 @@ import { Heart, MessageSquare, Share2, Star } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
 
 import { buttonVariants } from "@/components/ui/button"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { CreatorChatPanel } from "@/features/site/creator-profile/components/creator-chat-panel"
 import { cn } from "@/lib/utils"
 
@@ -90,45 +91,60 @@ export function CreatorProfileToolbar({
   return (
     <>
       {isAuthenticated ? (
-        <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
-          <button
-            type="button"
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon" }),
-              "size-10",
-              isSaved && "text-rose-500 border-rose-200 hover:bg-rose-50 bg-rose-50/50"
-            )}
-            aria-label={isSaved ? `Remove ${creatorName} from favorites` : `Save ${creatorName} to favorites`}
-            onClick={toggleSave}
-            disabled={isLoading}
-          >
-            <Heart className={cn("size-4", isSaved && "fill-rose-500")} aria-hidden />
-          </button>
-          <button
-            type="button"
-            className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
-            aria-label={`Share ${creatorName}'s profile`}
-            onClick={() => void share()}
-          >
-            <Share2 className="size-4" aria-hidden />
-          </button>
-          <Link
-            href={`/creators/${creatorId}/review`}
-            className={cn(buttonVariants({ variant: "outline", size: "default" }), "h-10 gap-2 px-4")}
-            aria-label={`Leave a review for ${creatorName}`}
-          >
-            <Star className="size-4" aria-hidden />
-            Leave Review
-          </Link>
-          <button
-            type="button"
-            className={cn(buttonVariants({ size: "default" }), "h-10 gap-2 px-5")}
-            onClick={() => setChatOpen(true)}
-          >
-            <MessageSquare className="size-4" aria-hidden />
-            Chat
-          </button>
-        </div>
+        <TooltipProvider>
+          <div className={cn("flex flex-wrap items-center justify-end gap-2", className)}>
+            <Tooltip>
+              <TooltipTrigger
+                className={cn(
+                  buttonVariants({ variant: "outline", size: "icon" }),
+                  "size-10",
+                  isSaved && "text-rose-500 border-rose-200 hover:bg-rose-50 bg-rose-50/50"
+                )}
+                aria-label={isSaved ? `Remove ${creatorName} from favorites` : `Save ${creatorName} to favorites`}
+                onClick={toggleSave}
+                disabled={isLoading}
+              >
+                <Heart className={cn("size-4", isSaved && "fill-rose-500")} aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent>{isSaved ? "Remove from favorites" : "Save to favorites"}</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
+                aria-label={`Share ${creatorName}'s profile`}
+                onClick={() => void share()}
+              >
+                <Share2 className="size-4" aria-hidden />
+              </TooltipTrigger>
+              <TooltipContent>Share profile</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Link
+                    href={`/creators/${creatorId}/review`}
+                    className={cn(buttonVariants({ variant: "outline", size: "icon" }), "size-10")}
+                    aria-label={`Leave a review for ${creatorName}`}
+                  >
+                    <Star className="size-4" aria-hidden />
+                  </Link>
+                }
+              />
+              <TooltipContent>Leave a review</TooltipContent>
+            </Tooltip>
+
+            <button
+              type="button"
+              className={cn(buttonVariants({ size: "default" }), "h-10 gap-2 px-5")}
+              onClick={() => setChatOpen(true)}
+            >
+              <MessageSquare className="size-4" aria-hidden />
+              Chat
+            </button>
+          </div>
+        </TooltipProvider>
       ) : null}
 
       <CreatorChatPanel

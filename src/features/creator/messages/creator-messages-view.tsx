@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCheck, ChevronLeft, FileText, Menu, MessageSquare, MoreVertical, Search, Send, Users } from "lucide-react"
+import { CheckCheck, ChevronLeft, FileText, Menu, MessageSquare, MoreVertical, Search, Send, Users, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -377,6 +377,19 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     <TooltipProvider>
       <div className="flex h-full min-h-0 overflow-hidden rounded-2xl border border-border/60 bg-background/50">
         <div className="relative flex h-full min-h-0 w-full overflow-hidden">
+          {/* Mobile Backdrop */}
+          <AnimatePresence>
+            {isSidebarOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsSidebarOpen(false)}
+                className="fixed inset-0 z-40  lg:hidden"
+              />
+            )}
+          </AnimatePresence>
+
           <aside className={cn(
             "flex min-h-0 h-full flex-col border-r border-border/40 bg-muted/5 lg:w-[380px] shrink-0 transition-all",
             "absolute inset-y-0 left-0 z-50 bg-background lg:relative lg:translate-x-0",
@@ -385,6 +398,17 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
               : "translate-x-0 w-full"
           )}>
             <div className="p-6 pb-2">
+              <div className="flex items-center justify-between mb-4 lg:hidden">
+                <h2 className="text-lg font-bold text-foreground/80">Messages</h2>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="size-8 rounded-full" 
+                  onClick={() => setIsSidebarOpen(false)}
+                >
+                  <X className="size-5" />
+                </Button>
+              </div>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input

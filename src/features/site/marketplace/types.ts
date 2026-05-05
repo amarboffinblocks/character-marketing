@@ -4,6 +4,8 @@ export type Creator = {
   email?: string
   handle: string
   tagline: string
+  shortBio: string
+  longBio: string
   languages: string[]
   avatar: string
   coverImage: string
@@ -16,6 +18,7 @@ export type Creator = {
   visibility?: "public" | "private" | "unlisted"
   specialties: string[]
   completedOrders: number
+  faqItems?: { id: string; question: string; answer: string }[]
 }
 
 export type CreatorMarketplaceCategory = {

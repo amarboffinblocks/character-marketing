@@ -51,7 +51,7 @@ export async function GET(_: Request, context: { params: Promise<{ creatorId: st
   const admin = createAdminSupabaseClient()
   const { data: reviews, error } = await admin
     .from("creator_reviews")
-    .select("id,creator_id,reviewer_id,order_id,rating,title,body,status,created_at")
+    .select("id,creator_id,reviewer_id,order_id,rating,title,body,status,created_at,creator_reply,creator_replied_at")
     .eq("creator_id", normalizedCreatorId)
     .eq("status", "published")
     .order("created_at", { ascending: false })
@@ -91,6 +91,8 @@ export async function GET(_: Request, context: { params: Promise<{ creatorId: st
       body: asString(record.body),
       status: asString(record.status) || "published",
       createdAt: asString(record.created_at),
+      creatorReply: asString(record.creator_reply) || undefined,
+      creatorRepliedAt: asString(record.creator_replied_at) || undefined,
       ...summary,
     }
   })

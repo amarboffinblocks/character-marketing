@@ -4,12 +4,21 @@ import { Mail, MessageSquare } from "lucide-react"
 import { Container, SectionHeader } from "@/components/shared"
 import { buttonVariants } from "@/components/ui/button"
 import { FAQAccordion, faqItems } from "@/features/site/faq"
+import { prisma } from "@/lib/prisma"
+
 import { SubHeroSection } from "@/features/site/home"
 import { cn } from "@/lib/utils"
 
 const FAQ_TITLE_ID = "faq-page-heading"
 
-export default function FAQPage() {
+export default async function FAQPage() {
+  const dbFaqs = await prisma.faq.findMany({
+    where: { isAdmin: true },
+    orderBy: { order: "asc" },
+  })
+
+  const displayFaqs = dbFaqs.length > 0 ? dbFaqs : faqItems
+
   return (
     <main className="border-t border-border/40 bg-linear-to-b from-background to-muted/20">
       <SubHeroSection
@@ -33,7 +42,7 @@ export default function FAQPage() {
           />
 
           <div className="mt-10 rounded-2xl border border-border/70 bg-card p-4 sm:p-6">
-            <FAQAccordion items={faqItems} />
+            <FAQAccordion items={displayFaqs} />
           </div>
 
           <div className="mt-10 grid gap-4 rounded-2xl border border-border/70 bg-background p-6 sm:grid-cols-2">
