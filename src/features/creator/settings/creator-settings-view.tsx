@@ -1,106 +1,102 @@
 "use client"
 
-import { useState } from "react"
 import {
-  Bell,
   KeyRound,
   LogOut,
-  Palette,
-  Save,
   Settings as SettingsIcon,
-  ShieldAlert,
-  ShieldCheck,
-  UserRound,
+  // ShieldAlert,
+  // ShieldCheck,
+  // UserRound,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
-import { cn } from "@/lib/utils"
+// import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
+// import { cn } from "@/lib/utils"
 
-type SettingsTab = "account" | "notifications" | "safety" | "appearance" | "security"
+// type SettingsTab = "account" | "notifications" | "safety" | "appearance" | "security"
 
-const settingsTabs: SectionTabItem<SettingsTab>[] = [
-  { value: "account", label: "Account", icon: UserRound },
-  { value: "notifications", label: "Notifications", icon: Bell },
-  { value: "safety", label: "Safety", icon: ShieldCheck },
-  { value: "appearance", label: "Appearance", icon: Palette },
-  { value: "security", label: "Security", icon: ShieldAlert },
-]
+// const settingsTabs: SectionTabItem<SettingsTab>[] = [
+//   { value: "account", label: "Account", icon: UserRound },
+//   { value: "notifications", label: "Notifications", icon: Bell },
+//   { value: "safety", label: "Safety", icon: ShieldCheck },
+//   { value: "appearance", label: "Appearance", icon: Palette },
+//   { value: "security", label: "Security", icon: ShieldAlert },
+// ]
 
-function ToggleRow({
-  label,
-  description,
-  value,
-  onChange,
-}: {
-  label: string
-  description: string
-  value: boolean
-  onChange: (value: boolean) => void
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-border/70 p-3">
-      <div>
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={value}
-        onClick={() => onChange(!value)}
-        className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border transition-colors",
-          value ? "bg-primary" : "bg-muted"
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block size-4 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform",
-            value && "translate-x-4"
-          )}
-        />
-      </button>
-    </div>
-  )
-}
+// function ToggleRow({
+//   label,
+//   description,
+//   value,
+//   onChange,
+// }: {
+//   label: string
+//   description: string
+//   value: boolean
+//   onChange: (value: boolean) => void
+// }) {
+//   return (
+//     <div className="flex items-start justify-between gap-4 rounded-lg border border-border/70 p-3">
+//       <div>
+//         <p className="text-sm font-medium text-foreground">{label}</p>
+//         <p className="text-xs text-muted-foreground">{description}</p>
+//       </div>
+//       <button
+//         type="button"
+//         role="switch"
+//         aria-checked={value}
+//         onClick={() => onChange(!value)}
+//         className={cn(
+//           "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border transition-colors",
+//           value ? "bg-primary" : "bg-muted"
+//         )}
+//       >
+//         <span
+//           className={cn(
+//             "inline-block size-4 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform",
+//             value && "translate-x-4"
+//           )}
+//         />
+//       </button>
+//     </div>
+//   )
+// }
 
 export function CreatorSettingsView() {
-  const [tab, setTab] = useState<SettingsTab>("account")
+  // const [tab, setTab] = useState<SettingsTab>("account")
 
-  const [accountForm, setAccountForm] = useState({
-    fullName: "Flowing Bloom",
-    email: "creator@example.com",
-    timezone: "Asia/Kolkata (GMT+5:30)",
-    language: "English",
-  })
+  // const [accountForm, setAccountForm] = useState({
+  //   fullName: "Flowing Bloom",
+  //   email: "creator@example.com",
+  //   timezone: "Asia/Kolkata (GMT+5:30)",
+  //   language: "English",
+  // })
 
-  const [notifications, setNotifications] = useState({
-    newOrders: true,
-    buyerMessages: true,
-    reviewUpdates: true,
-    payoutAlerts: true,
-    marketing: false,
-    weeklyDigest: true,
-  })
+  // const [notifications, setNotifications] = useState({
+  //   newOrders: true,
+  //   buyerMessages: true,
+  //   reviewUpdates: true,
+  //   payoutAlerts: true,
+  //   marketing: false,
+  //   weeklyDigest: true,
+  // })
 
-  const [safety, setSafety] = useState({
-    defaultSafety: "SFW" as "SFW" | "NSFW",
-    defaultVisibility: "public" as "public" | "private" | "unlisted",
-    allowNsfwOrders: false,
-    requireApprovalBeforePublish: true,
-  })
+  // const [safety, setSafety] = useState({
+  //   defaultSafety: "SFW" as "SFW" | "NSFW",
+  //   defaultVisibility: "public" as "public" | "private" | "unlisted",
+  //   allowNsfwOrders: false,
+  //   requireApprovalBeforePublish: true,
+  // })
 
-  const [appearance, setAppearance] = useState({
-    theme: "system" as "light" | "dark" | "system",
-    density: "comfortable" as "comfortable" | "compact",
-    reduceMotion: false,
-  })
+  // const [appearance, setAppearance] = useState({
+  //   theme: "system" as "light" | "dark" | "system",
+  //   density: "comfortable" as "comfortable" | "compact",
+  //   reduceMotion: false,
+  // })
 
   return (
     <div className="flex flex-col gap-6">
@@ -121,7 +117,7 @@ export function CreatorSettingsView() {
         </div>
       </section>
 
-      <SectionTabs value={tab} onChange={setTab} items={settingsTabs} />
+      {/* <SectionTabs value={tab} onChange={setTab} items={settingsTabs} />
 
       {tab === "account" ? (
         <div className="flex flex-col gap-4">
@@ -392,7 +388,7 @@ export function CreatorSettingsView() {
         </Card>
       ) : null}
 
-      {tab === "security" ? (
+      {tab === "security" ? ( */}
         <div className="flex flex-col gap-4">
           <Card>
             <CardHeader className="border-b pb-4">
@@ -465,7 +461,7 @@ export function CreatorSettingsView() {
             </CardContent>
           </Card>
         </div>
-      ) : null}
-    </div>
+      {/* ) : null} */}
+        </div>
   )
 }
