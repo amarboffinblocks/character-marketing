@@ -13,7 +13,7 @@ export type InboxItem = {
   title: string
   body: string
   isRead: boolean
-  actionUrl: string
+  actionUrl: string | null
   createdAt: string
   counterpartName?: string
   threadId?: string

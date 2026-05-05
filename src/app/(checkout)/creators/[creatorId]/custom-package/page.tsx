@@ -48,8 +48,7 @@ export default async function CustomPackageRequestPage({
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Custom Package Request</h1>
             <p className="text-sm text-muted-foreground">
-              Configure your request with package limits for character assets, personas, lorebook, avatars, and
-              backgrounds.
+              Configure your request details according to the assets included in your selected package.
             </p>
           </div>
         </div>

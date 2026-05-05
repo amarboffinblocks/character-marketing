@@ -118,11 +118,12 @@ export function InboxView({ role }: InboxViewProps) {
               return (
                 <Link
                   key={item.id}
-                  href={item.actionUrl}
+                  href={item.actionUrl ?? "#"}
                   onClick={() => markItemRead(item.id)}
                   className={cn(
                     "block rounded-2xl border bg-card p-4 shadow-sm transition-all hover:-translate-y-px hover:shadow-md",
-                    item.isRead ? "border-border/70" : "border-primary/30 ring-1 ring-primary/15"
+                    item.isRead ? "border-border/70" : "border-primary/30 ring-1 ring-primary/15",
+                    !item.actionUrl && "pointer-events-none"
                   )}
                 >
                   <div className="flex items-start gap-3">
