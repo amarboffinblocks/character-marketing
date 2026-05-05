@@ -367,7 +367,7 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                           <div className="border-t border-border/60 pt-4">
                             <Link
                               href={`/creators/${profileWithReviewStats.id}/purchase-preselect?packageId=${encodeURIComponent(preselectPackage.id)}`}
-                              className={cn(buttonVariants({ size: "lg" }), "w-full")}
+                              className={cn(buttonVariants({ size: "lg" }), "w-full py-5")}
                             >
                               Purchase Pre-Select Package
                             </Link>
@@ -405,117 +405,104 @@ export function CreatorProfileView({ profile, isAuthenticated }: CreatorProfileV
                           return (
                             <motion.div
                               key={pkg.id}
-                              className="rounded-xl h-full"
-                              animate={pkg.isRecommended ? {
-                                boxShadow: [
-                                  "0 0 15px -3px rgba(245, 158, 11, 0.15)",
-                                  "0 0 30px 0px rgba(245, 158, 11, 0.35)",
-                                  "0 0 15px -3px rgba(245, 158, 11, 0.15)"
-                                ]
-                              } : {}}
-                              transition={{
-                                duration: 3,
-                                repeat: Infinity,
-                                ease: "easeInOut"
-                              }}
+                              className="rounded-xl h-full "
                             >
                               <Card
                                 className={cn(
-                                  "relative overflow-hidden border h-full transition-all duration-300",
-                                  pkg.isRecommended
-                                    ? "border-amber-400/60 bg-linear-to-br from-amber-500/5 via-card to-card dark:from-amber-500/10"
-                                    : "border-border/70 bg-card shadow-sm hover:shadow-md"
+                                  "relative flex flex-col border border-border/60 bg-card rounded-[2rem] p-6 shadow-sm transition-all duration-300 hover:shadow-xl h-full",
+                                  pkg.isRecommended && "ring-1 ring-primary/10 bg-linear-to-b from-primary/20 to-white/5"
                                 )}
                               >
                                 {pkg.isRecommended ? (
-                                  <Badge
-                                    className="absolute top-3 right-3 rounded-full px-2 py-0.5 text-[10px] font-semibold bg-amber-500 text-white shadow-[0_0_12px_rgba(245,158,11,0.5)] border border-amber-400/50 hover:bg-amber-500/90"
-                                  >
-                                    Recommended
-                                  </Badge>
+                                  <div className="absolute top-6 right-6">
+                                    <Badge variant="secondary" className="bg-muted/80 text-[10px] font-medium text-foreground px-2 py-0.5 rounded-lg border-none shadow-xs">
+                                      Most popular
+                                    </Badge>
+                                  </div>
                                 ) : null}
-                                <CardHeader className="space-y-3 ">
-                                  <div className="flex flex-col gap-2">
-                                    <CardTitle className="text-2xl font-bold">{pkg.title}</CardTitle>
-                                    <div>
+
+                                <div className="space-y-6">
+                                  <div className="space-y-1.5">
+                                    <h4 className="text-base font-semibold text-foreground">{pkg.title}</h4>
+                                    <div className="flex items-baseline gap-1">
                                       {hasDiscount ? (
-                                        <div className="flex gap-2 ">
-                                          <span className="text-sm text-red-700 font-semibold  line-through">
-                                            {priceFormatter.format(pkg.price)}
-                                          </span>
-                                          <span className="text-3xl font-bold tracking-tight tabular-nums text-foreground">
+                                        <div className="flex items-baseline gap-2">
+                                          <span className="text-4xl font-bold tracking-tight text-foreground">
                                             {priceFormatter.format(pkg.discountedPrice!)}
+                                          </span>
+                                          <span className="text-sm text-muted-foreground line-through">
+                                            {priceFormatter.format(pkg.price)}
                                           </span>
                                         </div>
                                       ) : (
-                                        <div className="flex flex-col">
-                                          <span className="inline-block text-3xl font-bold tracking-tight tabular-nums">
-                                            {priceFormatter.format(pkg.price)}
-                                          </span>
-                                        </div>
+                                        <span className="text-4xl font-bold tracking-tight text-foreground">
+                                          {priceFormatter.format(pkg.price)}
+                                        </span>
                                       )}
+                                      <span className="text-sm text-muted-foreground">per package</span>
                                     </div>
                                   </div>
-                                  <p className="text-sm leading-relaxed text-muted-foreground line-clamp-2 min-h-[3.25em]">
-                                    {pkg.description}
-                                  </p>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
+
                                   <Link
                                     href={purchaseCustomHref}
-                                    className={cn(buttonVariants({ size: "lg" }), "w-full")}
+                                    className={cn(buttonVariants({ size: "lg" }),
+                                      "w-full py-5"
+                                    )}
                                   >
-                                    Purchase Package
+                                    Get started
                                   </Link>
-                                  <div className="space-y-3">
-                                    <p className="text-xs text-muted-foreground">{pkg.tokensLabel} Tokens</p>
-                                    <div className="relative border-t border-border/60 pt-3">
-                                      <span className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-[10px] font-semibold tracking-wider text-muted-foreground">
+
+                                  <div className="pt-6 border-t border-dashed border-border/80">
+                                    <div className="space-y-4">
+                                      <p className="text-[10px] font-bold uppercase tracking-widest text-foreground">
                                         FEATURES
-                                      </span>
-                                      <ul className="space-y-2">
+                                      </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Tailored for {pkg.tokensLabel} projects with:
+                                      </p>
+                                      <ul className="space-y-3.5">
                                         {CUSTOM_PACKAGE_FEATURES.map((feature) => {
                                           const included = isFeatureIncluded(pkg.includedItems, feature.keywords)
+                                          if (!included) return null
                                           const count = getFeatureCount(pkg.includedItems, feature.keywords)
                                           return (
                                             <li
                                               key={feature.label}
-                                              className="flex items-center justify-between gap-3 text-sm"
+                                              className="flex items-start gap-3 text-sm"
                                             >
-                                              <span className="font-medium text-foreground">{feature.label}</span>
-                                              <span className="flex items-center gap-1.5 text-muted-foreground">
-                                                {included ? (
-                                                  <CheckCircle2 className="size-4 text-emerald-600" aria-hidden />
-                                                ) : (
-                                                  <XCircle className="size-4 text-rose-500" aria-hidden />
-                                                )}
-                                                {included
-                                                  ? `${count} item${count === 1 ? "" : "s"} included`
-                                                  : "Not included"}
+                                              <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-50 text-emerald-600">
+                                                <CheckCircle2 className="size-3.5" aria-hidden />
+                                              </span>
+                                              <span className="font-medium text-foreground">
+                                                {count > 0 ? `${count}+ ` : ""}{feature.label}
                                               </span>
                                             </li>
                                           )
                                         })}
                                         {pkg.deliveryDays > 0 ? (
-                                          <li className="flex items-center justify-between gap-3 text-sm">
-                                            <span className="font-medium text-foreground">Delivery</span>
-                                            <span className="text-muted-foreground">
-                                              {pkg.deliveryDays} day{pkg.deliveryDays === 1 ? "" : "s"}
+                                          <li className="flex items-start gap-3 text-sm">
+                                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-50 text-emerald-600">
+                                              <CheckCircle2 className="size-3.5" aria-hidden />
+                                            </span>
+                                            <span className="font-medium text-foreground">
+                                              {pkg.deliveryDays} day delivery
                                             </span>
                                           </li>
                                         ) : null}
                                         {pkg.revisionCount > 0 ? (
-                                          <li className="flex items-center justify-between gap-3 text-sm">
-                                            <span className="font-medium text-foreground">Revisions</span>
-                                            <span className="text-muted-foreground">
-                                              {pkg.revisionCount} revision{pkg.revisionCount === 1 ? "" : "s"}
+                                          <li className="flex items-start gap-3 text-sm">
+                                            <span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border border-emerald-500/20 bg-emerald-50 text-emerald-600">
+                                              <CheckCircle2 className="size-3.5" aria-hidden />
+                                            </span>
+                                            <span className="font-medium text-foreground">
+                                              {pkg.revisionCount} revisions included
                                             </span>
                                           </li>
                                         ) : null}
                                       </ul>
                                     </div>
                                   </div>
-                                </CardContent>
+                                </div>
                               </Card>
                             </motion.div>
                           )
