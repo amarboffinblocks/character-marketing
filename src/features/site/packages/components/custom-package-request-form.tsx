@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useMemo, useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { AlertCircle, CheckCircle2, Pencil, Plus, Trash2 } from "lucide-react"
@@ -8,7 +9,7 @@ import { toast } from "sonner"
 import { z } from "zod"
 
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -206,14 +207,14 @@ function StepIndicator({
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        <ol className="flex flex-wrap gap-2">
           {stepLabels.map((label, index) => {
             const completed = index < currentStepIndex
             const active = index === currentStepIndex
             return (
-              <li key={label} className="flex items-center gap-2 rounded-lg border border-border/60 px-2.5 py-2">
+              <li key={label} className="flex min-w-[120px] flex-1 items-center gap-2 rounded-lg border border-border/60 px-2.5 py-2">
                 <span
-                  className={`inline-flex size-6 items-center justify-center rounded-full text-xs font-semibold ${
+                  className={`inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                     active
                       ? "bg-primary text-primary-foreground"
                       : completed
@@ -224,7 +225,7 @@ function StepIndicator({
                   {completed ? <CheckCircle2 className="size-3.5" aria-hidden /> : index + 1}
                 </span>
                 <span
-                  className={`text-xs font-medium ${
+                  className={`truncate text-xs font-medium ${
                     active ? "text-foreground" : completed ? "text-emerald-700 dark:text-emerald-400" : "text-muted-foreground"
                   }`}
                 >
@@ -359,10 +360,14 @@ export function CustomPackageRequestForm({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState("")
   const [submitSuccess, setSubmitSuccess] = useState(false)
+  const activeSteps = useMemo(() => {
+    return STEPS.filter((step) => limits[step.limitKey] > 0)
+  }, [limits])
+
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const currentStepId = STEPS[currentStepIndex].id
-  const currentStepLabel = STEPS[currentStepIndex].label
-  const currentStepLimit = limits[currentStepId]
+  const currentStepId = activeSteps[currentStepIndex]?.id
+  const currentStepLabel = activeSteps[currentStepIndex]?.label
+  const currentStepLimit = currentStepId ? limits[currentStepId] : 0
 
   const characterArray = useFieldArray({ control, name: "character" })
   const personaArray = useFieldArray({ control, name: "persona" })
@@ -378,7 +383,7 @@ export function CustomPackageRequestForm({
     avatar: null,
   })
 
-  const stepValues = useWatch({ control, name: currentStepId })
+  const stepValues = useWatch({ control, name: currentStepId as any })
   const canAttemptNext =
     currentStepLimit === 0 ? true : (Array.isArray(stepValues) ? stepValues.length : 0) > 0
   const currentStepErrorMessage = getErrorMessage((errors as Record<string, unknown>)[currentStepId])
@@ -640,10 +645,10 @@ export function CustomPackageRequestForm({
   }
 
   const handleNext = async () => {
-    const isStepValid = await trigger(currentStepId, { shouldFocus: true })
+    const isStepValid = await trigger(currentStepId as any, { shouldFocus: true })
     if (isStepValid) {
       setActiveItemIndexByStep((prev) => ({ ...prev, [currentStepId]: null }))
-      setCurrentStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1))
+      setCurrentStepIndex((prev) => Math.min(prev + 1, activeSteps.length - 1))
     } else if (currentStep.array.fields.length > 0) {
       // Open first item editor so user can immediately see/fix validation issues.
       setActiveItemIndexByStep((prev) => ({ ...prev, [currentStepId]: 0 }))
@@ -653,6 +658,17 @@ export function CustomPackageRequestForm({
   const handleBack = () => {
     setActiveItemIndexByStep((prev) => ({ ...prev, [currentStepId]: null }))
     setCurrentStepIndex((prev) => Math.max(prev - 1, 0))
+  }
+
+  if (activeSteps.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 p-12 text-center">
+        <p className="text-sm text-muted-foreground">This package does not have any assets to configure.</p>
+        <Link href={`/creators/${creatorId}`} className={buttonVariants({ variant: "link" })}>
+          Return to profile
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -676,8 +692,8 @@ export function CustomPackageRequestForm({
 
       <StepIndicator
         currentStepIndex={currentStepIndex}
-        totalSteps={STEPS.length}
-        stepLabels={STEPS.map((step) => step.label)}
+        totalSteps={activeSteps.length}
+        stepLabels={activeSteps.map((step) => step.label)}
       />
 
       <div key={currentStepId} className="animate-in fade-in-0 slide-in-from-right-2 duration-300">
@@ -792,7 +808,7 @@ export function CustomPackageRequestForm({
         >
           Back
         </Button>
-        {currentStepIndex === STEPS.length - 1 ? (
+        {currentStepIndex === activeSteps.length - 1 ? (
           <Button type="button" size="lg" onClick={handleSubmit(onFinalSubmit)} disabled={isSubmitting || !canAttemptNext}>
             {isSubmitting ? "Submitting..." : "Submit Request"}
           </Button>
