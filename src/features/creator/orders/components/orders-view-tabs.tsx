@@ -62,13 +62,8 @@ export function OrdersViewTabs({ value, onChange }: OrdersViewTabsProps) {
             className="h-8 gap-2 rounded-lg px-3 text-sm"
           >
             <span>{tab.label}</span>
-            <Badge
-              variant="secondary"
-              className="h-5 min-w-5 justify-center bg-background px-1.5 text-[10px] font-medium data-[active=true]:bg-primary data-[active=true]:text-primary-foreground"
-            >
-              {tab.count}
-            </Badge>
           </TabsTrigger>
+
         ))}
       </TabsList>
     </Tabs>

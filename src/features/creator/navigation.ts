@@ -2,13 +2,6 @@ import type { AppSidebarGroup } from "@/components/layout/app-sidebar"
 
 export const creatorSidebarGroups: AppSidebarGroup[] = [
   {
-    label: "Overview",
-    items: [
-      { title: "Dashboard", href: "/dashboard/creator", icon: "dashboard" },
-      { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
-    ],
-  },
-  {
     label: "Workspace",
     items: [
       { title: "Home", href: "/dashboard/creator/workspace", icon: "services" },
@@ -17,6 +10,13 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
       { title: "Lorebooks", href: "/dashboard/creator/workspace/lorebooks", icon: "reviews" },
       { title: "Avatars", href: "/dashboard/creator/workspace/avatars", icon: "earnings" },
       { title: "Backgrounds", href: "/dashboard/creator/workspace/backgrounds", icon: "earnings" },
+    ],
+  },
+  {
+    label: "Overview",
+    items: [
+      { title: "Dashboard", href: "/dashboard/creator", icon: "dashboard" },
+      { title: "Messages", href: "/dashboard/creator/messages", icon: "messages" },
     ],
   },
   {

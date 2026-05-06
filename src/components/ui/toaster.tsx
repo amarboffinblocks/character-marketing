@@ -11,15 +11,15 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            "border-border bg-card text-card-foreground shadow-lg",
+            "border-border bg-primary text-primary-foreground shadow-lg",
           title: "text-sm font-semibold",
-          description: "text-sm text-muted-foreground",
+          description: "text-sm text-primary-foreground/90",
           actionButton:
-            "bg-primary text-primary-foreground hover:bg-primary/90",
+            "bg-background text-foreground hover:bg-background/90",
           cancelButton:
-            "bg-muted text-muted-foreground hover:bg-muted/80",
+            "bg-primary/50 text-primary-foreground hover:bg-primary/60",
           closeButton:
-            "border-border bg-background text-muted-foreground hover:text-foreground",
+            "border-transparent bg-transparent text-primary-foreground/50 hover:text-primary-foreground",
         },
       }}
     />

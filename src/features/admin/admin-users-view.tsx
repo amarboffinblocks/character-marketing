@@ -66,6 +66,26 @@ function getInitials(name: string) {
   )
 }
 
+function downloadCsv(data: any[], filename: string) {
+  if (data.length === 0) return
+  const headers = Object.keys(data[0]).join(",")
+  const rows = data.map((item) =>
+    Object.values(item)
+      .map((val) => `"${String(val).replace(/"/g, '""')}"`)
+      .join(",")
+  )
+  const csv = [headers, ...rows].join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.setAttribute("href", url)
+  link.setAttribute("download", filename)
+  link.style.visibility = "hidden"
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 export function AdminUsersView({ users }: { users: AdminDirectoryUser[] }) {
   const [search, setSearch] = useState("")
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all")
@@ -153,6 +173,20 @@ export function AdminUsersView({ users }: { users: AdminDirectoryUser[] }) {
     setPendingAction(null)
   }
 
+  function handleExport() {
+    const exportData = filtered.map((u) => ({
+      ID: u.id,
+      Name: u.displayName,
+      Email: u.email,
+      Role: u.role,
+      Status: u.status,
+      Orders: u.ordersCount,
+      Spend: u.lifetimeSpendUsd,
+    }))
+    downloadCsv(exportData, `users_export_${new Date().toISOString().split("T")[0]}.csv`)
+    toast.success("CSV export started.")
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHero
@@ -161,7 +195,11 @@ export function AdminUsersView({ users }: { users: AdminDirectoryUser[] }) {
         title="Users"
         description="Search, filter, preview, and manage platform users."
         actions={
-          <Button variant="outline" className="h-9 border-primary/25 bg-background/80 hover:bg-primary/10">
+          <Button 
+            variant="outline" 
+            className="h-9 border-primary/25 bg-background/80 hover:bg-primary/10"
+            onClick={handleExport}
+          >
             <Download className="size-4" />
             Export CSV
           </Button>

@@ -115,7 +115,7 @@ export function GlobalBidsView() {
   const [bids, setBids] = useState<GlobalBid[]>([])
   const [activeTab, setActiveTab] = useState<(typeof bidTabs)[number]["id"]>("best-matches")
   const [query, setQuery] = useState("")
-  const [sortBy, setSortBy] = useState("relevance")
+  const [sortBy, setSortBy] = useState("latest")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [openingChatBidId, setOpeningChatBidId] = useState<string | null>(null)
@@ -481,11 +481,11 @@ export function GlobalBidsView() {
               <div className="space-y-1.5">
                 <p className="text-sm font-medium text-foreground">Requested Assets</p>
                 <div className="flex flex-wrap gap-2">
-                  {viewingBid.character > 0 && <Badge variant="outline">Character × {viewingBid.character}</Badge>}
-                  {viewingBid.persona > 0 && <Badge variant="outline">Persona × {viewingBid.persona}</Badge>}
-                  {viewingBid.lorebook > 0 && <Badge variant="outline">Lorebook × {viewingBid.lorebook}</Badge>}
-                  {viewingBid.background > 0 && <Badge variant="outline">Background × {viewingBid.background}</Badge>}
-                  {viewingBid.avatar > 0 && <Badge variant="outline">Avatar × {viewingBid.avatar}</Badge>}
+                  {viewingBid.character > 0 && <Badge variant="outline">Character ×{viewingBid.character}</Badge>}
+                  {viewingBid.persona > 0 && <Badge variant="outline">Persona ×{viewingBid.persona}</Badge>}
+                  {viewingBid.lorebook > 0 && <Badge variant="outline">Lorebook ×{viewingBid.lorebook}</Badge>}
+                  {viewingBid.background > 0 && <Badge variant="outline">Background ×{viewingBid.background}</Badge>}
+                  {viewingBid.avatar > 0 && <Badge variant="outline">Avatar ×{viewingBid.avatar}</Badge>}
                 </div>
               </div>
 

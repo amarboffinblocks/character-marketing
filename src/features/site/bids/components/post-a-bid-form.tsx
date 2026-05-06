@@ -19,6 +19,7 @@ export type PostABidFormValues = {
   background: number
   avatar: number
   skillsNeeded: string
+  tags: string
   description: string
   isPriceNegotiable: boolean
   visibility: "open" | "closed"
@@ -35,6 +36,7 @@ const defaultValues: PostABidFormValues = {
   background: 0,
   avatar: 0,
   skillsNeeded: "",
+  tags: "",
   description: "",
   isPriceNegotiable: false,
   visibility: "open",
@@ -63,6 +65,7 @@ export function PostABidForm({
   const [background, setBackground] = useState(initialValues.background)
   const [avatar, setAvatar] = useState(initialValues.avatar)
   const [skillsNeeded, setSkillsNeeded] = useState(initialValues.skillsNeeded)
+  const [tags, setTags] = useState(initialValues.tags ?? "")
   const [description, setDescription] = useState(initialValues.description)
   const [isPriceNegotiable, setIsPriceNegotiable] = useState(initialValues.isPriceNegotiable)
   const [visibility, setVisibility] = useState<"open" | "closed">(initialValues.visibility)
@@ -78,6 +81,7 @@ export function PostABidForm({
     setBackground(initialValues.background)
     setAvatar(initialValues.avatar)
     setSkillsNeeded(initialValues.skillsNeeded)
+    setTags(initialValues.tags ?? "")
     setDescription(initialValues.description)
     setIsPriceNegotiable(initialValues.isPriceNegotiable)
     setVisibility(initialValues.visibility)
@@ -97,6 +101,7 @@ export function PostABidForm({
       background,
       avatar,
       skillsNeeded,
+      tags,
       description,
       isPriceNegotiable,
       visibility,
@@ -192,6 +197,18 @@ export function PostABidForm({
           onChange={(event) => setSkillsNeeded(event.target.value)}
           placeholder="Character design, lore writing, portrait illustration"
           required
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <label htmlFor="tags" className="text-sm font-medium text-foreground">
+          Tags
+        </label>
+        <Input
+          id="tags"
+          value={tags}
+          onChange={(event) => setTags(event.target.value)}
+          placeholder="anime, fantasy, sci-fi, roleplay"
         />
       </div>
 

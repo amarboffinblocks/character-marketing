@@ -304,7 +304,7 @@ export function PostABidView() {
                   <tr key={bid.id} className="border-b border-border/50 last:border-0">
                     <td className="px-4 py-4">
                       <div className="flex items-start gap-2.5">
-                        <span className="inline-flex size-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                        <span className="inline-flex p-2  items-center justify-center rounded-full bg-primary/10 text-primary">
                           <BriefcaseBusiness className="size-4" />
                         </span>
                         <div className="min-w-0">
@@ -326,10 +326,10 @@ export function PostABidView() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-foreground">
-                          {bid.assignedCreator ? "Assigned" : "Open"}
+                        <p className="text-xs font-medium text-muted-foreground">
+                          {bid.assignedCreator ? "Assigned to" : "Open"}
                         </p>
-                        <p className="truncate text-xs text-muted-foreground">
+                        <p className="truncate text-xs textcan -foreground">
                           {bid.assignedCreator?.name ?? "No one assigned"}
                         </p>
                       </div>

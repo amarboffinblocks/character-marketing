@@ -18,8 +18,10 @@ const bidInputSchema = z.object({
   avatar: z.number().int().nonnegative(),
   skillsNeeded: z.string().trim().min(1),
   description: z.string().trim().min(1),
+  tags: z.string().trim().optional().default(""),
   isPriceNegotiable: z.boolean(),
   visibility: z.enum(["open", "closed"]).default("open"),
+  requestPayload: z.record(z.string(), z.unknown()).optional().default({}),
   status: z.enum(["global_bid", "pending", "processing", "completed", "rejected"]).default("global_bid"),
 })
 const assignSchema = z.object({
@@ -56,8 +58,8 @@ export async function GET(_: Request, context: { params: Promise<{ bidId: string
     const result = await client.query(
       `select id, requester_id, title, duration, budget, token_count,
               character_count, persona_count, lorebook_count, background_count, avatar_count,
-              skills_needed, description, is_price_negotiable, status, assigned_creator_id,
-              created_at, updated_at
+              skills_needed, tags, description, is_price_negotiable, status, assigned_creator_id,
+              request_payload, created_at, updated_at
        from public.bid_posts
        where id = $1 and requester_id = $2`,
       [normalizedBidId, user.id]
@@ -97,11 +99,12 @@ export async function PUT(request: Request, context: { params: Promise<{ bidId: 
   try {
     await client.connect()
     const result = await client.query(
-      `update public.bid_posts
-       set title = $1, duration = $2, budget = $3, token_count = $4,
-           character_count = $5, persona_count = $6, lorebook_count = $7, background_count = $8, avatar_count = $9,
-           skills_needed = $10, description = $11, is_price_negotiable = $12, status = $13, updated_at = now()
-       where id = $14 and requester_id = $15
+        `update public.bid_posts
+         set title = $1, duration = $2, budget = $3, token_count = $4,
+             character_count = $5, persona_count = $6, lorebook_count = $7, background_count = $8, avatar_count = $9,
+             skills_needed = $10, tags = $11, description = $12, is_price_negotiable = $13, status = $14,
+             request_payload = $15, updated_at = now()
+         where id = $16 and requester_id = $17
        returning id`,
       [
         payload.title,
@@ -114,9 +117,11 @@ export async function PUT(request: Request, context: { params: Promise<{ bidId: 
         payload.background,
         payload.avatar,
         payload.skillsNeeded,
+        payload.tags,
         payload.description,
         payload.isPriceNegotiable,
         nextStatus,
+        JSON.stringify(payload.requestPayload ?? {}),
         normalizedBidId,
         user.id,
       ]

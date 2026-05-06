@@ -65,18 +65,7 @@ export default async function AdminDashboardLayout({
   const usersCount = usersCountResult.count ?? 0
   const creatorsCount = creatorsCountResult.count ?? 0
 
-  const sidebarGroups = adminSidebarGroups.map((group) => ({
-    ...group,
-    items: group.items.map((item) => {
-      if (item.href === "/dashboard/admin/users") {
-        return { ...item, badge: String(usersCount) }
-      }
-      if (item.href === "/dashboard/admin/creators") {
-        return { ...item, badge: String(creatorsCount) }
-      }
-      return item
-    }),
-  }))
+  const sidebarGroups = adminSidebarGroups
 
   return (
     <SidebarProvider defaultOpen={defaultOpen}>

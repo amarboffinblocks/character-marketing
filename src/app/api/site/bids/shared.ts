@@ -26,10 +26,12 @@ export type BidPostRow = {
   background_count: number
   avatar_count: number
   skills_needed: string
+  tags: string
   description: string
   is_price_negotiable: boolean
   status: BidStatus
   assigned_creator_id: string | null
+  request_payload: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
@@ -99,10 +101,12 @@ export function mapBidRowsToItems(params: {
       background: row.background_count,
       avatar: row.avatar_count,
       skillsNeeded: row.skills_needed,
+      tags: row.tags,
       description: row.description,
       isPriceNegotiable: row.is_price_negotiable,
       visibility: row.status === "global_bid" ? "open" : "closed",
       status: row.status,
+      requestPayload: row.request_payload,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       interestedCount: interested.length,

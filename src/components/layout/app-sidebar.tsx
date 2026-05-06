@@ -70,11 +70,8 @@ type AppSidebarProps = {
     groups?: AppSidebarGroup[]
     workspaceName?: string
     workspaceSubtitle?: string
-    /** Home link for the logo / title (e.g. creator vs admin dashboard). */
     brandHref?: string
-    /** Route used for the "help & support" link in the footer. */
     supportHref?: string
-    /** Show warning badge when profile completion is low. */
     showProfileWarning?: boolean
     userDisplayName?: string
     userEmail?: string
@@ -269,19 +266,14 @@ export function AppSidebar({
                                         const active = item.href === globalActiveHref
 
                                         const isInbox = item.href === "/dashboard/creator/inbox"
-                                        const isOrders = item.href === "/dashboard/creator/orders"
                                         
                                         let resolvedBadge = item.badge
                                         if (isCreatorSidebar) {
                                             if (isInbox && inboxUnreadCount > 0) {
                                                 resolvedBadge = String(inboxUnreadCount)
-                                            } else if (isOrders) {
-                                                const orderUnreadCount = items.filter(i => !i.isRead && i.category === "order").length
-                                                if (orderUnreadCount > 0) {
-                                                    resolvedBadge = String(orderUnreadCount)
-                                                }
                                             }
                                         }
+
 
                                         return (
                                             <SidebarMenuItem key={item.href}>
@@ -298,8 +290,8 @@ export function AppSidebar({
                                                     <SidebarMenuBadge
                                                         className={
                                                             active
-                                                                ? "bg-sidebar-primary/10 text-sidebar-primary"
-                                                                : "bg-sidebar-accent text-sidebar-accent-foreground"
+                                                                ? "bg-amber-500 text-sidebar-primary"
+                                                                : "bg-amber-500 text-sidebar-accent-foreground"
                                                         }
                                                     >
                                                         {resolvedBadge}

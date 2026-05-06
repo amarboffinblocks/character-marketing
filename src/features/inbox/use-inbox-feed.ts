@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 
 import { type InboxItem, type InboxRole, type InboxTab } from "@/features/inbox/types"
 import { createClientSupabaseClient } from "@/lib/supabase/client"
+import { toast } from "sonner"
 
 type InboxNotificationRow = {
   id: string
@@ -79,7 +80,6 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
           event: "INSERT",
           schema: "public",
           table: "inbox_notifications",
-          filter: `user_id=eq.${userId}`,
         },
         (payload: { new: InboxNotificationRow }) => {
           console.log("[Realtime] New notification received:", payload.new)
@@ -96,6 +96,7 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
             createdAt: newItem.created_at,
           }
           setItems((current) => sortByCreatedAtDesc([mappedItem, ...current]))
+          toast(newItem.title, { description: newItem.body })
         }
       )
       .on(
@@ -104,7 +105,6 @@ export function useInboxFeed(role: InboxRole, options?: { enabled?: boolean }) {
           event: "UPDATE",
           schema: "public",
           table: "inbox_notifications",
-          filter: `user_id=eq.${userId}`,
         },
         (payload: { new: InboxNotificationRow }) => {
           console.log("[Realtime] Notification updated:", payload.new)

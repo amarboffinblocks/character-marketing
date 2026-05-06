@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from "react"
 import {
-  Bell,
-  ClipboardList,
-  HelpCircle,
   KeyRound,
-  Plus,
-  Save,
+  Loader2,
+  LogOut,
   Settings as SettingsIcon,
-  Shield,
-  ShieldAlert,
-  SlidersHorizontal,
   Trash2,
+  UserRound,
 } from "lucide-react"
+import { toast } from "sonner"
+import { useRouter } from "next/navigation"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -37,143 +35,107 @@ import {
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
-import { cn } from "@/lib/utils"
-import { faqItems as initialGlobalFaq, type FAQItem } from "@/features/site/faq"
 
 
-type AdminSettingsTab = "operations" | "alerts" | "faq" | "audit"
+type AdminSettingsTab = "account"
 
 const settingsTabs: SectionTabItem<AdminSettingsTab>[] = [
-  { value: "operations", label: "Operations", icon: SlidersHorizontal },
-  { value: "alerts", label: "Alerts & channels", icon: Bell },
-  { value: "faq", label: "Global FAQ", icon: HelpCircle },
-  { value: "audit", label: "Audit log", icon: Shield },
+  { value: "account", label: "Account", icon: UserRound },
 ]
 
-const auditLogDemo = [
-  {
-    id: "aud-9001",
-    actor: "alex.rivera@character.market",
-    action: "toggle_feature_flag",
-    target: "checkout_v2 → 25%",
-    at: "Apr 18, 2026 · 14:22 UTC",
-  },
-  {
-    id: "aud-9000",
-    actor: "ops@character.market",
-    action: "maintenance_banner",
-    target: "enabled · 2h window",
-    at: "Apr 17, 2026 · 22:10 UTC",
-  },
-  {
-    id: "aud-8999",
-    actor: "trust-ops@character.market",
-    action: "export_grant",
-    target: "Trust_flags_weekly · Parquet",
-    at: "Apr 17, 2026 · 09:05 UTC",
-  },
-  {
-    id: "aud-8998",
-    actor: "finance@character.market",
-    action: "payout_batch_release",
-    target: "Batch #88",
-    at: "Apr 16, 2026 · 18:00 UTC",
-  },
-  {
-    id: "aud-8997",
-    actor: "platform@character.market",
-    action: "api_rate_limit",
-    target: "partner acme-widgets · 2×",
-    at: "Apr 16, 2026 · 11:40 UTC",
-  },
-]
 
-function ToggleRow({
-  label,
-  description,
-  value,
-  onChange,
-}: {
-  label: string
-  description: string
-  value: boolean
-  onChange: (value: boolean) => void
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 rounded-lg border border-border/70 p-3">
-      <div>
-        <p className="text-sm font-medium text-foreground">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
-      </div>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={value}
-        onClick={() => onChange(!value)}
-        className={cn(
-          "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border transition-colors",
-          value ? "bg-primary" : "bg-muted"
-        )}
-      >
-        <span
-          className={cn(
-            "inline-block size-4 translate-x-0.5 rounded-full bg-background shadow-sm transition-transform",
-            value && "translate-x-4"
-          )}
-        />
-      </button>
-    </div>
-  )
-}
 
 export function AdminSettingsView() {
-  const [tab, setTab] = useState<AdminSettingsTab>("operations")
-  const [maintenanceMode, setMaintenanceMode] = useState(false)
-  const [require2faStaff, setRequire2faStaff] = useState(true)
-  const [readOnlyMode, setReadOnlyMode] = useState(false)
-  const [emailOnIncident, setEmailOnIncident] = useState(true)
-  const [slackNotify, setSlackNotify] = useState(true)
-  const [defaultReportTz, setDefaultReportTz] = useState("utc")
-  const [maintenanceMessage, setMaintenanceMessage] = useState(
-    "We’re upgrading payments — checkout is paused until 04:00 UTC."
-  )
-  const [globalFaqs, setGlobalFaqs] = useState<FAQItem[]>(initialGlobalFaq)
-  const [isFaqLoading, setIsFaqLoading] = useState(false)
-  const [isFaqSaving, setIsFaqSaving] = useState(false)
+  const router = useRouter()
+  const [tab, setTab] = useState<AdminSettingsTab>("account")
+  const [passwordForm, setPasswordForm] = useState({
+    password: "",
+    confirmPassword: "",
+  })
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  useEffect(() => {
-    async function loadFaqs() {
-      setIsFaqLoading(true)
-      try {
-        const response = await fetch("/api/admin/faq")
-        if (response.ok) {
-          const data = await response.json()
-          if (Array.isArray(data) && data.length > 0) {
-            setGlobalFaqs(data)
-          }
-        }
-      } catch (error) {
-        console.error("Failed to load FAQs:", error)
-      } finally {
-        setIsFaqLoading(false)
-      }
+  async function handleUpdateSecurity() {
+    if (!passwordForm.password) {
+      toast.error("Please enter a new password")
+      return
     }
-    loadFaqs()
-  }, [])
 
-  async function handleSaveFaqs() {
-    setIsFaqSaving(true)
+    if (passwordForm.password !== passwordForm.confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
+
+    setIsLoading(true)
     try {
-      const response = await fetch("/api/admin/faq", {
+      const response = await fetch("/api/auth/update-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ faqs: globalFaqs }),
+        body: JSON.stringify(passwordForm),
       })
-      if (!response.ok) throw new Error("Save failed")
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update password")
+      }
+
+      toast.success("Security settings updated successfully")
+      setPasswordForm({ password: "", confirmPassword: "" })
     } catch (error) {
-      console.error("Failed to save FAQs:", error)
+      toast.error(error instanceof Error ? error.message : "Something went wrong")
     } finally {
-      setIsFaqSaving(false)
+      setIsLoading(false)
+    }
+  }
+
+  async function handleSignOutGlobal() {
+    setIsSigningOut(true)
+    try {
+      const response = await fetch("/api/auth/sign-out?global=true", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to sign out from all devices")
+      }
+
+      toast.success("Signed out from all devices")
+      router.push("/sign-in")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to sign out")
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmation !== "delete my account") {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch("/api/auth/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ confirmation: deleteConfirmation }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete account")
+      }
+
+      toast.success("Account deleted permanently")
+      router.push("/sign-up")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete account")
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -199,368 +161,110 @@ export function AdminSettingsView() {
               </p>
             </div>
           </div>
-          <Button variant="outline" className="h-9 shrink-0 border-primary/25 bg-background/80 hover:bg-primary/10">
-            <Save className="size-4" />
-            Save all
-          </Button>
         </div>
       </section>
 
       <SectionTabs value={tab} onChange={setTab} items={settingsTabs} />
 
-      {tab === "operations" ? (
+
+      {tab === "account" ? (
         <div className="flex flex-col gap-4">
-          <div className="grid gap-4 lg:grid-cols-2">
-            <Card className="border-primary/15 lg:col-span-2">
-              <CardHeader className="border-b border-primary/10 pb-4">
-                <div className="flex items-center gap-2">
-                  <SlidersHorizontal className="size-4 text-primary" />
-                  <CardTitle>Platform switches</CardTitle>
-                </div>
-                <CardDescription>High-impact toggles for buyers and staff.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-6">
-                <ToggleRow
-                  label="Maintenance mode"
-                  description="Show a banner site-wide and block new checkouts."
-                  value={maintenanceMode}
-                  onChange={setMaintenanceMode}
-                />
-                <ToggleRow
-                  label="Require 2FA for staff"
-                  description="Applies to admin, support, and scoped roles."
-                  value={require2faStaff}
-                  onChange={setRequire2faStaff}
-                />
-                <ToggleRow
-                  label="Read-only admin"
-                  description="Freeze config edits during incidents (UI-only demo)."
-                  value={readOnlyMode}
-                  onChange={setReadOnlyMode}
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="text-base">Maintenance copy</CardTitle>
-                <CardDescription>Shown in the banner when maintenance is on.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3 pt-6">
-                <Textarea
-                  value={maintenanceMessage}
-                  onChange={(e) => setMaintenanceMessage(e.target.value)}
-                  className="min-h-[88px] resize-y"
-                />
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="border-b pb-4">
-                <CardTitle className="text-base">Defaults</CardTitle>
-                <CardDescription>Scheduled reports and exports.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-6">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">Report timezone</label>
-                  <Select
-                    value={defaultReportTz}
-                    onValueChange={(v) => setDefaultReportTz(v ?? "utc")}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="utc">UTC</SelectItem>
-                      <SelectItem value="america_la">America/Los_Angeles</SelectItem>
-                      <SelectItem value="europe_london">Europe/London</SelectItem>
-                      <SelectItem value="asia_tokyo">Asia/Tokyo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Separator />
-                <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-muted-foreground">API burst ceiling</label>
-                  <Input defaultValue="1200 rpm" readOnly className="bg-muted/50 font-mono text-sm" />
-                  <p className="text-[11px] text-muted-foreground">Contact platform to change (demo).</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      ) : null}
-
-      {tab === "alerts" ? (
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card className="lg:col-span-2">
-            <CardHeader className="border-b pb-4">
-              <div className="flex items-center gap-2">
-                <Bell className="size-4 text-primary" />
-                <CardTitle>Notification routing</CardTitle>
-              </div>
-              <CardDescription>Where severe incidents and digests go.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-6">
-              <ToggleRow
-                label="Email on SEV-1 incident"
-                description="Pager-style message to ops distribution list."
-                value={emailOnIncident}
-                onChange={setEmailOnIncident}
-              />
-              <ToggleRow
-                label="Slack #admin-ops mirror"
-                description="Post a thread for every SEV and maintenance window."
-                value={slackNotify}
-                onChange={setSlackNotify}
-              />
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader className="border-b pb-4">
-              <CardTitle className="text-base">Email</CardTitle>
-              <CardDescription>Primary on-call inbox.</CardDescription>
+              <CardTitle>Security</CardTitle>
+              <CardDescription>Keep your account secure.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3 pt-6">
+            <CardContent className="grid gap-4 py-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label htmlFor="ops-email" className="text-xs font-medium text-muted-foreground">
-                  Ops email
-                </label>
-                <Input id="ops-email" type="email" defaultValue="ops@character.market" />
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="pager-email" className="text-xs font-medium text-muted-foreground">
-                  Pager CC (optional)
-                </label>
-                <Input id="pager-email" type="email" placeholder="pager@your-telco.com" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="border-b pb-4">
-              <div className="flex items-center gap-2">
-                <KeyRound className="size-4 text-muted-foreground" />
-                <CardTitle className="text-base">Integrations</CardTitle>
-              </div>
-              <CardDescription>Webhook endpoints (masked).</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3 pt-6">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Slack webhook</label>
+                <label className="text-xs font-medium text-muted-foreground">New password</label>
                 <Input
-                  readOnly
-                  className="font-mono text-xs"
-                  defaultValue="https://hooks.slack.com/services/****/****/********"
+                  type="password"
+                  placeholder="••••••••"
+                  value={passwordForm.password}
+                  onChange={(e) => setPasswordForm((prev) => ({ ...prev, password: e.target.value }))}
                 />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">PagerDuty routing key</label>
-                <Input readOnly className="font-mono text-xs" defaultValue="pd_routing_••••••••" />
+                <label className="text-xs font-medium text-muted-foreground">Confirm password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  }
+                />
               </div>
-              <Button variant="outline" size="sm" className="w-full" type="button">
-                Rotate secrets (demo)
+            </CardContent>
+            <CardContent className="flex items-center justify-end border-t py-3">
+              <Button variant="outline" onClick={handleUpdateSecurity} disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <KeyRound className="size-4" />
+                )}
+                Update security
               </Button>
             </CardContent>
           </Card>
-        </div>
-      ) : null}
 
-      {tab === "audit" ? (
-        <div className="flex flex-col gap-4">
-          <Card>
-            <CardHeader className="border-b border-primary/10 pb-4">
-              <div className="flex items-center gap-2">
-                <ClipboardList className="size-4 text-primary" />
-                <CardTitle>Recent config & access events</CardTitle>
-              </div>
-              <CardDescription>Immutable-style log (demo rows).</CardDescription>
+          <Card className="border-destructive/40">
+            <CardHeader className="border-b border-destructive/30 pb-4">
+              <CardTitle className="text-destructive">Danger zone</CardTitle>
+              <CardDescription>These actions are permanent.</CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-primary/5 hover:bg-primary/5">
-                      <TableHead className="font-mono text-xs">ID</TableHead>
-                      <TableHead>Actor</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Target</TableHead>
-                      <TableHead className="text-right">Time</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {auditLogDemo.map((row) => (
-                      <TableRow key={row.id}>
-                        <TableCell className="font-mono text-xs text-muted-foreground">{row.id}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm">{row.actor}</TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="font-normal">
-                            {row.action}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-[220px] truncate text-sm text-muted-foreground">
-                          {row.target}
-                        </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground whitespace-nowrap">
-                          {row.at}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-            </CardContent>
-          </Card>
-
-          <Card className="border-dashed bg-muted/20">
-            <CardContent className="flex flex-col gap-2 py-6 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <ShieldAlert className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <CardContent className="grid gap-3 py-4">
+              <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
                 <div>
-                  <p className="text-sm font-medium text-foreground">Export full audit trail</p>
-                  <p className="text-xs text-muted-foreground">
-                    Production would stream to your SIEM or S3 bucket with signed URLs.
-                  </p>
+                  <p className="text-sm font-medium text-foreground">Sign out from all devices</p>
+                  <p className="text-xs text-muted-foreground">Ends all active sessions immediately.</p>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={handleSignOutGlobal}
+                  disabled={isSigningOut}
+                >
+                  {isSigningOut ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <LogOut className="size-4" />
+                  )}
+                  Sign out everywhere
+                </Button>
+              </div>
+
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                <p className="text-sm font-medium text-destructive">Delete account</p>
+                <p className="text-xs text-muted-foreground">
+                  Permanently remove all assets, orders, and profile data. This action cannot be
+                  undone.
+                </p>
+                <Textarea
+                  placeholder="Type 'delete my account' to confirm"
+                  className="mt-2 min-h-16"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                />
+                <div className="mt-2 flex justify-end">
+                  <Button
+                    variant="destructive"
+                    disabled={deleteConfirmation !== "delete my account" || isDeleting}
+                    onClick={handleDeleteAccount}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
+                    Delete permanently
+                  </Button>
                 </div>
               </div>
-              <Button variant="outline" size="sm" type="button">
-                Request export
-              </Button>
             </CardContent>
           </Card>
         </div>
       ) : null}
-
-      {tab === "faq" ? (
-        <AdminFaqSection
-          faqs={globalFaqs}
-          setFaqs={setGlobalFaqs}
-          onSave={handleSaveFaqs}
-          isLoading={isFaqLoading}
-          isSaving={isFaqSaving}
-        />
-      ) : null}
     </div>
   )
 }
 
-function AdminFaqSection({
-  faqs,
-  setFaqs,
-  onSave,
-  isLoading,
-  isSaving,
-}: {
-  faqs: FAQItem[]
-  setFaqs: (faqs: FAQItem[]) => void
-  onSave: () => void
-  isLoading: boolean
-  isSaving: boolean
-}) {
-  return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-          <div className="space-y-1">
-            <CardTitle>Site-wide FAQ Management</CardTitle>
-            <CardDescription>These questions appear on the main FAQ page and home preview.</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() =>
-                setFaqs([
-                  { question: "", answer: "" },
-                  ...faqs,
-                ])
-              }
-              disabled={isLoading || isSaving}
-            >
-              <Plus className="size-3.5" />
-              Add Global FAQ
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={onSave}
-              disabled={isLoading || isSaving}
-            >
-              <Save className="size-3.5" />
-              {isSaving ? "Saving..." : "Save Changes"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 py-4">
-          {isLoading ? (
-            <div className="py-12 text-center text-sm text-muted-foreground">Loading FAQs...</div>
-          ) : (
-            <div className="space-y-3">
-              {faqs.map((faq, index) => (
-                <div
-                  key={index}
-                  className="group relative rounded-lg border border-border/70 p-4 transition-colors hover:bg-muted/5"
-                >
-                  <div className="flex flex-col gap-3">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-1.5">
-                        <label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                          Question
-                        </label>
-                        <Input
-                          value={faq.question}
-                          onChange={(e) =>
-                            setFaqs(
-                              faqs.map((item, i) =>
-                                i === index ? { ...item, question: e.target.value } : item
-                              )
-                            )
-                          }
-                          placeholder="Site-wide question..."
-                          className="font-medium"
-                          disabled={isSaving}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className="mt-6 opacity-0 transition-opacity group-hover:opacity-100"
-                        onClick={() =>
-                          setFaqs(faqs.filter((_, i) => i !== index))
-                        }
-                        disabled={isSaving}
-                      >
-                        <Trash2 className="size-4 text-destructive" />
-                      </Button>
-                    </div>
-                    <div className="space-y-1.5">
-                      <label className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                        Answer
-                      </label>
-                      <Textarea
-                        value={faq.answer}
-                        onChange={(e) =>
-                          setFaqs(
-                            faqs.map((item, i) =>
-                              i === index ? { ...item, answer: e.target.value } : item
-                            )
-                          )
-                        }
-                        placeholder="Site-wide answer..."
-                        className="min-h-[60px] resize-none"
-                        disabled={isSaving}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  )
-}

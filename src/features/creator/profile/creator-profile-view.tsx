@@ -470,7 +470,7 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
       <section className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <div className="space-y-4 xl:sticky xl:top-6 xl:h-max">
           <ProfilePreviewCard form={form} completionPercent={completion.percent} role={effectiveRole} />
-          {effectiveRole === "creator" && <CompletionChecklist form={form} />}
+          {effectiveRole === "creator" && <CompletionChecklist form={form} role={effectiveRole} />}
         </div>
 
         <div className="space-y-4">
@@ -479,7 +479,7 @@ export function CreatorProfileView({ role = "creator" }: { role?: SignInAllowedR
           )}
 
           {activeTab === "basic" ? (
-            <BasicInfoSection form={form} updateField={updateField} />
+            <BasicInfoSection form={form} updateField={updateField} role={effectiveRole} />
           ) : null}
 
           {activeTab === "professional" ? (
@@ -791,12 +791,14 @@ function ProfilePreviewCard({
               ) : null}
             </div>
 
-            <div className="mt-4 border-t border-border/50 pt-3">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Starting at</p>
-              <p className="text-lg font-bold text-foreground">
-                ${form.startingPrice || 0}
-              </p>
-            </div>
+            {role === "creator" && (
+              <div className="mt-4 border-t border-border/50 pt-3">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Starting at</p>
+                <p className="text-lg font-bold text-foreground">
+                  ${form.startingPrice || 0}
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -818,7 +820,7 @@ function ProfilePreviewCard({
   )
 }
 
-function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
+function CompletionChecklist({ form, role }: { form: CreatorProfileForm; role: string }) {
   const checks = [
     { label: "Display name", done: form.displayName.trim().length > 0 },
     { label: "Tagline", done: form.tagline.trim().length > 10 },
@@ -829,7 +831,7 @@ function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
     { label: "Language", done: form.languages.length >= 1 },
     { label: "3+ portfolio items", done: form.portfolio.length >= 3 },
     { label: "Social link", done: form.socialLinks.length >= 1 },
-    { label: "Basic pricing", done: form.startingPrice > 0 },
+    ...(role === "creator" ? [{ label: "Basic pricing", done: form.startingPrice > 0 }] : []),
     { label: "2+ FAQ items", done: form.faqItems.length >= 2 },
   ]
 
@@ -864,9 +866,11 @@ function CompletionChecklist({ form }: { form: CreatorProfileForm }) {
 function BasicInfoSection({
   form,
   updateField,
+  role = "creator",
 }: {
   form: CreatorProfileForm
   updateField: <Key extends keyof CreatorProfileForm>(key: Key, value: CreatorProfileForm[Key]) => void
+  role?: string
 }) {
   return (
     <Card>
@@ -890,26 +894,28 @@ function BasicInfoSection({
             type="email"
           />
         </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground">Basic pricing (Starting at)</label>
-          <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-            <Input
-              type="number"
-              min="1"
-              value={form.startingPrice || ""}
-              onChange={(event) => {
-                const val = parseInt(event.target.value, 10)
-                updateField("startingPrice", isNaN(val) ? 0 : val)
-              }}
-              className="pl-7"
-              placeholder="25"
-            />
+        {role === "creator" && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Basic pricing (Starting at)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+              <Input
+                type="number"
+                min="1"
+                value={form.startingPrice || ""}
+                onChange={(event) => {
+                  const val = parseInt(event.target.value, 10)
+                  updateField("startingPrice", isNaN(val) ? 0 : val)
+                }}
+                className="pl-7"
+                placeholder="25"
+              />
+            </div>
+            {form.startingPrice <= 0 && (
+              <p className="text-[10px] text-destructive">Price cannot be zero or empty.</p>
+            )}
           </div>
-          {form.startingPrice <= 0 && (
-            <p className="text-[10px] text-destructive">Price cannot be zero or empty.</p>
-          )}
-        </div>
+        )}
         <div className="space-y-1.5 md:col-span-2">
           <label className="text-xs font-medium text-muted-foreground">Tagline</label>
           <Input

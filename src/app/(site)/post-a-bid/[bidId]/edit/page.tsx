@@ -7,6 +7,7 @@ import { MoveLeft } from "lucide-react"
 
 import { buttonVariants } from "@/components/ui/button"
 import { PostABidForm, type PostABidFormValues } from "@/features/site/bids/components/post-a-bid-form"
+import { BidAssetRequestForm } from "@/features/site/bids/components/bid-asset-request-form"
 import type { BidItem } from "@/features/site/bids/types"
 import { cn } from "@/lib/utils"
 
@@ -14,6 +15,7 @@ export default function EditPostABidPage() {
   const router = useRouter()
   const params = useParams<{ bidId: string }>()
   const [bid, setBid] = useState<BidItem | null>(null)
+  const [phase, setPhase] = useState<"details" | "assets">("details")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -40,11 +42,19 @@ export default function EditPostABidPage() {
     }
   }, [params.bidId])
 
-  async function handleSubmit(values: PostABidFormValues) {
+  function handleDetailsNext(values: PostABidFormValues) {
+    setBid({ ...bid, ...values } as BidItem)
+    setPhase("assets")
+    window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  async function handleFinalSubmit(requestPayload: Record<string, unknown>) {
+    if (!bid) return
+
     const response = await fetch(`/api/site/bids/${encodeURIComponent(params.bidId)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
+      body: JSON.stringify({ ...bid, requestPayload }),
     })
     if (!response.ok) return
     router.push("/post-a-bid")
@@ -78,12 +88,58 @@ export default function EditPostABidPage() {
         Back to bids
       </Link>
 
-      <PostABidForm
-        initialValues={bid}
-        submitLabel="Save changes"
-        onCancel={() => router.push("/post-a-bid")}
-        onSubmit={handleSubmit}
-      />
+      {/* Phase indicator */}
+      <div className="flex items-center gap-3">
+        <span
+          className={cn(
+            "inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold",
+            phase === "details"
+              ? "bg-primary text-primary-foreground"
+              : "bg-emerald-600 text-white"
+          )}
+        >
+          {phase === "details" ? "1" : "✓"}
+        </span>
+        <span className={cn("text-sm font-medium", phase === "details" ? "text-foreground" : "text-emerald-700 dark:text-emerald-400")}>
+          Bid Details
+        </span>
+        <div className="h-px flex-1 bg-border" />
+        <span
+          className={cn(
+            "inline-flex size-7 items-center justify-center rounded-full text-xs font-semibold",
+            phase === "assets"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground"
+          )}
+        >
+          2
+        </span>
+        <span className={cn("text-sm font-medium", phase === "assets" ? "text-foreground" : "text-muted-foreground")}>
+          Asset Requirements
+        </span>
+      </div>
+
+      {phase === "details" ? (
+        <PostABidForm
+          initialValues={bid}
+          submitLabel="Next"
+          onCancel={() => router.push("/post-a-bid")}
+          onSubmit={handleDetailsNext}
+        />
+      ) : (
+        <BidAssetRequestForm
+          limits={{
+            character: bid.character,
+            persona: bid.persona,
+            lorebook: bid.lorebook,
+            background: bid.background,
+            avatar: bid.avatar,
+          }}
+          initialData={bid.requestPayload as any}
+          onBack={() => setPhase("details")}
+          onSubmit={handleFinalSubmit}
+        />
+      )}
     </main>
   )
 }

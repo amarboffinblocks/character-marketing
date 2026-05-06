@@ -1,22 +1,22 @@
 "use client"
 
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 import {
   KeyRound,
+  Loader2,
   LogOut,
   Settings as SettingsIcon,
-  // ShieldAlert,
-  // ShieldCheck,
-  // UserRound,
+  Trash2,
 } from "lucide-react"
+import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-// import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
-// import { cn } from "@/lib/utils"
+import { createClientSupabaseClient } from "@/lib/supabase/client"
 
 // type SettingsTab = "account" | "notifications" | "safety" | "appearance" | "security"
 
@@ -67,36 +67,99 @@ import { Textarea } from "@/components/ui/textarea"
 // }
 
 export function CreatorSettingsView() {
-  // const [tab, setTab] = useState<SettingsTab>("account")
+  const router = useRouter()
+  const supabase = createClientSupabaseClient()
 
-  // const [accountForm, setAccountForm] = useState({
-  //   fullName: "Flowing Bloom",
-  //   email: "creator@example.com",
-  //   timezone: "Asia/Kolkata (GMT+5:30)",
-  //   language: "English",
-  // })
+  const [passwordForm, setPasswordForm] = useState({
+    password: "",
+    confirmPassword: "",
+  })
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
-  // const [notifications, setNotifications] = useState({
-  //   newOrders: true,
-  //   buyerMessages: true,
-  //   reviewUpdates: true,
-  //   payoutAlerts: true,
-  //   marketing: false,
-  //   weeklyDigest: true,
-  // })
+  async function handleUpdateSecurity() {
+    if (!passwordForm.password) {
+      toast.error("Please enter a new password")
+      return
+    }
 
-  // const [safety, setSafety] = useState({
-  //   defaultSafety: "SFW" as "SFW" | "NSFW",
-  //   defaultVisibility: "public" as "public" | "private" | "unlisted",
-  //   allowNsfwOrders: false,
-  //   requireApprovalBeforePublish: true,
-  // })
+    if (passwordForm.password !== passwordForm.confirmPassword) {
+      toast.error("Passwords do not match")
+      return
+    }
 
-  // const [appearance, setAppearance] = useState({
-  //   theme: "system" as "light" | "dark" | "system",
-  //   density: "comfortable" as "comfortable" | "compact",
-  //   reduceMotion: false,
-  // })
+    setIsLoading(true)
+    try {
+      const response = await fetch("/api/auth/update-password", {
+        method: "POST",
+        body: JSON.stringify(passwordForm),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update password")
+      }
+
+      toast.success("Security settings updated successfully")
+      setPasswordForm({ password: "", confirmPassword: "" })
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Something went wrong")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function handleSignOutGlobal() {
+    setIsSigningOut(true)
+    try {
+      const response = await fetch("/api/auth/sign-out?global=true", {
+        method: "POST",
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to sign out from all devices")
+      }
+
+      toast.success("Signed out from all devices")
+      router.push("/sign-in")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to sign out")
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
+
+  async function handleDeleteAccount() {
+    if (deleteConfirmation !== "delete my account") {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      const response = await fetch("/api/auth/delete-account", {
+        method: "POST",
+        body: JSON.stringify({ confirmation: deleteConfirmation }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete account")
+      }
+
+      toast.success("Account deleted permanently")
+      router.push("/sign-up")
+      router.refresh()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to delete account")
+    } finally {
+      setIsDeleting(false)
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -393,25 +456,37 @@ export function CreatorSettingsView() {
           <Card>
             <CardHeader className="border-b pb-4">
               <CardTitle>Security</CardTitle>
-              <CardDescription>Keep your creator account secure.</CardDescription>
+              <CardDescription>Keep your account secure.</CardDescription>
             </CardHeader>
             <CardContent className="grid gap-4 py-4 md:grid-cols-2">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">Current password</label>
-                <Input type="password" placeholder="••••••••" />
+                <label className="text-xs font-medium text-muted-foreground">New password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={passwordForm.password}
+                  onChange={(e) => setPasswordForm((prev) => ({ ...prev, password: e.target.value }))}
+                />
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">New password</label>
-                <Input type="password" placeholder="••••••••" />
-              </div>
-              <div className="space-y-1.5 md:col-span-2">
-                <label className="text-xs font-medium text-muted-foreground">Recovery email</label>
-                <Input type="email" placeholder="recovery@example.com" />
+                <label className="text-xs font-medium text-muted-foreground">Confirm password</label>
+                <Input
+                  type="password"
+                  placeholder="••••••••"
+                  value={passwordForm.confirmPassword}
+                  onChange={(e) =>
+                    setPasswordForm((prev) => ({ ...prev, confirmPassword: e.target.value }))
+                  }
+                />
               </div>
             </CardContent>
             <CardContent className="flex items-center justify-end border-t py-3">
-              <Button variant="outline">
-                <KeyRound className="size-4" />
+              <Button variant="outline" onClick={handleUpdateSecurity} disabled={isLoading}>
+                {isLoading ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <KeyRound className="size-4" />
+                )}
                 Update security
               </Button>
             </CardContent>
@@ -428,20 +503,20 @@ export function CreatorSettingsView() {
                   <p className="text-sm font-medium text-foreground">Sign out from all devices</p>
                   <p className="text-xs text-muted-foreground">Ends all active sessions immediately.</p>
                 </div>
-                <Button variant="outline">
-                  <LogOut className="size-4" />
+                <Button
+                  variant="outline"
+                  onClick={handleSignOutGlobal}
+                  disabled={isSigningOut}
+                >
+                  {isSigningOut ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <LogOut className="size-4" />
+                  )}
                   Sign out everywhere
                 </Button>
               </div>
-              <div className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Deactivate creator account</p>
-                  <p className="text-xs text-muted-foreground">
-                    Temporarily hide your storefront while retaining data.
-                  </p>
-                </div>
-                <Button variant="destructive">Deactivate</Button>
-              </div>
+
               <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
                 <p className="text-sm font-medium text-destructive">Delete account</p>
                 <p className="text-xs text-muted-foreground">
@@ -451,9 +526,20 @@ export function CreatorSettingsView() {
                 <Textarea
                   placeholder="Type 'delete my account' to confirm"
                   className="mt-2 min-h-16"
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
                 />
                 <div className="mt-2 flex justify-end">
-                  <Button variant="destructive" disabled>
+                  <Button
+                    variant="destructive"
+                    disabled={deleteConfirmation !== "delete my account" || isDeleting}
+                    onClick={handleDeleteAccount}
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="size-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="size-4" />
+                    )}
                     Delete permanently
                   </Button>
                 </div>

@@ -43,6 +43,26 @@ type PendingCreatorAction = {
   creator: Creator
 } | null
 
+function downloadCsv(data: any[], filename: string) {
+  if (data.length === 0) return
+  const headers = Object.keys(data[0]).join(",")
+  const rows = data.map((item) =>
+    Object.values(item)
+      .map((val) => `"${String(val).replace(/"/g, '""')}"`)
+      .join(",")
+  )
+  const csv = [headers, ...rows].join("\n")
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+  link.setAttribute("href", url)
+  link.setAttribute("download", filename)
+  link.style.visibility = "hidden"
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
 export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
   const [search, setSearch] = useState("")
   const [availability, setAvailability] = useState<AvailabilityFilter>("all")
@@ -122,6 +142,21 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
     setPendingAction(null)
   }
 
+  function handleExport() {
+    const exportData = filtered.map((c) => ({
+      ID: c.id,
+      Name: c.name,
+      Handle: c.handle,
+      Email: c.email || "",
+      StartingPrice: c.startingPrice,
+      Rating: c.rating,
+      CompletedOrders: c.completedOrders,
+      Available: c.isAvailable ? "Yes" : "No",
+    }))
+    downloadCsv(exportData, `creators_export_${new Date().toISOString().split("T")[0]}.csv`)
+    toast.success("CSV export started.")
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHero
@@ -130,7 +165,11 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
         title="Creators"
         description="Marketplace supply — same catalog as the public site. Open a row for full profile + linked user."
         actions={
-          <Button variant="outline" className="h-9 border-primary/25 bg-background/80 hover:bg-primary/10">
+          <Button 
+            variant="outline" 
+            className="h-9 border-primary/25 bg-background/80 hover:bg-primary/10"
+            onClick={handleExport}
+          >
             <Download className="size-4" />
             Export CSV
           </Button>

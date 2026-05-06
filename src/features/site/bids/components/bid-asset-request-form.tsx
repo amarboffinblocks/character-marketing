@@ -17,6 +17,7 @@ type StepId = "character" | "persona" | "lorebook" | "background" | "avatar"
 
 type BidAssetRequestFormProps = {
   limits: AssetLimits
+  initialData?: Record<StepId, Record<string, string>[]>
   onBack: () => void
   onSubmit: (payload: Record<string, unknown>) => void | Promise<void>
 }
@@ -99,10 +100,12 @@ function ItemEditor({ stepId, item, onChange }: { stepId: StepId; item: Record<s
   )
 }
 
-export function BidAssetRequestForm({ limits, onBack, onSubmit }: BidAssetRequestFormProps) {
+export function BidAssetRequestForm({ limits, initialData, onBack, onSubmit }: BidAssetRequestFormProps) {
   const activeSteps = useMemo(() => ALL_STEPS.filter((s) => limits[s.id] > 0), [limits])
   const [stepIdx, setStepIdx] = useState(0)
-  const [data, setData] = useState<Record<StepId, Record<string, string>[]>>({ character: [], persona: [], lorebook: [], background: [], avatar: [] })
+  const [data, setData] = useState<Record<StepId, Record<string, string>[]>>(
+    initialData ?? { character: [], persona: [], lorebook: [], background: [], avatar: [] }
+  )
   const [editIdx, setEditIdx] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -198,7 +201,21 @@ export function BidAssetRequestForm({ limits, onBack, onSubmit }: BidAssetReques
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <CardTitle className="text-base">{step.label} Requests</CardTitle>
-            <Badge variant="secondary">{items.length}/{limit} item{limit === 1 ? "" : "s"}</Badge>
+            <div className="flex items-center gap-2">
+              <span className="text-sm">
+                {items.length}/{limit}
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addItem}
+                disabled={items.length >= limit}
+              >
+                <Plus className="mr-1 size-4" />
+                {items.length === 0 ? `Add ${step.label}` : `Add More`}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -236,11 +253,7 @@ export function BidAssetRequestForm({ limits, onBack, onSubmit }: BidAssetReques
             )
           )}
 
-          <Button type="button" variant="outline" className="w-full" onClick={addItem} disabled={items.length >= limit}>
-            <Plus className="mr-1 size-4" />
-            {items.length === 0 ? `Add ${step.label}` : `Add More ${step.label}`}
-          </Button>
-          {items.length >= limit && <p className="text-center text-xs text-muted-foreground">Maximum limit reached.</p>}
+
         </CardContent>
       </Card>
 

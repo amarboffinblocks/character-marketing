@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import pg from "pg"
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 
 function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
@@ -34,7 +35,7 @@ export async function POST(request: Request, context: { params: Promise<{ bidId:
     await client.connect()
 
     const bidResult = await client.query(
-      `select id
+      `select id, requester_id, title
        from public.bid_posts
        where id = $1
          and regexp_replace(lower(trim(status)), '[^a-z0-9]+', '_', 'g') in ('global_bid', 'pending')
@@ -44,17 +45,30 @@ export async function POST(request: Request, context: { params: Promise<{ bidId:
     if (!bidResult.rows[0]) {
       return NextResponse.json({ error: "Bid not found." }, { status: 404 })
     }
+    const bid = bidResult.rows[0]
 
     await client.query(
       `insert into public.bid_interests (bid_id, creator_id, status, proposed_price, message)
        values ($1, $2, 'interested', $3, $4)
        on conflict (bid_id, creator_id)
        do update set 
-         status = 'interested',
+       status = 'interested',
          proposed_price = excluded.proposed_price,
          message = excluded.message`,
       [normalizedBidId, user.id, proposedPrice, message]
     )
+
+    try {
+      await insertInboxNotification(client, {
+        userId: bid.requester_id,
+        category: "order",
+        title: "New Bid Proposal",
+        body: `A creator has sent a proposal for your bid: "${bid.title}".`,
+        actionUrl: `/post-a-bid`,
+      })
+    } catch (notifyError) {
+      console.error("Failed to create notification:", notifyError)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

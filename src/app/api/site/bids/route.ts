@@ -29,6 +29,7 @@ const bidInputSchema = z.object({
   background: z.number().int().nonnegative(),
   avatar: z.number().int().nonnegative(),
   skillsNeeded: z.string().trim().min(1),
+  tags: z.string().trim().optional().default(""),
   description: z.string().trim().min(1),
   isPriceNegotiable: z.boolean(),
   visibility: z.enum(["open", "closed"]).default("open"),
@@ -56,7 +57,7 @@ export async function GET() {
     const bidsResult = await client.query(
       `select id, requester_id, title, duration, budget, token_count,
               character_count, persona_count, lorebook_count, background_count, avatar_count,
-              skills_needed, description, is_price_negotiable, status, assigned_creator_id,
+              skills_needed, tags, description, is_price_negotiable, status, assigned_creator_id,
               created_at, updated_at
        from public.bid_posts
        where requester_id = $1
@@ -127,9 +128,9 @@ export async function POST(request: Request) {
     const result = await client.query(
       `insert into public.bid_posts
        (requester_id, title, duration, budget, token_count, character_count, persona_count, lorebook_count, background_count, avatar_count,
-        skills_needed, description, is_price_negotiable, status, request_payload)
+        skills_needed, tags, description, is_price_negotiable, status, request_payload)
        values
-       ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        returning id`,
       [
         user.id,
@@ -143,6 +144,7 @@ export async function POST(request: Request) {
         payload.background,
         payload.avatar,
         payload.skillsNeeded,
+        payload.tags,
         payload.description,
         payload.isPriceNegotiable,
         nextStatus,

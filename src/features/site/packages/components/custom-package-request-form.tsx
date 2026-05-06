@@ -701,9 +701,22 @@ export function CustomPackageRequestForm({
           <CardHeader className="space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base">{currentStep.title}</CardTitle>
-              <Badge variant="secondary">
-                {currentStep.array.fields.length}/{currentStepLimit} item{currentStepLimit === 1 ? "" : "s"}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <span>
+                  {currentStep.array.fields.length}/{currentStepLimit}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddItem}
+                  disabled={currentStep.array.fields.length >= currentStepLimit}
+                >
+                  <Plus className="mr-1 size-4" />
+                  {currentStep.array.fields.length === 0 ? `Add ${currentStepLabel}` : `Add More`}
+                </Button>
+                
+              </div>
             </div>
             {currentStepErrorMessage ? (
               <p className="inline-flex items-center gap-1 text-xs text-destructive">
@@ -777,23 +790,7 @@ export function CustomPackageRequestForm({
               </div>
             ) : null}
 
-            <div className=" pt-2">
-              <div className="flex flex-col items-center gap-2 ">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddItem}
-                  disabled={currentStep.array.fields.length >= currentStepLimit}
-                  className={"w-full"}
-                >
-                  <Plus className="mr-1 size-4" />
-                  {currentStep.array.fields.length === 0 ? `Add ${currentStepLabel}` : `Add More ${currentStepLabel}`}
-                </Button>
-                {currentStep.array.fields.length >= currentStepLimit ? (
-                  <p className="text-xs text-muted-foreground">Maximum limit reached for this package.</p>
-                ) : null}
-              </div>
-            </div>
+
           </CardContent>
         </Card>
       </div>

@@ -6,6 +6,7 @@ import {
   Boxes,
   ChevronDown,
   ClipboardList,
+  HelpCircle,
   LayoutGrid,
   LogOut,
   Menu,
@@ -150,6 +151,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
             </DropdownMenu>
             <Link href="/messages" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Messages</Link>
             <Link href="/faq" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">FAQ</Link>
+            <Link href="/support" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Help</Link>
           </nav>
         ) : null}
 
@@ -191,6 +193,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
                     ) : null}
                   </DropdownMenuItem>
                   <DropdownMenuItem render={<Link href="/settings" className="cursor-pointer" />}><Settings className="size-4" />Settings</DropdownMenuItem>
+                  <DropdownMenuItem render={<Link href="/support" className="cursor-pointer" />}><HelpCircle className="size-4" />Help</DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem variant="destructive" onClick={handleSignOut} disabled={isSigningOut}>
                     <LogOut className="size-4" />
@@ -233,6 +236,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
               ))}
               <Link href="/messages" className="mt-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>Messages</Link>
               <Link href="/faq" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>FAQ</Link>
+              <Link href="/support" className="rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground" onClick={closeMenu}>Help</Link>
             </nav>
             <div className="mt-4 flex flex-col gap-1 border-t border-border/60 pt-4">
               <p className="px-3 text-xs font-medium text-muted-foreground">Account</p>
