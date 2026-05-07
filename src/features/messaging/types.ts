@@ -15,6 +15,7 @@ export type MessageThread = {
   unreadCount: number
   lastMessageAt: string
   lastMessageText: string
+  isCounterpartAdmin?: boolean
 }
 
 export type MessageItem = {

@@ -82,7 +82,7 @@ const orderStatusLabel: Record<OrderStatus, string> = {
   funded: "Work in progress",
   in_progress: "Work in progress",
   on_hold: "On hold",
-  delivered: "Review pending",
+  delivered: "Delivered",
   approved: "Draft approved",
   completed: "Completed",
   cancelled: "Cancelled",
@@ -118,7 +118,7 @@ const paymentStatusLabel: Record<PaymentStatus, string> = {
 
 function buyerFacingOrderStatusLabel(order: BuyerOrderRow): string {
   if (order.status === "delivered" && order.payment_status === "pending") {
-    return "Review pending"
+    return "Delivered"
   }
   if (order.status === "approved") {
     return "Draft approved"

@@ -355,8 +355,8 @@ export function CharacterCreateFormView() {
         <Link
           href="/dashboard/creator/workspace/characters"
           className={cn(
-            buttonVariants({ variant: "ghost", size: "sm" }),
-            "h-7 w-fit px-2 text-muted-foreground absolute top-2 left-2 z-20"
+            buttonVariants({ variant: "secondary", size: "sm" }),
+            "h-7 w-fit px-4 text-muted-foreground absolute top-4 left-4 z-20"
           )}
         >
           <ArrowLeft className="size-3.5" />

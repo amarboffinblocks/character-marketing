@@ -150,6 +150,12 @@ export function OrderDetailsHeader({
               </Button>
             )
           )}
+          {readOnly && messageHref && (
+            <Button variant="outline" className="h-9" render={<Link href={messageHref} />}>
+              <MessageSquare className="size-4" />
+              {messageLabel}
+            </Button>
+          )}
         </div>
       </div>
     </section>
@@ -628,14 +634,14 @@ export function OrderQuickSidebar({ order, readOnly = false }: { order: CreatorO
         {readOnly ? (
           <>
             <Link
-              href={`/dashboard/admin/messages?userId=${order.buyerId}&order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
+              href={`/dashboard/admin/messages?target=${order.buyerId}&order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
               className={cn(buttonVariants(), "h-9 justify-start")}
             >
               <MessageSquare className="size-4" />
               Chat with buyer
             </Link>
             <Link
-              href={`/dashboard/admin/messages?userId=${order.creatorId}&order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
+              href={`/dashboard/admin/messages?target=${order.creatorId}&order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
               className={cn(buttonVariants({ variant: "outline" }), "h-9 justify-start")}
             >
               <MessageSquare className="size-4" />
@@ -645,7 +651,7 @@ export function OrderQuickSidebar({ order, readOnly = false }: { order: CreatorO
               variant="secondary"
               className="h-9 justify-start"
               onClick={() => setShowReleaseDialog(true)}
-              disabled={isReleasing || (order.status !== "completed" && order.status !== "delivered") || order.paymentStatus !== "pending"}
+              disabled={isReleasing || (order.status !== "completed" && order.status !== "delivered" && order.status !== "approved") || order.paymentStatus !== "pending"}
             >
               <CreditCard className="size-4" />
               {isReleasing ? "Releasing..." : "Pay to creator"}
@@ -684,11 +690,11 @@ export function OrderQuickSidebar({ order, readOnly = false }: { order: CreatorO
               <>
                 <p className="flex items-center gap-1.5">
                   <span className="size-1 rounded-full bg-primary" />
-                  Buyer: {order.buyerId.slice(0, 8)}
+                  Buyer: {order.buyerId?.slice(0, 8)}
                 </p>
                 <p className="flex items-center gap-1.5">
                   <span className="size-1 rounded-full bg-accent" />
-                  Creator: {order.creatorId.slice(0, 8)}
+                  Creator: {order.creatorId?.slice(0, 8)}
                 </p>
               </>
             )}

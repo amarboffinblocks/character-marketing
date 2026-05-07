@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   BookOpen,
   Image as ImageIcon,
@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 
 import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
-import type { InventoryCategory } from "@/features/site/inventory/inventory-data"
+import type { InventoryCategory, InventoryListEntry } from "@/features/site/inventory/inventory-data"
 import { getInventoryListFiltered } from "@/features/site/inventory/inventory-data"
 import { InventoryAssetCard } from "@/features/site/inventory/components/inventory-asset-card"
 
@@ -29,8 +29,33 @@ const inventoryTabs: SectionTabItem<InventoryTab>[] = [
 
 export function InventoryView() {
   const [tab, setTab] = useState<InventoryTab>("all")
+  const [items, setItems] = useState<InventoryListEntry[]>([])
+  const [isLoading, setIsLoading] = useState(true)
 
-  const items = useMemo(() => getInventoryListFiltered(tab), [tab])
+  useEffect(() => {
+    async function fetchInventory() {
+      try {
+        const response = await fetch("/api/site/inventory")
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+        const json = await response.json()
+        if (Array.isArray(json.inventory)) {
+          setItems(json.inventory)
+        }
+      } catch (error) {
+        console.error("Failed to fetch inventory:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchInventory()
+  }, [])
+
+  const filteredItems = useMemo(() => {
+    if (tab === "all") return items
+    return items.filter((item) => item.category === tab)
+  }, [items, tab])
 
   return (
     <div className="flex flex-col gap-6">
@@ -56,16 +81,22 @@ export function InventoryView() {
       <div className="space-y-4">
         <SectionTabs value={tab} onChange={setTab} items={inventoryTabs} />
 
-        {items.length === 0 ? (
+        {isLoading ? (
+          <div className="grid list-none gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-64 animate-pulse rounded-2xl bg-muted/50" />
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 px-4 py-12 text-center">
             <p className="text-sm font-medium text-foreground">Nothing in this tab yet</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Purchases will appear here after you order from creators.
+              Purchased assets will appear here after orders are delivered.
             </p>
           </div>
         ) : (
           <ul className="grid list-none gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {items.map((item) => (
+            {filteredItems.map((item) => (
               <InventoryAssetCard key={`${item.category}-${item.id}`} item={item} />
             ))}
           </ul>

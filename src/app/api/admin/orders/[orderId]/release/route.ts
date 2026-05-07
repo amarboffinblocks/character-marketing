@@ -43,7 +43,9 @@ export async function POST(_: Request, context: { params: Promise<{ orderId: str
   }
 
   if (
-    (orderRecord.status !== "completed" && orderRecord.status !== "delivered") ||
+    (orderRecord.status !== "completed" && 
+     orderRecord.status !== "delivered" && 
+     orderRecord.status !== "approved") ||
     orderRecord.payment_status !== "pending"
   ) {
     return NextResponse.json(

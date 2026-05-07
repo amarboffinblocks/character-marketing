@@ -67,11 +67,13 @@ export function ConfirmationDialog({
           </div>
         </DialogHeader>
         <DialogFooter className="mt-8 flex flex-col gap-2 border-t pt-6 sm:flex-row sm:justify-center">
-          <DialogClose asChild>
-            <Button variant="ghost" className="h-10 px-6 font-medium" disabled={isLoading}>
-              {cancelText}
-            </Button>
-          </DialogClose>
+          <DialogClose
+            render={
+              <Button variant="ghost" className="h-10 px-6 font-medium" disabled={isLoading}>
+                {cancelText}
+              </Button>
+            }
+          />
           <Button
             variant={variant === "destructive" ? "destructive" : "default"}
             className={cn(

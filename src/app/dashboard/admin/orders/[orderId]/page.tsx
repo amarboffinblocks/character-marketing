@@ -22,8 +22,6 @@ export default async function AdminOrderDetailsPage({ params }: AdminOrderDetail
     <OrderDetailsView
       order={order}
       readOnly
-      messageHref={`/dashboard/admin/messages?order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
-      messageLabel="Open messages"
     />
   )
 }

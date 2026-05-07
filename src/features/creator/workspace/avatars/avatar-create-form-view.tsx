@@ -251,8 +251,8 @@ export function AvatarCreateFormView() {
           <Link
             href="/dashboard/creator/workspace/avatars"
             className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "absolute left-2 top-2 z-20 h-7 w-fit px-2 text-muted-foreground"
+              buttonVariants({ variant: "secondary", size: "sm" }),
+            "h-7 w-fit px-4 text-muted-foreground absolute top-4 left-4 z-20"
             )}
           >
             <ArrowLeft className="size-3.5" />

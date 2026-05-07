@@ -1,3 +1,4 @@
+import { LoaderCircle } from "lucide-react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -40,12 +41,18 @@ const buttonVariants = cva(
   }
 )
 
+interface ButtonProps extends ButtonPrimitive.Props, VariantProps<typeof buttonVariants> {
+  isLoading?: boolean
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  isLoading = false,
+  children,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
   const hasCustomRender = "render" in props && Boolean(props.render)
 
   return (
@@ -53,8 +60,18 @@ function Button({
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       nativeButton={hasCustomRender ? false : props.nativeButton}
+      disabled={isLoading || props.disabled}
       {...props}
-    />
+    >
+      {isLoading ? (
+        <span className="flex items-center gap-2">
+          <LoaderCircle className="size-4 animate-spin" />
+          {children}
+        </span>
+      ) : (
+        children
+      )}
+    </ButtonPrimitive>
   )
 }
 

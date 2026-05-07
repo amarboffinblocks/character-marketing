@@ -13,6 +13,7 @@ export const creatorOrders: CreatorOrder[] = [
     status: "new",
     priority: "high",
     needsResponse: true,
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-3017",
@@ -25,6 +26,7 @@ export const creatorOrders: CreatorOrder[] = [
     updatedAtTime: "2026-04-16T10:00:00.000Z",
     status: "in_progress",
     priority: "medium",
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-3008",
@@ -38,6 +40,7 @@ export const creatorOrders: CreatorOrder[] = [
     status: "waiting_on_buyer",
     priority: "high",
     needsResponse: true,
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-2999",
@@ -50,6 +53,7 @@ export const creatorOrders: CreatorOrder[] = [
     updatedAtTime: "2026-04-17T12:00:00.000Z",
     status: "delivered",
     priority: "low",
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-2985",
@@ -62,6 +66,7 @@ export const creatorOrders: CreatorOrder[] = [
     updatedAtTime: "2026-04-16T17:00:00.000Z",
     status: "completed",
     priority: "medium",
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-2979",
@@ -74,6 +79,7 @@ export const creatorOrders: CreatorOrder[] = [
     updatedAtTime: "2026-04-16T13:00:00.000Z",
     status: "in_progress",
     priority: "medium",
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-2971",
@@ -87,6 +93,7 @@ export const creatorOrders: CreatorOrder[] = [
     status: "waiting_on_buyer",
     priority: "high",
     needsResponse: true,
+    creatorName: "Luna Pixel",
   },
   {
     id: "ORD-2965",
@@ -99,6 +106,7 @@ export const creatorOrders: CreatorOrder[] = [
     updatedAtTime: "2026-04-15T15:30:00.000Z",
     status: "completed",
     priority: "low",
+    creatorName: "Luna Pixel",
   },
 ]
 

@@ -68,9 +68,9 @@ export async function POST(_: Request, context: { params: Promise<{ requestId: s
       await insertInboxNotification(notificationClient, {
         userId: order.buyer_id,
         category: "order",
-        title: "Final delivery received",
-        body: `Order #${order.id.slice(0, 8)} has been delivered to your inventory.`,
-        actionUrl: "/orders",
+        title: "Assets added to inventory",
+        body: `Great news! The assets for Order #${order.id.slice(0, 8)} have been officially added to your inventory. You can now access and use them throughout the platform.`,
+        actionUrl: "/inventory",
       })
       await insertInboxNotification(notificationClient, {
         userId: user.id,

@@ -295,6 +295,21 @@ export async function replaceOrderDeliverables(input: {
       validatedAssets.push(await validateCreatorOwnsAsset(client, input.creatorId, asset))
     }
 
+    // Clean up any previously cloned assets for this order before replacing them
+    // This prevents orphaned records if a creator re-delivers multiple times
+    const oldClones = await client.query(
+      `select asset_type, cloned_asset_id from public.order_deliverables where order_id = $1 and cloned_asset_id is not null`,
+      [order.id]
+    )
+    for (const row of oldClones.rows) {
+      const table = row.asset_type === 'character' ? 'inventory_characters' : 
+                    row.asset_type === 'persona' ? 'inventory_personas' : 
+                    row.asset_type === 'lorebook' ? 'inventory_lorebooks' : 
+                    row.asset_type === 'avatar' ? 'inventory_avatars' : 
+                    'inventory_backgrounds'
+      await client.query(`delete from public.${table} where id = $1`, [row.cloned_asset_id])
+    }
+
     await client.query(`delete from public.order_deliverables where order_id = $1`, [order.id])
 
     for (const asset of validatedAssets) {
@@ -323,6 +338,18 @@ export async function replaceOrderDeliverables(input: {
     )
 
     await client.query("commit")
+
+    // After committing the deliverables, we clone them immediately to ensure isolation.
+    // This way, if the creator edits their original asset, the buyer's delivered version remains unchanged.
+    try {
+      await cloneOrderAssetsToBuyer({
+        orderId: order.id,
+        buyerId: order.buyer_id,
+      })
+    } catch (cloneError) {
+      console.error("Delayed cloning error (non-blocking):", cloneError)
+      // We don't fail the whole delivery if cloning fails, but we log it.
+    }
 
     return {
       orderId: order.id,
@@ -454,7 +481,7 @@ export async function cloneOrderAssetsToBuyer(input: {
     await client.query("begin")
 
     const deliverablesResult = await client.query(
-      `select asset_type, asset_id from public.order_deliverables where order_id = $1`,
+      `select asset_type, asset_id from public.order_deliverables where order_id = $1 and cloned_asset_id is null`,
       [input.orderId]
     )
 
@@ -467,74 +494,124 @@ export async function cloneOrderAssetsToBuyer(input: {
       if (!isAssetType(assetType) || !assetId) continue
 
       if (assetType === "character") {
-        await client.query(
-          `insert into public.characters (
-             creator_id, owner_id, character_name, avatar_url, background_url,
+        const cloneResult = await client.query(
+          `insert into public.inventory_characters (
+             original_id, owner_id, creator_id, character_name, avatar_url, background_url,
              visibility, safety, tags, description, scenario, personality_summary,
              first_message, alternative_messages, example_dialogue, author_notes,
              character_notes, status
            )
            select 
-             $2, $2, character_name, avatar_url, background_url,
+             id, $2, creator_id, character_name, avatar_url, background_url,
              visibility, safety, tags, description, scenario, personality_summary,
              first_message, alternative_messages, example_dialogue, author_notes,
              character_notes, status
            from public.characters
-           where id = $1`,
+           where id = $1
+           returning id`,
           [assetId, input.buyerId]
         )
+        const newId = cloneResult.rows[0]?.id
+        if (newId) {
+          await client.query(
+            `update public.order_deliverables 
+             set cloned_asset_id = $1 
+             where order_id = $2 and asset_id = $3 and asset_type = 'character'`,
+            [newId, input.orderId, assetId]
+          )
+        }
       } else if (assetType === "persona") {
-        await client.query(
-          `insert into public.personas (
-             creator_id, persona_name, persona_details, avatar_url,
+        const cloneResult = await client.query(
+          `insert into public.inventory_personas (
+             original_id, owner_id, creator_id, persona_name, persona_details, avatar_url,
              tags, safety, visibility
            )
            select 
-             $2, persona_name, persona_details, avatar_url,
+             id, $2, creator_id, persona_name, persona_details, avatar_url,
              tags, safety, visibility
            from public.personas
-           where id = $1`,
+           where id = $1
+           returning id`,
           [assetId, input.buyerId]
         )
+        const newId = cloneResult.rows[0]?.id
+        if (newId) {
+          await client.query(
+            `update public.order_deliverables 
+             set cloned_asset_id = $1 
+             where order_id = $2 and asset_id = $3 and asset_type = 'persona'`,
+            [newId, input.orderId, assetId]
+          )
+        }
       } else if (assetType === "lorebook") {
-        await client.query(
-          `insert into public.lorebooks (
-             creator_id, lorebook_name, description, avatar_url,
+        const cloneResult = await client.query(
+          `insert into public.inventory_lorebooks (
+             original_id, owner_id, creator_id, lorebook_name, description, avatar_url,
              tags, safety, visibility, entries
            )
            select 
-             $2, lorebook_name, description, avatar_url,
+             id, $2, creator_id, lorebook_name, description, avatar_url,
              tags, safety, visibility, entries
            from public.lorebooks
-           where id = $1`,
+           where id = $1
+           returning id`,
           [assetId, input.buyerId]
         )
+        const newId = cloneResult.rows[0]?.id
+        if (newId) {
+          await client.query(
+            `update public.order_deliverables 
+             set cloned_asset_id = $1 
+             where order_id = $2 and asset_id = $3 and asset_type = 'lorebook'`,
+            [newId, input.orderId, assetId]
+          )
+        }
       } else if (assetType === "avatar") {
-        await client.query(
-          `insert into public.avatars (
-             creator_id, avatar_name, image_url, tags, safety,
+        const cloneResult = await client.query(
+          `insert into public.inventory_avatars (
+             original_id, owner_id, creator_id, avatar_name, image_url, tags, safety,
              visibility, style, notes
            )
            select 
-             $2, avatar_name, image_url, tags, safety,
+             id, $2, creator_id, avatar_name, image_url, tags, safety,
              visibility, style, notes
            from public.avatars
-           where id = $1`,
+           where id = $1
+           returning id`,
           [assetId, input.buyerId]
         )
+        const newId = cloneResult.rows[0]?.id
+        if (newId) {
+          await client.query(
+            `update public.order_deliverables 
+             set cloned_asset_id = $1 
+             where order_id = $2 and asset_id = $3 and asset_type = 'avatar'`,
+            [newId, input.orderId, assetId]
+          )
+        }
       } else if (assetType === "background") {
-        await client.query(
-          `insert into public.backgrounds (
-             creator_id, background_name, image_url, tags, safety,
+        const cloneResult = await client.query(
+          `insert into public.inventory_backgrounds (
+             original_id, owner_id, creator_id, background_name, image_url, tags, safety,
              visibility, type, notes
            )
            select 
-             $2, background_name, image_url, tags, safety,
+             id, $2, creator_id, background_name, image_url, tags, safety,
              visibility, type, notes
            from public.backgrounds
-           where id = $1`,
+           where id = $1
+           returning id`,
           [assetId, input.buyerId]
         )
+        const newId = cloneResult.rows[0]?.id
+        if (newId) {
+          await client.query(
+            `update public.order_deliverables 
+             set cloned_asset_id = $1 
+             where order_id = $2 and asset_id = $3 and asset_type = 'background'`,
+            [newId, input.orderId, assetId]
+          )
+        }
       }
     }
 

@@ -178,7 +178,9 @@ export function AdminOrdersView({ initialOrders }: { initialOrders: CreatorOrder
       <ConfirmationDialog
         open={!!orderToRelease}
         onOpenChange={(open) => !open && setOrderToRelease(null)}
-        onConfirm={() => orderToRelease && handleRelease(orderToRelease)}
+        onConfirm={() => {
+          if (orderToRelease) return handleRelease(orderToRelease)
+        }}
         isLoading={!!releasingOrderId}
         title="Release Payout?"
         description={`Confirm payout release for ${orderToRelease?.packageName}? This will transfer funds from escrow to the creator.`}

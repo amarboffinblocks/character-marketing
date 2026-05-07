@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Eye, LoaderCircle, ShieldCheck } from "lucide-react"
+import { Eye, LoaderCircle, ShieldCheck, Star } from "lucide-react"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,6 +20,7 @@ type DeliverableSummary = {
   assetType: "character" | "persona" | "lorebook" | "avatar" | "background"
   assetId: string
   title: string
+  creatorId?: string
 }
 
 const assetTypeLabel = {
@@ -167,7 +168,11 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
           paymentStatus?: string
         }
         if (r.ok) {
-          setDeliverables(Array.isArray(j.deliverables) ? j.deliverables : [])
+          setDeliverables(
+            Array.isArray(j.deliverables) 
+              ? j.deliverables.map(d => ({ ...d, creatorId: d.creatorId || "" })) 
+              : []
+          )
           setDeliveryNote(j.deliveryNote ?? "")
           setOrderStatus(typeof j.orderStatus === "string" ? j.orderStatus : "")
           setPaymentStatus(typeof j.paymentStatus === "string" ? j.paymentStatus : "")
@@ -280,20 +285,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
                 <div className="space-y-3 rounded-xl border border-border/70 bg-background p-3">
                   <p className="text-xs font-semibold text-foreground">Your decision</p>
                   
-                  {orderStatus === "delivered" && paymentStatus === "paid" ? (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                        Order is complete and assets have been transferred to your inventory!
-                      </p>
-                      <Button
-                        type="button"
-                        className="inline-flex w-full items-center justify-center gap-2"
-                        onClick={() => window.alert("Review form to be implemented.")}
-                      >
-                        <span>Leave a review</span>
-                      </Button>
-                    </div>
-                  ) : canApproveFromPreview && orderStatus === "delivered" ? (
+                  {canApproveFromPreview && orderStatus === "delivered" ? (
                     <Button
                       type="button"
                       className="inline-flex w-full items-center justify-center gap-2"
@@ -304,9 +296,31 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
                       <span>Approve Draft</span>
                     </Button>
                   ) : orderStatus === "approved" ? (
-                    <p className="text-xs text-emerald-600 font-medium">
-                      You have approved the draft. Waiting for the creator to perform final delivery to your inventory.
-                    </p>
+                    <div className="space-y-3">
+                      <p className="text-xs text-emerald-600 font-medium">
+                        You have approved the draft. Waiting for the creator to perform final delivery to your inventory.
+                      </p>
+                      <Link 
+                        href={`/creators/${deliverables[0]?.creatorId}/review`}
+                        className={cn(buttonVariants({ variant: "outline" }), "w-full gap-2")}
+                      >
+                        <Star className="size-4" />
+                        <span>Leave a review</span>
+                      </Link>
+                    </div>
+                  ) : orderStatus === ("completed" as string) || (orderStatus === "delivered" && paymentStatus === "paid") ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        Order is complete and assets have been transferred to your inventory!
+                      </p>
+                      <Link 
+                        href={`/creators/${deliverables[0]?.creatorId}/review`}
+                        className={cn(buttonVariants({ variant: "default" }), "w-full gap-2")}
+                      >
+                        <Star className="size-4" />
+                        <span>Leave a review</span>
+                      </Link>
+                    </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
                       Approval is available when a delivery is pending review.

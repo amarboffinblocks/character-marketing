@@ -62,16 +62,27 @@ export function PreviewSecurityShield({ watermark }: { watermark: string }) {
 
   return (
     <>
+      <style jsx global>{`
+        @media print {
+          body {
+            display: none !important;
+          }
+        }
+        .no-select {
+          user-select: none !important;
+          -webkit-user-select: none !important;
+        }
+      `}</style>
       {/* Watermark overlay */}
       <div
         aria-hidden
-        className="pointer-events-none fixed inset-0 z-40 select-none overflow-hidden opacity-[0.06]"
+        className="pointer-events-none fixed inset-0 z-40 select-none overflow-hidden opacity-[0.14]"
       >
-        <div className="absolute inset-0 [background-image:radial-gradient(circle_at_center,currentColor_1px,transparent_1px)] [background-size:28px_28px] text-foreground/30" />
-        <div className="absolute inset-0 flex flex-wrap content-start items-start gap-16 p-8 text-xs font-semibold uppercase tracking-[0.35em] text-foreground/50">
-          {Array.from({ length: 24 }).map((_, index) => (
-            <span key={`${watermark}-${index}`} className="rotate-[-24deg]">
-              Protected Preview · {watermark}
+        <div className="absolute inset-0 [background-image:radial-gradient(circle_at_center,currentColor_1px,transparent_1px)] [background-size:20px_20px] text-foreground/40" />
+        <div className="absolute inset-0 flex flex-wrap content-start items-start gap-12 p-4 text-[10px] font-bold uppercase tracking-[0.5em] text-foreground/60">
+          {Array.from({ length: 64 }).map((_, index) => (
+            <span key={`${watermark}-${index}`} className="rotate-[-32deg] whitespace-nowrap">
+              STRICTLY CONFIDENTIAL · PROTECTED PREVIEW · {watermark} · INTERNAL USE ONLY
             </span>
           ))}
         </div>

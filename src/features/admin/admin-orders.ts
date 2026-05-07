@@ -51,7 +51,8 @@ function creatorDisplayName(profileData: unknown) {
 
 function mapStatus(input: CreatorOrderRow["status"]): CreatorOrder["status"] {
   if (input === "in_progress") return "in_progress"
-  if (input === "on_hold" || input === "approved") return "waiting_on_buyer"
+  if (input === "on_hold") return "waiting_on_buyer"
+  if (input === "approved") return "approved"
   if (input === "delivered" || input === "reviewing") return "delivered"
   if (input === "completed") return "completed"
   if (input === "cancelled") return "cancelled"
@@ -69,6 +70,8 @@ function mapPriority(input: CreatorOrderRow["status"], paymentStatus: CreatorOrd
 function toCreatorOrder(row: CreatorOrderRow): CreatorOrder {
   const createdAt = asDate(row.created_at)
   const updatedAt = asDate(row.updated_at)
+  
+  // If completed but payment pending, it's essentially delivered and awaiting admin release
   const status = row.status === "completed" && row.payment_status === "pending" ? "delivered" : mapStatus(row.status)
   const dueAt =
     status === "completed"

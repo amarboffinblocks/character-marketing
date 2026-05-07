@@ -1,28 +1,63 @@
-import { notFound } from "next/navigation"
+"use client"
+
+import { useEffect, useState } from "react"
+import { notFound, useParams } from "next/navigation"
+import { LoaderCircle } from "lucide-react"
 
 import {
-  getInventoryDetail,
-  getInventoryStaticParams,
   InventoryDetailView,
   isInventoryCategory,
+  type InventoryDetail,
 } from "@/features/site/inventory"
 
-type PageProps = {
-  params: Promise<{ category: string; id: string }>
-}
+export default function InventoryDetailPage() {
+  const params = useParams()
+  const category = typeof params.category === "string" ? params.category : ""
+  const id = typeof params.id === "string" ? params.id : ""
 
-export function generateStaticParams() {
-  return getInventoryStaticParams()
-}
+  const [detail, setDetail] = useState<InventoryDetail | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-export default async function InventoryDetailPage({ params }: PageProps) {
-  const { category: categoryParam, id } = await params
-  if (!isInventoryCategory(categoryParam)) {
+  useEffect(() => {
+    if (!isInventoryCategory(category) || !id) return
+
+    async function fetchDetail() {
+      try {
+        const response = await fetch(`/api/site/inventory?category=${category}&id=${id}`)
+        if (!response.ok) {
+          throw new Error(`Error: ${response.status}`)
+        }
+        const json = await response.json()
+        if (json.detail) {
+          setDetail(json.detail)
+        } else {
+          setError(true)
+        }
+      } catch (err) {
+        console.error("Failed to fetch inventory detail:", err)
+        setError(true)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchDetail()
+  }, [category, id])
+
+  if (!isInventoryCategory(category)) {
     notFound()
   }
 
-  const detail = getInventoryDetail(categoryParam, id)
-  if (!detail) {
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center pt-24">
+        <LoaderCircle className="size-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  if (error || !detail) {
     notFound()
   }
 

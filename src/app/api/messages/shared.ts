@@ -84,8 +84,13 @@ export function mapThreadRow(
   lastMessageText: string
 ): MessageThread {
   const isCreator = row.creator_id === currentUserId
-  const counterpartName = isCreator ? row.buyer_name || "Buyer" : row.creator_name || "Creator"
-  const counterpartAvatarUrl = isCreator ? row.buyer_avatar_url || "" : row.creator_avatar_url || ""
+  let counterpartName = isCreator ? row.buyer_name || "Buyer" : row.creator_name || "Creator"
+  let counterpartAvatarUrl = isCreator ? row.buyer_avatar_url || "" : row.creator_avatar_url || ""
+  
+  if (counterpartName === "Admin") {
+    counterpartName = "Character Market"
+    counterpartAvatarUrl = "/market_logo.svg"
+  }
   return {
     id: row.id,
     orderId: row.order_id,
@@ -99,6 +104,7 @@ export function mapThreadRow(
     unreadCount,
     lastMessageAt: row.last_message_at,
     lastMessageText,
+    isCounterpartAdmin: counterpartName === "Admin" || counterpartName === "Character Market",
   }
 }
 
@@ -294,7 +300,9 @@ export async function buildThreadsForAdmin(adminUserId: string, orderId?: string
     }
   }
 
-  return threads.map((thread) => {
+  return threads
+    .filter((thread) => thread.creator_id === adminUserId || thread.buyer_id === adminUserId)
+    .map((thread) => {
     const isCreator = thread.creator_id === adminUserId
     const isBuyer = thread.buyer_id === adminUserId
     

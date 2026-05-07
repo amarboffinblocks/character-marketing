@@ -60,8 +60,11 @@ export async function POST(request: Request) {
     }
 
     if (adminRole) {
-      const adminSupabase = createAdminSupabaseClient()
       const targetId = otherUserId
+      if (!targetId) {
+        return NextResponse.json({ error: "targetId (otherUserId) is required for admin to start a private chat." }, { status: 400 })
+      }
+      const adminSupabase = createAdminSupabaseClient()
       
       let creatorId = creatorIdFromBody
       let buyerId = buyerIdFromBody
@@ -92,21 +95,30 @@ export async function POST(request: Request) {
       let finalBuyerName = "Buyer"
 
       if (targetId) {
-        if (targetId === creatorId) {
+        const { data: targetProfile } = await adminSupabase
+          .from("profiles")
+          .select("profile_data")
+          .eq("id", targetId)
+          .maybeSingle()
+        
+        const profileData = (targetProfile?.profile_data as any) || {}
+        const realName = 
+          profileData.creator?.displayName || 
+          profileData.user?.displayName || 
+          profileData.displayName || 
+          profileData.name || 
+          "User"
+
+        if (targetId) {
           finalCreatorId = user.id
-          finalBuyerId = creatorId
-          finalCreatorName = "Admin"
-          finalBuyerName = "Creator"
-        } else if (targetId === buyerId) {
-          finalCreatorId = user.id
-          finalBuyerId = buyerId
-          finalCreatorName = "Admin"
-          finalBuyerName = "Buyer"
+          finalBuyerId = targetId
+          finalCreatorName = "Character Market"
+          finalBuyerName = realName
         }
       }
 
       const [creatorAvatarUrl, buyerAvatarUrl] = await Promise.all([
-        resolveAvatarUrlByUserId(adminSupabase, finalCreatorId),
+        finalCreatorName === "Character Market" ? "/market_logo.svg" : resolveAvatarUrlByUserId(adminSupabase, finalCreatorId),
         resolveAvatarUrlByUserId(adminSupabase, finalBuyerId),
       ])
 

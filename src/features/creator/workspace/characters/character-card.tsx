@@ -24,7 +24,7 @@ function initialsFromName(name: string) {
 
 export function CharacterCard({ character, onEdit, onShare, onDelete }: CharacterCardProps) {
   return (
-    <li className="group rounded-xl border border-border/70 bg-card p-3 text-card-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-border hover:bg-accent/20">
+    <li className="group flex flex-col rounded-xl border border-border/70 bg-card p-3 text-card-foreground shadow-sm transition-all hover:-translate-y-0.5 hover:border-border hover:bg-accent/20">
       <div className="flex items-start gap-3">
         {character.avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -54,7 +54,7 @@ export function CharacterCard({ character, onEdit, onShare, onDelete }: Characte
 
 
 
-      <div className="mt-5 flex items-center justify-between text-[11px] text-muted-foreground">
+      <div className="mt-auto pt-5 flex items-center justify-between text-[11px] text-muted-foreground">
         {/* <span className="inline-flex items-center gap-1">
           <Eye className="size-3" />
           {formatUsageCount(character.usageCount)}

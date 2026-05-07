@@ -38,6 +38,7 @@ export function OrdersDataTable({ orders, context = "creator" }: OrdersDataTable
           <TableHead>Customer</TableHead>
           {isAdmin && <TableHead>Creator</TableHead>}
           <TableHead>Status</TableHead>
+          {isAdmin && <TableHead>Payment</TableHead>}
           <TableHead>Priority</TableHead>
           {!isAdmin && <TableHead>Due date</TableHead>}
           <TableHead>Last updated</TableHead>
@@ -80,6 +81,25 @@ export function OrdersDataTable({ orders, context = "creator" }: OrdersDataTable
               <TableCell>
                 <OrderStatusBadge status={order.status} />
               </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  {(order.status === "delivered" || order.status === "approved" || order.status === "completed") ? (
+                    <Badge 
+                      variant="secondary" 
+                      className={cn(
+                        "font-medium", 
+                        order.paymentStatus === "paid" 
+                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" 
+                          : "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                      )}
+                    >
+                      {order.paymentStatus === "paid" ? "Paid" : "Unpaid"}
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">---</span>
+                  )}
+                </TableCell>
+              )}
               <TableCell>
                 <span className="inline-flex items-center gap-1.5">
                   <Flag className={cn("size-3.5", getOrderPriorityClass(order.priority))} />

@@ -7,8 +7,8 @@ import type {
 export const orderStatusLabelMap: Record<CreatorOrderStatus, string> = {
   new: "New",
   in_progress: "In progress",
-  delivered: "Delivered (Reviewing)",
-  approved: "Approved (Pending Final)",
+  delivered: "Delivered",
+  approved: "Delivered",
   completed: "Completed",
   cancelled: "Cancelled",
   refunded: "Refunded",

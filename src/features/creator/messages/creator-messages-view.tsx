@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCheck, FileText, Menu, MessageSquare, MoreVertical, Search, Send, X } from "lucide-react"
+import { BadgeCheck, CheckCheck, FileText, Menu, MessageSquare, MoreVertical, Search, Send, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -61,6 +61,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   const [threads, setThreads] = useState<MessageThread[]>([])
   const [activeThreadId, setActiveThreadId] = useState("")
+  const [userId, setUserId] = useState("")
   const [messages, setMessages] = useState<MessageItem[]>([])
   const [search, setSearch] = useState("")
   const [composer, setComposer] = useState("")
@@ -82,6 +83,14 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const typingChannelRef = useRef<TypingChannel | null>(null)
   const activeThreadIdRef = useRef("")
   const currentUserSenderRoleRef = useRef<"creator" | "buyer" | "admin">(currentUserSenderRole)
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      if (data?.user) setUserId(data.user.id)
+    }
+    fetchUser()
+  }, [supabase])
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -106,23 +115,40 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     try {
       let items = await fetchMessageThreads({ orderId: orderParam || undefined })
 
-      if (viewerRole === "admin" && orderParam && items.length === 0) {
-        const thread = await openOrCreateThread({ 
-          orderId: orderParam,
-          otherUserId: targetParam || undefined
-        })
-        items = [thread]
+      if (viewerRole === "admin" && orderParam && targetParam) {
+        const hasSpecificThread = items.some(
+          (item) =>
+            (item.creatorId === userId && item.buyerId === targetParam) ||
+            (item.buyerId === userId && item.creatorId === targetParam)
+        )
+        if (!hasSpecificThread) {
+          try {
+            const thread = await openOrCreateThread({ 
+              orderId: orderParam,
+              otherUserId: targetParam
+            })
+            items = [thread, ...items]
+          } catch (e) {
+            console.error("Failed to open/create admin private thread:", e)
+          }
+        }
       }
 
       if (seq !== threadsLoadSeqRef.current) return
       setThreads(items)
       if (threadParam && items.some((item) => item.id === threadParam)) {
         setActiveThreadId(threadParam)
-      } else if (targetParam && items.some(item => item.buyerId === targetParam || item.creatorId === targetParam)) {
-        // Prioritize the thread where the target is one of the participants.
-        // For admin private chats, the other participant will be the admin.
-        const targetThread = items.find(item => item.buyerId === targetParam || item.creatorId === targetParam)
-        setActiveThreadId(targetThread?.id ?? items[0]?.id ?? "")
+      } else if (targetParam) {
+        // Prioritize the private thread where the admin is chatting directly with the target
+        const privateThread = items.find(
+          (item) =>
+            (item.creatorId === userId && item.buyerId === targetParam) ||
+            (item.buyerId === userId && item.creatorId === targetParam)
+        )
+        const anyMatchingThread = items.find(
+          (item) => item.buyerId === targetParam || item.creatorId === targetParam
+        )
+        setActiveThreadId(privateThread?.id ?? anyMatchingThread?.id ?? items[0]?.id ?? "")
       } else if (!items.some((item) => item.id === activeThreadId)) {
         setActiveThreadId(items[0]?.id ?? "")
       }
@@ -133,7 +159,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     } finally {
       if (!silent && seq === threadsLoadSeqRef.current) setIsLoadingThreads(false)
     }
-  }, [activeThreadId, orderParam, threadParam, viewerRole])
+  }, [activeThreadId, orderParam, targetParam, threadParam, userId, viewerRole])
 
   const loadMessages = useCallback(async (threadId: string, silent = false) => {
     if (!threadId) return
@@ -155,8 +181,9 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   }, [])
 
   useEffect(() => {
+    if (targetParam && !userId) return
     void loadThreads()
-  }, [loadThreads])
+  }, [loadThreads, userId, targetParam])
 
   useEffect(() => {
     if (!activeThreadId) return
@@ -485,19 +512,34 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                       )}
                     >
                       <div className="relative shrink-0">
-                        <Avatar className="size-12 shadow-md">
-                          <AvatarImage src={thread.counterpartAvatarUrl || undefined} />
-                          <AvatarFallback className="bg-primary/10 font-bold text-primary">
-                            {thread.counterpartName[0]}
-                          </AvatarFallback>
-                        </Avatar>
+                        {thread.isCounterpartAdmin ? (
+                          <div className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-white/50 p-1.5 shadow-md ring-1 ring-border/40">
+                            <img 
+                              src={thread.counterpartAvatarUrl || ""} 
+                              alt="" 
+                              className="size-full object-contain" 
+                            />
+                          </div>
+                        ) : (
+                          <Avatar className="size-12 shadow-md">
+                            <AvatarImage src={thread.counterpartAvatarUrl || undefined} />
+                            <AvatarFallback className="bg-primary/10 font-bold text-primary">
+                              {thread.counterpartName[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                        )}
                         {thread.status === "needs_response" ? (
                           <span className="absolute -bottom-1 -right-1 size-3.5 rounded-full border-2 border-background " />
                         ) : null}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="truncate font-semibold text-foreground/70">{thread.counterpartName}</span>
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="truncate font-semibold text-foreground/70">{thread.counterpartName}</span>
+                            {thread.isCounterpartAdmin && (
+                              <BadgeCheck className="size-3.5 fill-blue-500 text-white" />
+                            )}
+                          </div>
                           <span className="whitespace-nowrap text-[11px] text-muted-foreground">
                             {formatMessageDateTime(thread.lastMessageAt)}
                           </span>
@@ -543,23 +585,38 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                     </Button>
 
                     <div className="relative">
-                      <Avatar className="size-12 shadow-sm">
-                        <AvatarImage src={activeThread.counterpartAvatarUrl || undefined} />
-                        <AvatarFallback>{activeThread.counterpartName[0]}</AvatarFallback>
-                      </Avatar>
+                      {activeThread.isCounterpartAdmin ? (
+                        <div className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-white/50 p-1.5 shadow-sm ring-1 ring-border/40">
+                          <img 
+                            src={activeThread.counterpartAvatarUrl || ""} 
+                            alt="" 
+                            className="size-full object-contain" 
+                          />
+                        </div>
+                      ) : (
+                        <Avatar className="size-12 shadow-sm">
+                          <AvatarImage src={activeThread.counterpartAvatarUrl || undefined} />
+                          <AvatarFallback>{activeThread.counterpartName[0]}</AvatarFallback>
+                        </Avatar>
+                      )}
                       <span className="absolute bottom-0 right-0 size-3 rounded-full border-2 border-background bg-green-500" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-bold leading-none text-foreground/80">{activeThread.counterpartName}</h2>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-bold leading-none text-foreground/80">{activeThread.counterpartName}</h2>
+                        {activeThread.isCounterpartAdmin && (
+                          <BadgeCheck className="size-4.5 fill-blue-500 text-white" />
+                        )}
+                      </div>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
-                          {viewerRole === "admin" 
-                            ? (activeThread.creatorId !== activeThread.buyerId && (activeThread.creatorName === "Admin" || activeThread.buyerName === "Admin")
-                                ? `Private chat with ${activeThread.counterpartName}`
-                                : "Order oversight (Group)")
-                            : viewerRole === "creator" 
-                              ? "Buyer conversation" 
-                              : "Creator conversation"}
+                          {activeThread.isCounterpartAdmin 
+                            ? "Admin conversation"
+                            : viewerRole === "admin" 
+                              ? `Private chat with ${activeThread.counterpartName}`
+                              : viewerRole === "creator" 
+                                ? "Buyer conversation" 
+                                : "Creator conversation"}
                         </span>
                       </div>
                       {isCounterpartTyping ? (
