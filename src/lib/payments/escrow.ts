@@ -1,5 +1,6 @@
 import pg from "pg"
 
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 import { getStripeClient } from "@/lib/payments/stripe"
 
 export type EscrowPaymentStatus = "unpaid" | "pending" | "paid" | "failed" | "refunded"
@@ -81,6 +82,25 @@ export function buildTransferGroup(orderId: string) {
   return `order_${orderId}`
 }
 
+async function notifyCreatorOrderFunded(
+  client: pg.Client,
+  input: {
+    orderId: string
+    creatorId: string
+    packageTitle: string
+  }
+) {
+  const orderLabel = normalizeText(input.packageTitle) || `order #${input.orderId.slice(0, 8)}`
+
+  await insertInboxNotification(client, {
+    userId: input.creatorId,
+    category: "payment",
+    title: "Order funded",
+    body: `The buyer paid for ${orderLabel}. You can start work now.`,
+    actionUrl: "/dashboard/creator/orders",
+  })
+}
+
 export async function createStripeCheckoutSessionForOrder(input: {
   order: OrderCheckoutRow
   buyerEmail?: string | null
@@ -141,6 +161,7 @@ export async function syncOrderEscrowAfterCheckoutReturn(input: { orderId: strin
          id,
          buyer_id,
          creator_id,
+         package_title,
          package_price,
          status,
          payment_status,
@@ -156,6 +177,7 @@ export async function syncOrderEscrowAfterCheckoutReturn(input: { orderId: strin
           id: string
           buyer_id: string
           creator_id: string
+          package_title: string
           package_price: number
           status: string
           payment_status: EscrowPaymentStatus
@@ -274,6 +296,12 @@ export async function syncOrderEscrowAfterCheckoutReturn(input: { orderId: strin
       )
     }
 
+    await notifyCreatorOrderFunded(client, {
+      orderId: order.id,
+      creatorId: order.creator_id,
+      packageTitle: order.package_title,
+    })
+
     await client.query("commit")
     return { updated: true }
   } catch (error) {
@@ -286,13 +314,20 @@ export async function syncOrderEscrowAfterCheckoutReturn(input: { orderId: strin
 
 export async function releaseCreatorOrderEscrow(input: {
   orderId: string
-  creatorId: string
+  creatorId?: string
+  finalOrderStatus?: "approved" | "completed" | "delivered"
 }) {
   const stripe = getStripeClient()
   const client = getPaymentsDbClient()
 
   try {
     await client.connect()
+    const params = [input.orderId]
+    const creatorConstraint = input.creatorId ? " and o.creator_id = $2" : ""
+    if (input.creatorId) {
+      params.push(input.creatorId)
+    }
+
     const orderResult = await client.query(
       `select
          o.id,
@@ -309,9 +344,9 @@ export async function releaseCreatorOrderEscrow(input: {
          p.profile_data as creator_profile_data
        from public.orders o
        left join public.profiles p on p.id = o.creator_id
-       where o.id = $1 and o.creator_id = $2
+       where o.id = $1${creatorConstraint}
        limit 1`,
-      [input.orderId, input.creatorId]
+      params
     )
 
     const order = orderResult.rows[0] as ReleaseOrderRow | undefined
@@ -323,7 +358,7 @@ export async function releaseCreatorOrderEscrow(input: {
       return {
         id: order.id,
         paymentStatus: "paid" as EscrowPaymentStatus,
-        status: "approved",
+        status: normalizeText(order.status) || input.finalOrderStatus || "completed",
         transferId: order.stripe_transfer_id,
       }
     }
@@ -361,17 +396,19 @@ export async function releaseCreatorOrderEscrow(input: {
       transferId = transfer.id
     }
 
+    const finalOrderStatus = input.finalOrderStatus ?? "completed"
+
     await client.query("begin")
     await client.query(
       `update public.orders
        set
-         status = 'approved',
+         status = $3,
          payment_status = 'paid',
          stripe_transfer_id = $2,
          payout_released_at = now(),
          updated_at = now()
        where id = $1`,
-      [order.id, transferId]
+      [order.id, transferId, finalOrderStatus]
     )
 
     await client.query(
@@ -420,7 +457,7 @@ export async function releaseCreatorOrderEscrow(input: {
     return {
       id: order.id,
       paymentStatus: "paid" as EscrowPaymentStatus,
-      status: "approved",
+      status: finalOrderStatus,
       transferId: transferId,
     }
   } catch (error) {

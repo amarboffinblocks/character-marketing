@@ -6,13 +6,33 @@ import type {
 } from "@/features/messaging/types"
 
 async function asJson<T>(response: Response): Promise<T> {
-  const json = (await response.json()) as T & { error?: string, details?: any, hint?: any, code?: string }
+  const text = await response.text()
+  let json: any = {}
+  try {
+    json = JSON.parse(text)
+  } catch (e) {
+    if (!response.ok) {
+      console.error("API REQUEST FAILED (Non-JSON):", {
+        status: response.status,
+        statusText: response.statusText,
+        text,
+      })
+      throw new Error(`Request failed with status ${response.status}: ${response.statusText}`)
+    }
+    // If it was OK but not JSON, we might have a problem depending on T
+    return text as unknown as T
+  }
+
   if (!response.ok) {
-    console.error("API REQUEST FAILED:", json)
+    console.error("API REQUEST FAILED:", {
+      status: response.status,
+      statusText: response.statusText,
+      json,
+    })
     const message = typeof json.error === "string" ? json.error : "Request failed."
     throw new Error(message)
   }
-  return json
+  return json as T
 }
 
 export async function fetchMessageThreads(params?: { orderId?: string }): Promise<MessageThread[]> {
@@ -26,8 +46,10 @@ export async function fetchMessageThreads(params?: { orderId?: string }): Promis
 
 export async function openOrCreateThread(payload: {
   orderId: string
-  otherUserId: string
+  otherUserId?: string
   otherUserName?: string
+  creatorId?: string
+  buyerId?: string
 }): Promise<MessageThread> {
   const response = await fetch("/api/messages/threads", {
     method: "POST",

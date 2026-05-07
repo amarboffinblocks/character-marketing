@@ -1,8 +1,6 @@
-import Link from "next/link"
 import { Flag } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { OrderRowActions } from "@/features/creator/orders/components/order-row-actions"
 import { OrderStatusBadge } from "@/features/creator/orders/components/order-status-badge"
@@ -16,9 +14,10 @@ import {
 
 type OrdersMobileListProps = {
   orders: CreatorOrder[]
+  context?: "creator" | "admin"
 }
 
-export function OrdersMobileList({ orders }: OrdersMobileListProps) {
+export function OrdersMobileList({ orders, context = "creator" }: OrdersMobileListProps) {
   return (
     <ul className="divide-y divide-border md:hidden">
       {orders.map((order) => {
@@ -63,14 +62,8 @@ export function OrdersMobileList({ orders }: OrdersMobileListProps) {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Link
-                href={`/dashboard/creator/orders/${order.id.toLowerCase()}`}
-                className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 flex-1")}
-              >
-                View Order
-              </Link>
-              <OrderRowActions order={order} />
+            <div className="flex items-center justify-end gap-2">
+              <OrderRowActions order={order} context={context} />
             </div>
           </li>
         )

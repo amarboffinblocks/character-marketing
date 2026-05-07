@@ -44,14 +44,14 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
   const [actionBusy, setActionBusy] = useState<"approve" | "request" | null>(null)
   const [actionSuccess, setActionSuccess] = useState("")
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [loadError, setLoadError] = useState("")
 
   useEffect(() => {
     let mounted = true
 
     async function load() {
       setIsLoading(true)
-      setError("")
+      setLoadError("")
       setActionSuccess("")
       setActionError("")
       try {
@@ -77,7 +77,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
         setPaymentStatus(typeof json.paymentStatus === "string" ? json.paymentStatus : "")
       } catch (loadError) {
         if (!mounted) return
-        setError(loadError instanceof Error ? "No preview yet." : "No preview yet.")
+        setLoadError(loadError instanceof Error ? "No preview yet." : "No preview yet.")
       } finally {
         if (mounted) setIsLoading(false)
       }
@@ -110,7 +110,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
       if (!response.ok) {
         throw new Error(json.error || "Unable to approve.")
       }
-      setActionSuccess("Draft approved. The creator will now perform the final delivery.")
+      setActionSuccess("Draft approved. The creator can now perform the final delivery.")
       router.refresh()
       const reload = async () => {
         const r = await fetch(`/api/site/orders/${encodeURIComponent(orderId)}/deliverables`)
@@ -225,7 +225,8 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
             <CardContent className="space-y-2">
               {isLoading ? (
                 <p className="text-sm text-muted-foreground">Loading delivered assets…</p>
-
+              ) : loadError ? (
+                <p className="text-sm text-muted-foreground">{loadError}</p>
               ) : deliverables.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No delivered assets have been attached yet.</p>
               ) : (
@@ -263,7 +264,7 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
               <div className="flex items-start gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-3 text-emerald-800 dark:text-emerald-200">
                 <ShieldCheck className="mt-0.5 size-4 shrink-0" />
                 <p>
-                  Use the asset list to inspect the real deliverables in-app. Approve to release escrow (when funded), or
+                  Use the asset list to inspect the real deliverables in-app. Approve when you are ready for final delivery, or
                   request changes with a clear note for the creator.
                 </p>
               </div>
@@ -278,7 +279,21 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
               {showBuyerActions ? (
                 <div className="space-y-3 rounded-xl border border-border/70 bg-background p-3">
                   <p className="text-xs font-semibold text-foreground">Your decision</p>
-                  {canApproveFromPreview && orderStatus === "delivered" ? (
+                  
+                  {orderStatus === "delivered" && paymentStatus === "paid" ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                        Order is complete and assets have been transferred to your inventory!
+                      </p>
+                      <Button
+                        type="button"
+                        className="inline-flex w-full items-center justify-center gap-2"
+                        onClick={() => window.alert("Review form to be implemented.")}
+                      >
+                        <span>Leave a review</span>
+                      </Button>
+                    </div>
+                  ) : canApproveFromPreview && orderStatus === "delivered" ? (
                     <Button
                       type="button"
                       className="inline-flex w-full items-center justify-center gap-2"
@@ -290,14 +305,14 @@ export function OrderDeliveryPreviewView({ orderId }: { orderId: string }) {
                     </Button>
                   ) : orderStatus === "approved" ? (
                     <p className="text-xs text-emerald-600 font-medium">
-                      You have approved the draft. Waiting for the creator to perform the final delivery of assets to your inventory.
+                      You have approved the draft. Waiting for the creator to perform final delivery to your inventory.
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      Approval is available when a delivery is pending review and payment is in escrow.
+                      Approval is available when a delivery is pending review.
                     </p>
                   )}
-                  {canRequestRevision && orderStatus === "delivered" ? (
+                  {canRequestRevision && orderStatus === "delivered" && paymentStatus === "pending" ? (
                     <div className="space-y-2">
                       <label className="text-xs font-semibold text-foreground" htmlFor="revision-note">
                         Request changes

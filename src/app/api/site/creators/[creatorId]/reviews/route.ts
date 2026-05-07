@@ -142,8 +142,8 @@ export async function POST(request: Request, context: { params: Promise<{ creato
       return NextResponse.json({ error: "Order not found for review." }, { status: 400 })
     }
     const status = asString(order.status)
-    if (status !== "completed" && status !== "approved") {
-      return NextResponse.json({ error: "You can review only approved orders." }, { status: 400 })
+    if (status !== "delivered") {
+      return NextResponse.json({ error: "You can review only delivered orders." }, { status: 400 })
     }
 
     const { data: existingReview } = await admin

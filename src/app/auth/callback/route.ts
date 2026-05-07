@@ -27,11 +27,17 @@ function redirectWithCookies(applyAuthCookiesTo: (response: NextResponse) => voi
   return response
 }
 
+function isRecentAuthUser(createdAt: string | null | undefined) {
+  const createdAtMs = Date.parse(createdAt ?? "")
+  return Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 5 * 60 * 1000
+}
+
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url)
   const code = requestUrl.searchParams.get("code")
   const oauthError = requestUrl.searchParams.get("error")
   const oauthErrorDescription = requestUrl.searchParams.get("error_description")
+  const mode = requestUrl.searchParams.get("mode")
   const selectedRole = requestUrl.searchParams.get("role")
   const nextPath = requestUrl.searchParams.get("next") ?? "/"
 
@@ -59,39 +65,56 @@ export async function GET(request: NextRequest) {
   }
 
   const isSelectedRoleAllowed = isSignInAllowedRole(selectedRole)
-  const isSignInFlow = !isSelectedRoleAllowed
+  const isSignInFlow = mode === "sign-in"
+  const isSignUpFlow = mode === "sign-up"
   const metadataRole = resolveUserRole(user)
-  const createdAtMs = Date.parse(user.created_at ?? "")
-  const isRecentlyCreated = Number.isFinite(createdAtMs) && Date.now() - createdAtMs < 5 * 60 * 1000
-
-  let userRole = await resolvePersistedRole(supabase, user)
-
-  // In login flow, block brand-new OAuth accounts only if no persisted role exists.
-  if (isSignInFlow && !userRole && !metadataRole && isRecentlyCreated) {
-    await deleteAuthUserIfPossible(user.id)
-    await supabase.auth.signOut()
-    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_registered_oauth", request.url))
-  }
+  const isRecentlyCreated = isRecentAuthUser(user.created_at)
 
   const { data: existingProfileRow } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, role")
     .eq("id", user.id)
     .maybeSingle()
 
-  if (isSignInFlow && !existingProfileRow) {
-    if (metadataRole) {
-      await upsertProfileRole(supabase, user.id, metadataRole)
-      userRole = metadataRole
-    } else {
-      await deleteAuthUserIfPossible(user.id)
+  if (isSignInFlow) {
+    const existingRole = isAuthRole(existingProfileRow?.role) ? existingProfileRow.role : null
+
+    if (!existingRole) {
+      if (isRecentlyCreated) {
+        await deleteAuthUserIfPossible(user.id)
+      }
       await supabase.auth.signOut()
       return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_registered_oauth", request.url))
     }
+
+    const roleMatches = !isSelectedRoleAllowed || existingRole === selectedRole
+    if (!roleMatches) {
+      await supabase.auth.signOut()
+      return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=unauthorized_role", request.url))
+    }
+
+    if (metadataRole !== existingRole) {
+      const { data: updatedUser, error: updateError } = await supabase.auth.updateUser({
+        data: { role: existingRole },
+      })
+
+      if (!updateError && updatedUser.user) {
+        await upsertProfileRole(supabase, updatedUser.user.id, existingRole)
+      }
+    }
+
+    const defaultPath =
+      existingRole === "admin" ? "/dashboard/admin" : existingRole === "creator" ? "/dashboard/creator" : "/"
+    const safeNextPath = nextPath.startsWith("/") ? nextPath : defaultPath
+    const destination = safeNextPath === "/" ? defaultPath : safeNextPath
+    return redirectWithCookies(applyAuthCookiesTo, new URL(destination, request.url))
   }
+
+  let userRole = await resolvePersistedRole(supabase, user)
 
   // For OAuth signups, persist selected role for newly created accounts before auth checks.
   const shouldApplySelectedRole =
+    isSignUpFlow &&
     isSelectedRoleAllowed &&
     (!userRole || !existingProfileRow || (isRecentlyCreated && userRole !== selectedRole))
 
@@ -115,12 +138,9 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Reject sign-in if no persisted role can be resolved.
-  // This prevents auto-registering new social accounts from login flow.
-  if (!userRole && isSignInFlow) {
-    await deleteAuthUserIfPossible(user.id)
-    await supabase.auth.signOut()
-    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=user_not_registered_oauth", request.url))
+  if (!userRole && metadataRole && existingProfileRow) {
+    await upsertProfileRole(supabase, user.id, metadataRole)
+    userRole = metadataRole
   }
 
   const isAllowed = isAuthRole(userRole)

@@ -54,7 +54,7 @@ export function InboxView({ role }: InboxViewProps) {
   } = useInboxFeed(role)
 
   return (
-    <main className={cn("mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8", role === "buyer" ? "pt-24 pb-10" : "pt-6 pb-10")}>
+    <main className={cn("mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8", role === "buyer" ? "pt-24 pb-10" : role === "admin" ? "py-2" : "pt-6 pb-10")}>
       <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>

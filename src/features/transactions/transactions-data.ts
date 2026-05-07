@@ -112,3 +112,40 @@ export async function fetchCreatorTransactions(userId: string): Promise<Transact
     await client.end().catch(() => {})
   }
 }
+
+export async function fetchAdminTransactions(): Promise<TransactionRow[]> {
+  const connectionString = getConnectionString()
+  if (!connectionString) throw new Error("Missing DIRECT_URL or DATABASE_URL")
+
+  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
+  try {
+    await client.connect()
+    const result = await client.query(
+      `select
+       t.id,
+        t.transaction_type,
+        t.order_id,
+        t.amount,
+        t.currency,
+        t.payment_method,
+        t.provider,
+        t.provider_reference,
+        t.status,
+        t.created_at,
+        o.package_title,
+        o.status as order_status,
+        o.payment_status,
+        p.profile_data as counterpart_profile_data
+       from public.payment_transactions t
+       join public.orders o on o.id = t.order_id
+       left join public.profiles p on p.id = t.creator_id
+       order by t.created_at desc`
+    )
+    return (result.rows ?? []) as TransactionRow[]
+  } catch (error) {
+    if (isMissingTransactionsTableError(error)) return []
+    throw error
+  } finally {
+    await client.end().catch(() => {})
+  }
+}

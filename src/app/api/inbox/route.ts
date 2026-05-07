@@ -22,7 +22,7 @@ export async function GET() {
   try {
     await client.connect()
     const result = await client.query(
-      `select id, type, category, title, body, is_read as "isRead", action_url as "actionUrl", created_at as "createdAt"
+      `select id, user_id as "userId", type, category, title, body, is_read as "isRead", action_url as "actionUrl", created_at as "createdAt"
        from public.inbox_notifications
        where user_id = $1
        order by created_at desc

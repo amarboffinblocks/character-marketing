@@ -4,6 +4,7 @@ import { z } from "zod"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 import pg from "pg"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 
 const requestSchema = z.object({
   creatorId: z.string().uuid("Invalid creator id"),
@@ -71,6 +72,15 @@ export async function POST(request: Request) {
         "pending",
       ]
     )
+
+    // Notify creator
+    await insertInboxNotification(client, {
+      userId: payload.creatorId,
+      category: "request",
+      title: "New service request",
+      body: `You received a new request for "${payload.packageTitle}".`,
+      actionUrl: "/dashboard/creator/requests",
+    })
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error"
     return NextResponse.json({ error: "Unable to submit pre-select request.", details: message }, { status: 400 })

@@ -21,6 +21,7 @@ export type BidItem = PostABidFormValues & {
   interestedCount: number
   interestedCreators: BidPerson[]
   assignedCreator: BidPerson | null
+  requestPayload: Record<string, unknown>
 }
 
 export const bidTabLabels: Record<BidListTab, string> = {

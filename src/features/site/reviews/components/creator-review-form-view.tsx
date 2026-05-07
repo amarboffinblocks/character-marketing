@@ -89,13 +89,10 @@ export function CreatorReviewFormView({ creator, orderId = "" }: CreatorReviewFo
               </CardDescription>
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Badge variant="outline">@{creator.handle}</Badge>
-            <Badge variant="secondary">{creator.tagline}</Badge>
-          </div>
+         
         </CardHeader>
 
-        <CardContent className="pt-6">
+        <CardContent className="">
           {submitted ? (
             <div className="space-y-3 rounded-xl border border-emerald-500/25 bg-emerald-500/5 p-5">
               <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">

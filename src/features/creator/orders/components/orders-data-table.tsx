@@ -1,8 +1,8 @@
-import { Flag } from "lucide-react"
 import Link from "next/link"
+import { Flag, MessageSquare } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
-import { buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import {
   Table,
   TableBody,
@@ -24,18 +24,22 @@ import {
 
 type OrdersDataTableProps = {
   orders: CreatorOrder[]
+  context?: "creator" | "admin"
 }
 
-export function OrdersDataTable({ orders }: OrdersDataTableProps) {
+export function OrdersDataTable({ orders, context = "creator" }: OrdersDataTableProps) {
+  const isAdmin = context === "admin"
+
   return (
     <Table>
       <TableHeader>
         <TableRow className="bg-muted/30 hover:bg-muted/30">
           <TableHead>Order</TableHead>
           <TableHead>Customer</TableHead>
+          {isAdmin && <TableHead>Creator</TableHead>}
           <TableHead>Status</TableHead>
           <TableHead>Priority</TableHead>
-          <TableHead>Due date</TableHead>
+          {!isAdmin && <TableHead>Due date</TableHead>}
           <TableHead>Last updated</TableHead>
           <TableHead className="text-right">Amount</TableHead>
           <TableHead className="w-[160px] text-right">Action</TableHead>
@@ -44,6 +48,9 @@ export function OrdersDataTable({ orders }: OrdersDataTableProps) {
       <TableBody>
         {orders.map((order) => {
           const overdue = isOrderOverdue(order)
+          const customerChatHref = `/dashboard/admin/messages?order=${encodeURIComponent(order.rawOrderId ?? order.id)}&target=${order.buyerId}`
+          const creatorChatHref = `/dashboard/admin/messages?order=${encodeURIComponent(order.rawOrderId ?? order.id)}&target=${order.creatorId}`
+
           return (
             <TableRow
               key={order.id}
@@ -52,17 +59,24 @@ export function OrdersDataTable({ orders }: OrdersDataTableProps) {
               <TableCell className="py-4">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground">{order.id}</span>
-                    {overdue ? (
+                    <span className="font-medium text-foreground">{order.packageName}</span>
+                    {overdue && !isAdmin ? (
                       <Badge variant="secondary" className="bg-destructive/15 text-destructive">
                         Overdue
                       </Badge>
                     ) : null}
                   </div>
-                  <span className="text-xs text-muted-foreground">{order.packageName}</span>
+                  <span className="text-xs text-muted-foreground">{order.id}</span>
                 </div>
               </TableCell>
-              <TableCell>{order.customerName}</TableCell>
+              <TableCell>
+                <span className="text-sm font-medium">{order.customerName}</span>
+              </TableCell>
+              {isAdmin && (
+                <TableCell>
+                  <span className="text-sm font-medium text-foreground">{order.creatorName}</span>
+                </TableCell>
+              )}
               <TableCell>
                 <OrderStatusBadge status={order.status} />
               </TableCell>
@@ -74,22 +88,18 @@ export function OrdersDataTable({ orders }: OrdersDataTableProps) {
                   </span>
                 </span>
               </TableCell>
-              <TableCell>
-                <span className={cn("font-medium", getDueDateTone(order))}>{order.dueDate}</span>
-              </TableCell>
+              {!isAdmin && (
+                <TableCell>
+                  <span className={cn("font-medium", getDueDateTone(order))}>{order.dueDate}</span>
+                </TableCell>
+              )}
               <TableCell>{order.updatedAt}</TableCell>
               <TableCell className="text-right font-medium">
                 {formatCurrency(order.amount)}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center justify-end gap-1.5">
-                  <Link
-                    href={`/dashboard/creator/orders/${order.id.toLowerCase()}`}
-                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-7")}
-                  >
-                    View
-                  </Link>
-                  <OrderRowActions order={order} />
+                  <OrderRowActions order={order} context={context} />
                 </div>
               </TableCell>
             </TableRow>

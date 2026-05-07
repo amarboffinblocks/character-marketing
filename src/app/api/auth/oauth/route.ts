@@ -7,17 +7,26 @@ import { createRouteHandlerSupabaseClient } from "@/lib/supabase/route-handler"
 
 type OAuthPayload = {
   provider?: string
+  mode?: string
   role?: string
+  next?: string
 }
 
 const allowedProviders = new Set<Provider>(["google", "twitter", "x"])
+const allowedModes = new Set(["sign-in", "sign-up"] as const)
 
 export async function POST(request: NextRequest) {
   const body = (await request.json()) as OAuthPayload
   const rawProvider = body.provider as Provider
+  const mode = body.mode
   const role = body.role
+  const nextPath = body.next
 
   if (!allowedProviders.has(rawProvider)) {
+    return NextResponse.json({ error: "Invalid OAuth payload." }, { status: 400 })
+  }
+
+  if (!mode || !allowedModes.has(mode as "sign-in" | "sign-up")) {
     return NextResponse.json({ error: "Invalid OAuth payload." }, { status: 400 })
   }
 
@@ -27,8 +36,12 @@ export async function POST(request: NextRequest) {
 
   const origin = new URL(request.url).origin
   const callbackUrl = new URL("/auth/callback", origin)
+  callbackUrl.searchParams.set("mode", mode)
   if (role) {
     callbackUrl.searchParams.set("role", role)
+  }
+  if (typeof nextPath === "string" && nextPath.startsWith("/")) {
+    callbackUrl.searchParams.set("next", nextPath)
   }
 
   const { supabase, applyAuthCookiesTo } = createRouteHandlerSupabaseClient(request)

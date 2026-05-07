@@ -28,7 +28,7 @@ export function PurchasePreselectForm({
   creatorName,
 }: PurchasePreselectFormProps) {
   const [price, setPrice] = useState(String(packagePrice))
-  const [tokenCount, setTokenCount] = useState(tokensLabel.replace("Tokens: ", ""))
+  const [tokenCount, setTokenCount] = useState("")
   const [character, setCharacter] = useState(1)
   const [persona, setPersona] = useState(1)
   const [lorebook, setLorebook] = useState(0)

@@ -7,8 +7,6 @@ import {
   BadgeCheck,
   Camera,
   CheckCircle2,
-  ExternalLink,
-  FileText,
   Globe2,
   HelpCircle,
   Image as ImageLucide,
@@ -18,7 +16,6 @@ import {
   Pencil,
   Plus,
   Save,
-  ShieldCheck,
   Sparkles,
   Star,
   Trash2,
@@ -1112,7 +1109,7 @@ function ProfessionalSection({
         <div className="space-y-3 rounded-lg border border-border/70 p-3 md:col-span-2">
           <p className="text-sm font-medium text-foreground">Stripe payout setup</p>
           <p className="text-xs text-muted-foreground">
-            Fill these details so payouts can be released automatically when you deliver approved orders.
+            Fill these details so admins can release payouts smoothly after your final deliveries.
           </p>
           <div className="grid gap-3 md:grid-cols-2">
             <div className="space-y-1.5">

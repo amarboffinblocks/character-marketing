@@ -9,6 +9,7 @@ type OrdersListCardProps = {
   title: string
   description: string
   hasActiveFilters?: boolean
+  context?: "creator" | "admin"
 }
 
 export function OrdersListCard({
@@ -16,6 +17,7 @@ export function OrdersListCard({
   title,
   description,
   hasActiveFilters = false,
+  context = "creator",
 }: OrdersListCardProps) {
   const hasOrders = orders.length > 0
 
@@ -29,9 +31,9 @@ export function OrdersListCard({
         {hasOrders ? (
           <>
             <div className="hidden md:block">
-              <OrdersDataTable orders={orders} />
+              <OrdersDataTable orders={orders} context={context} />
             </div>
-            <OrdersMobileList orders={orders} />
+            <OrdersMobileList orders={orders} context={context} />
           </>
         ) : (
           <OrdersEmptyState hasActiveFilters={hasActiveFilters} />

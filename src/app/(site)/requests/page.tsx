@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { cn } from "@/lib/utils"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { RequestsClientTable } from "./requests-client-table"
+import { RequestsLiveView } from "./requests-live-view"
 
 type RequestType = "custom_package" | "preselect_package"
 type RequestStatus = "pending" | "processing" | "accepted" | "rejected" | "completed"
@@ -217,7 +217,7 @@ export default async function RequestsPage() {
             </Link>
           </div>
         ) : (
-          <RequestsClientTable requests={requests} />
+          <RequestsLiveView initialRequests={requests} userId={user.id} />
         )}
       </section>
     </main>

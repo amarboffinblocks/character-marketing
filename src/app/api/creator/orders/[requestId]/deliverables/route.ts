@@ -8,7 +8,6 @@ import {
   replaceOrderDeliverables,
   getOrdersDbClient,
 } from "@/lib/order-deliveries"
-import { releaseCreatorOrderEscrow } from "@/lib/payments/escrow"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 const payloadSchema = z.object({
@@ -27,7 +26,7 @@ function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
-export async function GET(_: Request, context: { params: Promise<{ requestId: string }> }) {
+export async function GET() {
   const supabase = await createServerSupabaseClient()
   const {
     data: { user },
@@ -64,23 +63,6 @@ export async function POST(request: Request, context: { params: Promise<{ reques
   }
 
   try {
-    const statusClient = getOrdersDbClient()
-    let shouldReleaseOnDeliver = false
-    try {
-      await statusClient.connect()
-      const statusResult = await statusClient.query(
-        `select status, payment_status
-         from public.orders
-         where id = $1 and creator_id = $2
-         limit 1`,
-        [normalizedOrderId, user.id]
-      )
-      const row = statusResult.rows[0] as { status?: string; payment_status?: string } | undefined
-      shouldReleaseOnDeliver = row?.status === "approved" && row?.payment_status === "pending"
-    } finally {
-      await statusClient.end().catch(() => {})
-    }
-
     const result = await replaceOrderDeliverables({
       orderId: normalizedOrderId,
       creatorId: user.id,
@@ -88,18 +70,9 @@ export async function POST(request: Request, context: { params: Promise<{ reques
       assets: parsed.data.assets as Array<{ assetType: DeliverableAssetType; assetId: string }>,
     })
 
-    let resolvedStatus: "delivered" | "approved" = "delivered"
-    let resolvedPaymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded" =
+    const resolvedStatus = "delivered" as const
+    const resolvedPaymentStatus: "unpaid" | "pending" | "paid" | "failed" | "refunded" =
       (result.paymentStatus as "unpaid" | "pending" | "paid" | "failed" | "refunded") ?? "pending"
-
-    if (shouldReleaseOnDeliver) {
-      const released = await releaseCreatorOrderEscrow({
-        orderId: normalizedOrderId,
-        creatorId: user.id,
-      })
-      resolvedStatus = "delivered"
-      resolvedPaymentStatus = released.paymentStatus
-    }
 
     const notificationClient = getOrdersDbClient()
     try {
@@ -115,23 +88,20 @@ export async function POST(request: Request, context: { params: Promise<{ reques
         userId: user.id,
         category: "order",
         title: "Delivery submitted",
-        body: `You submitted ${result.deliverables.length} asset${result.deliverables.length === 1 ? "" : "s"} for order #${result.orderId.slice(0, 8)}.`,
+        body: `You submitted ${result.deliverables.length} asset${result.deliverables.length === 1 ? "" : "s"} for buyer review on order #${result.orderId.slice(0, 8)}.`,
         actionUrl: "/dashboard/creator/orders",
       })
-      if (shouldReleaseOnDeliver) {
+
+      // Notify all Admins
+      const adminResult = await notificationClient.query(`select id from public.profiles where role = 'admin'`)
+      for (const row of adminResult.rows as Array<{ id?: string }>) {
+        if (!row.id) continue
         await insertInboxNotification(notificationClient, {
-          userId: user.id,
-          category: "payment",
-          title: "Payout released",
-          body: `Escrow was released to your payout account for order #${result.orderId.slice(0, 8)}.`,
-          actionUrl: "/dashboard/creator/transactions",
-        })
-        await insertInboxNotification(notificationClient, {
-          userId: result.buyerId,
-          category: "payment",
-          title: "Order payout completed",
-          body: `Order #${result.orderId.slice(0, 8)} payout was released after delivery.`,
-          actionUrl: "/orders",
+          userId: row.id,
+          category: "order",
+          title: "New order delivery",
+          body: `Creator submitted deliverables for order #${result.orderId.slice(0, 8)}. Oversight recommended.`,
+          actionUrl: `/dashboard/admin/orders/${result.orderId}`,
         })
       }
     } finally {

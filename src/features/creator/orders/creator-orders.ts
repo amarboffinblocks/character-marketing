@@ -32,23 +32,7 @@ export type CreatorOrderRow = {
   updated_at: string | Date
   request_snapshot: unknown
   buyer_profile_data: unknown | null
-}
-
-function mapBidStatusToOrderStatus(status: string): CreatorOrderStatus {
-  if (status === "completed") return "completed"
-  if (status === "rejected") return "cancelled"
-  if (status === "pending") return "on_hold"
-  if (status === "processing") return "in_progress"
-  return "in_progress"
-}
-
-function isMissingOrdersTableError(error: unknown) {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    (error as { code?: string }).code === "42P01"
-  )
+  creator_profile_data: unknown | null
 }
 
 function getConnectionString() {
@@ -79,9 +63,11 @@ export async function fetchCreatorOrders(creatorId: string): Promise<CreatorOrde
         o.created_at,
         o.updated_at,
         o.request_snapshot,
-        p.profile_data as buyer_profile_data
+        p.profile_data as buyer_profile_data,
+        cp.profile_data as creator_profile_data
       from public.orders o
       left join public.profiles p on p.id = o.buyer_id
+      left join public.profiles cp on cp.id = o.creator_id
       where o.creator_id = $1
       order by o.created_at desc`,
       [creatorId]
@@ -107,11 +93,13 @@ export async function updateCreatorOrderStatus(input: {
       ? "pending_payment"
       : input.status === "processing"
         ? "in_progress"
-        : input.status === "on_hold" || input.status === "reviewing"
-          ? "approved"
-          : input.status === "delivered"
+        : input.status === "on_hold"
+          ? "on_hold"
+          : input.status === "reviewing"
             ? "delivered"
-            : "completed"
+            : input.status === "delivered"
+              ? "delivered"
+              : "completed"
 
   const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
   try {
@@ -120,7 +108,7 @@ export async function updateCreatorOrderStatus(input: {
       `update public.orders
        set status = $1, updated_at = now()
        where id = $2 and creator_id = $3
-       returning id, status, updated_at, request_snapshot`,
+       returning id, buyer_id, package_title, status, updated_at, request_snapshot`,
       [nextDbStatus, input.orderId, input.creatorId]
     )
 
@@ -130,9 +118,21 @@ export async function updateCreatorOrderStatus(input: {
     }
 
     // Sync with bid_post if this order came from a bid
-    const snapshot = row.request_snapshot as any
-    const bidId = snapshot?.bidId || snapshot?.requestPayload?.bidId
-    if (bidId && (snapshot?.source === "bid_post" || snapshot?.requestPayload?.source === "bid_post")) {
+    const snapshot =
+      row.request_snapshot && typeof row.request_snapshot === "object"
+        ? (row.request_snapshot as { bidId?: unknown; source?: unknown; requestPayload?: { bidId?: unknown; source?: unknown } })
+        : null
+    const bidId =
+      typeof snapshot?.bidId === "string"
+        ? snapshot.bidId
+        : typeof snapshot?.requestPayload?.bidId === "string"
+          ? snapshot.requestPayload.bidId
+          : ""
+
+    if (
+      bidId &&
+      (snapshot?.source === "bid_post" || snapshot?.requestPayload?.source === "bid_post")
+    ) {
       const nextBidStatus = input.status === "completed" ? "completed" : "processing"
       await client.query(
         `update public.bid_posts set status = $1, updated_at = now() where id = $2`,
@@ -142,6 +142,8 @@ export async function updateCreatorOrderStatus(input: {
 
     return {
       id: String(row.id),
+      buyerId: String(row.buyer_id),
+      packageTitle: String(row.package_title ?? ""),
       status: input.status,
       updatedAt: String(row.updated_at ?? new Date().toISOString()),
     }

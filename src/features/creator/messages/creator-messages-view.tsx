@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { CheckCheck, ChevronLeft, FileText, Menu, MessageSquare, MoreVertical, Search, Send, Users, X } from "lucide-react"
+import { CheckCheck, FileText, Menu, MessageSquare, MoreVertical, Search, Send, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import {
@@ -20,19 +19,13 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import {
   clearThreadMessages,
   fetchMessageThreads,
   fetchThreadMessages,
   markThreadRead,
+  openOrCreateThread,
   sendThreadMessage,
 } from "@/features/messaging/api"
 import { formatMessageDateTime, formatMessageTime, type MessageItem, type MessageThread } from "@/features/messaging/types"
@@ -40,14 +33,30 @@ import { createClientSupabaseClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 
 type CreatorMessagesViewProps = {
-  viewerRole?: "creator" | "buyer"
+  viewerRole?: "creator" | "buyer" | "admin"
 }
 
 export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesViewProps) {
   type TypingChannel = { send: (message: unknown) => Promise<unknown> | unknown }
+  type MessageInsertPayload = {
+    new?: {
+      id?: string
+      thread_id?: string
+      sender_id?: string
+      sender_role?: MessageItem["senderRole"]
+      body?: string
+      created_at?: string
+    }
+  }
+  type TypingPayload = {
+    threadId?: string
+    senderRole?: "creator" | "buyer" | "admin"
+    isTyping?: boolean
+  }
   const searchParams = useSearchParams()
   const threadParam = searchParams.get("thread")?.trim() ?? ""
   const orderParam = searchParams.get("order")?.trim() ?? ""
+  const targetParam = searchParams.get("target")?.trim() ?? ""
   const supabase = useMemo(() => createClientSupabaseClient(), [])
 
   const [threads, setThreads] = useState<MessageThread[]>([])
@@ -69,10 +78,10 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   const previousActiveThreadIdRef = useRef<string>("")
   const threadsLoadSeqRef = useRef(0)
   const messagesLoadSeqRef = useRef(0)
-  const currentUserSenderRole = viewerRole === "creator" ? "creator" : "buyer"
+  const currentUserSenderRole = viewerRole === "admin" ? "admin" : viewerRole === "creator" ? "creator" : "buyer"
   const typingChannelRef = useRef<TypingChannel | null>(null)
   const activeThreadIdRef = useRef("")
-  const currentUserSenderRoleRef = useRef<"creator" | "buyer">(currentUserSenderRole)
+  const currentUserSenderRoleRef = useRef<"creator" | "buyer" | "admin">(currentUserSenderRole)
 
   useEffect(() => {
     if (!scrollRef.current) return
@@ -95,11 +104,25 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     }
     setError("")
     try {
-      const items = await fetchMessageThreads({ orderId: orderParam || undefined })
+      let items = await fetchMessageThreads({ orderId: orderParam || undefined })
+
+      if (viewerRole === "admin" && orderParam && items.length === 0) {
+        const thread = await openOrCreateThread({ 
+          orderId: orderParam,
+          otherUserId: targetParam || undefined
+        })
+        items = [thread]
+      }
+
       if (seq !== threadsLoadSeqRef.current) return
       setThreads(items)
       if (threadParam && items.some((item) => item.id === threadParam)) {
         setActiveThreadId(threadParam)
+      } else if (targetParam && items.some(item => item.buyerId === targetParam || item.creatorId === targetParam)) {
+        // Prioritize the thread where the target is one of the participants.
+        // For admin private chats, the other participant will be the admin.
+        const targetThread = items.find(item => item.buyerId === targetParam || item.creatorId === targetParam)
+        setActiveThreadId(targetThread?.id ?? items[0]?.id ?? "")
       } else if (!items.some((item) => item.id === activeThreadId)) {
         setActiveThreadId(items[0]?.id ?? "")
       }
@@ -110,7 +133,7 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     } finally {
       if (!silent && seq === threadsLoadSeqRef.current) setIsLoadingThreads(false)
     }
-  }, [activeThreadId, orderParam, threadParam])
+  }, [activeThreadId, orderParam, threadParam, viewerRole])
 
   const loadMessages = useCallback(async (threadId: string, silent = false) => {
     if (!threadId) return
@@ -153,9 +176,11 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
   }, [activeThreadId, loadMessages, loadThreads])
 
   useEffect(() => {
+    if (viewerRole === "admin") return
+
     const channel = supabase
       .channel(`conversation-messages-${viewerRole}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_messages" }, (payload) => {
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "conversation_messages" }, (payload: MessageInsertPayload) => {
         const newRow = payload.new as {
           id?: string
           thread_id?: string
@@ -223,14 +248,12 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
 
   // Typing indicator (WhatsApp-like) over Supabase realtime "broadcast" events.
   useEffect(() => {
+    if (viewerRole === "admin") return
+
     const typingChannel = supabase
       .channel("conversation-typing")
-      .on("broadcast", { event: "typing" }, (payload) => {
-        const data = payload as {
-          threadId?: string
-          senderRole?: "creator" | "buyer"
-          isTyping?: boolean
-        }
+      .on("broadcast", { event: "typing" }, (payload: TypingPayload) => {
+        const data = payload
 
         const activeId = activeThreadIdRef.current
         const myRole = currentUserSenderRoleRef.current
@@ -267,7 +290,21 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
       typingChannelRef.current = null
       void supabase.removeChannel(typingChannel)
     }
-  }, [supabase])
+  }, [supabase, viewerRole])
+
+  useEffect(() => {
+    if (viewerRole !== "admin") return
+    const intervalId = window.setInterval(() => {
+      void loadThreads({ silent: true })
+      if (activeThreadIdRef.current) {
+        void loadMessages(activeThreadIdRef.current, true)
+      }
+    }, 5000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [loadMessages, loadThreads, viewerRole])
 
   const filteredThreads = useMemo(() => {
     const query = search.trim().toLowerCase()
@@ -277,7 +314,9 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
     })
   }, [search, threads])
 
-  const activeThread = threads.find((thread) => thread.id === activeThreadId) ?? null
+  const activeThread = useMemo(() => {
+    return threads.find((t) => t.id === activeThreadId) || null
+  }, [threads, activeThreadId])
 
   const emitTypingForThread = useCallback(
     (threadId: string, isTyping: boolean) => {
@@ -514,7 +553,13 @@ export function CreatorMessagesView({ viewerRole = "creator" }: CreatorMessagesV
                       <h2 className="text-lg font-bold leading-none text-foreground/80">{activeThread.counterpartName}</h2>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-xs text-muted-foreground">
-                          {viewerRole === "creator" ? "Buyer conversation" : "Creator conversation"}
+                          {viewerRole === "admin" 
+                            ? (activeThread.creatorId !== activeThread.buyerId && (activeThread.creatorName === "Admin" || activeThread.buyerName === "Admin")
+                                ? `Private chat with ${activeThread.counterpartName}`
+                                : "Order oversight (Group)")
+                            : viewerRole === "creator" 
+                              ? "Buyer conversation" 
+                              : "Creator conversation"}
                         </span>
                       </div>
                       {isCounterpartTyping ? (

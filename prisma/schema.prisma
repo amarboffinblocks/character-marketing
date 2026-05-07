@@ -141,6 +141,7 @@ enum OrderStatus {
   pending_payment
   funded
   in_progress
+  on_hold
   delivered
   approved
   completed

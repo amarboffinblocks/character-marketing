@@ -4,9 +4,7 @@ import pg from "pg"
 import {
   createStripeCheckoutSessionForOrder,
   getPaymentsDbClient,
-  releaseCreatorOrderEscrow,
 } from "@/lib/payments/escrow"
-import { insertInboxNotification } from "@/lib/inbox-notifications"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 function asString(value: unknown) {
@@ -53,7 +51,7 @@ export async function DELETE(_: Request, context: { params: Promise<{ requestId:
     const message = error instanceof Error ? error.message : "Unable to delete order request."
     return NextResponse.json({ error: message }, { status: 400 })
   } finally {
-    await client.end().catch(() => {})
+    await client.end().catch(() => { })
   }
 }
 
@@ -91,15 +89,15 @@ export async function POST(request: Request, context: { params: Promise<{ reques
     )
     const order = orderResult.rows[0] as
       | {
-          id: string
-          buyer_id: string
-          creator_id: string
-          package_title: string
-          package_price: number
-          payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
-          status: string
-          transfer_group: string | null
-        }
+        id: string
+        buyer_id: string
+        creator_id: string
+        package_title: string
+        package_price: number
+        payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
+        status: string
+        transfer_group: string | null
+      }
       | undefined
 
     if (!order) {
@@ -201,11 +199,11 @@ export async function POST(request: Request, context: { params: Promise<{ reques
       checkoutUrl: checkoutSession.url,
     })
   } catch (error) {
-    await client.query("rollback").catch(() => {})
+    await client.query("rollback").catch(() => { })
     const message = error instanceof Error ? error.message : "Unable to process payment."
     return NextResponse.json({ error: message }, { status: 400 })
   } finally {
-    await client.end().catch(() => {})
+    await client.end().catch(() => { })
   }
 }
 
@@ -245,13 +243,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
     )
     const order = orderResult.rows[0] as
       | {
-          id: string
-          buyer_id: string
-          creator_id: string
-          status: string
-          payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
-          request_snapshot: Record<string, unknown> | null
-        }
+        id: string
+        buyer_id: string
+        creator_id: string
+        status: string
+        payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
+        request_snapshot: Record<string, unknown> | null
+      }
       | undefined
     if (!order) {
       return NextResponse.json({ error: "Order not found." }, { status: 404 })
@@ -308,7 +306,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
           order.creator_id,
           "order",
           "Draft approved",
-          `The buyer approved your draft for order #${order.id.slice(0, 8)}. You can now perform the final delivery.`,
+          `The buyer approved your draft for order #${order.id.slice(0, 8)}. You can now perform the final delivery. Admin will release payment after that delivery.`,
           `/dashboard/creator/orders`
         ]
       ).catch(err => console.error("Failed to create notification:", err))
@@ -322,6 +320,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
     const message = error instanceof Error ? error.message : "Unable to update order."
     return NextResponse.json({ error: message }, { status: 400 })
   } finally {
-    await client.end().catch(() => {})
+    await client.end().catch(() => { })
   }
 }

@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { CheckCircle2, ReceiptText, Timer, TrendingUp, UserRound } from "lucide-react"
+import { ReceiptText, Timer, TrendingUp, UserRound } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
@@ -18,7 +18,7 @@ import type { TransactionRow } from "@/features/transactions/transactions-data"
 import { cn } from "@/lib/utils"
 
 type TransactionsViewProps = {
-  role: "buyer" | "creator"
+  role: "buyer" | "creator" | "admin"
   initialTransactions: TransactionRow[]
 }
 
@@ -118,12 +118,14 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
     <main className={cn("mx-auto w-full max-w-7xl px-4 pb-10 sm:px-6 lg:px-8", role === "buyer" ? "pt-24" : "pt-6")}>
       <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          {role === "buyer" ? "Payments & Transactions" : "Transactions"}
+          {role === "buyer" ? "Payments & Transactions" : role === "admin" ? "Platform Transactions" : "Transactions"}
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
           {role === "buyer"
             ? "Track Stripe checkout funding, escrow state, and refunds for your creator orders."
-            : "Track escrow releases that have been paid out to your connected creator account."}
+            : role === "admin"
+              ? "Monitor platform-wide escrow funding, payout releases, and refunds across all orders."
+              : "Track escrow releases that have been paid out to your connected creator account."}
         </p>
       </section>
 
@@ -191,6 +193,7 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
                       <TableCell className="py-4">
                         <div className="flex min-w-0 items-center gap-2.5">
                           {counterparty.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={counterparty.avatarUrl} alt={counterparty.displayName} className="size-9 shrink-0 rounded-full object-cover shadow-xs" />
                           ) : (
                             <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs" aria-hidden>

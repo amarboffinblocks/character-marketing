@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { getOrdersDbClient, transferOrderAssetsToBuyer } from "@/lib/order-deliveries"
-import { releaseCreatorOrderEscrow, getPaymentsDbClient } from "@/lib/payments/escrow"
+import { getOrdersDbClient, cloneOrderAssetsToBuyer } from "@/lib/order-deliveries"
 import { insertInboxNotification } from "@/lib/inbox-notifications"
 
 function asString(value: unknown) {
@@ -50,43 +49,50 @@ export async function POST(_: Request, context: { params: Promise<{ requestId: s
       return NextResponse.json({ error: "Order must be approved by the buyer before final delivery." }, { status: 400 })
     }
 
-    // 2. Transfer assets to buyer inventory
-    await transferOrderAssetsToBuyer({
+    // 2. Clone assets to buyer inventory
+    await cloneOrderAssetsToBuyer({
       orderId: order.id,
       buyerId: order.buyer_id,
-      creatorId: order.creator_id
     })
 
-    // 3. Release escrow funds
-    const releaseResult = await releaseCreatorOrderEscrow({
-      orderId: order.id,
-      creatorId: order.creator_id
-    })
-
-    // 4. Update status to completed (releaseCreatorOrderEscrow already sets it to approved/paid, we want completed)
+    // 3. Mark as delivered to buyer while payment remains on hold for admin release.
     await client.query(
       `update public.orders set status = 'completed', updated_at = now() where id = $1`,
       [order.id]
     )
 
-    // 5. Notifications
-    const notificationClient = getPaymentsDbClient()
+    // 4. Notifications
+    const notificationClient = getOrdersDbClient()
     try {
       await notificationClient.connect()
       await insertInboxNotification(notificationClient, {
         userId: order.buyer_id,
         category: "order",
-        title: "Final delivery received!",
-        body: `Order #${order.id.slice(0, 8)} is complete. The assets have been added to your inventory.`,
-        actionUrl: "/dashboard/buyer/inventory",
+        title: "Final delivery received",
+        body: `Order #${order.id.slice(0, 8)} has been delivered to your inventory.`,
+        actionUrl: "/orders",
       })
       await insertInboxNotification(notificationClient, {
         userId: user.id,
         category: "payment",
-        title: "Payment released",
-        body: `Your payment for order #${order.id.slice(0, 8)} has been released following final delivery.`,
+        title: "Payment release pending",
+        body: `Your final delivery for order #${order.id.slice(0, 8)} is complete. Admin will release your payment shortly.`,
         actionUrl: "/dashboard/creator/transactions",
       })
+
+      const adminResult = await notificationClient.query(
+        `select id from public.profiles where role = 'admin'`
+      )
+      for (const row of adminResult.rows as Array<{ id?: string }>) {
+        if (!row.id) continue
+        await insertInboxNotification(notificationClient, {
+          userId: row.id,
+          category: "payment",
+          title: "Delivered order ready for payout review",
+          body: `Order #${order.id.slice(0, 8)} was delivered to the buyer. Review it and release the creator payout manually.`,
+          actionUrl: "/dashboard/admin/orders",
+        })
+      }
     } finally {
       await notificationClient.end().catch(() => {})
     }
@@ -96,7 +102,7 @@ export async function POST(_: Request, context: { params: Promise<{ requestId: s
       order: {
         id: order.id,
         status: "completed",
-        paymentStatus: releaseResult.paymentStatus
+        paymentStatus: order.payment_status
       }
     })
 

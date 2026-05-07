@@ -3,11 +3,13 @@ import { NextResponse } from "next/server"
 import {
   assertThreadParticipant,
   getMySenderRole,
+  isAdminUser,
   mapMessageRow,
   markRead,
   requireAuthUser,
   resolveAvatarUrlForUser,
 } from "@/app/api/messages/shared"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 type SendMessagePayload = {
@@ -22,12 +24,16 @@ export async function GET(_: Request, context: { params: Promise<{ threadId: str
   try {
     const supabase = await createServerSupabaseClient()
     const user = await requireAuthUser(supabase)
+    const adminRole = await isAdminUser(supabase, user)
     const { threadId } = await context.params
     const normalizedThreadId = asString(threadId)
     if (!normalizedThreadId) return NextResponse.json({ error: "threadId is required." }, { status: 400 })
 
-    await assertThreadParticipant(supabase, normalizedThreadId, user.id)
-    const { data, error } = await supabase
+    const client = adminRole ? createAdminSupabaseClient() : supabase
+    if (!adminRole) {
+      await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    }
+    const { data, error } = await client
       .from("conversation_messages")
       .select("id, thread_id, sender_id, sender_role, body, created_at")
       .eq("thread_id", normalizedThreadId)
@@ -40,7 +46,7 @@ export async function GET(_: Request, context: { params: Promise<{ threadId: str
           id: string
           thread_id: string
           sender_id: string
-          sender_role: "creator" | "buyer"
+          sender_role: "creator" | "buyer" | "admin"
           body: string
           created_at: string
         }
@@ -48,7 +54,7 @@ export async function GET(_: Request, context: { params: Promise<{ threadId: str
     )
 
     const lastMessageId = messages[messages.length - 1]?.id
-    await markRead(supabase, normalizedThreadId, user.id, lastMessageId)
+    await markRead(client, normalizedThreadId, user.id, lastMessageId)
     return NextResponse.json({ messages })
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to load messages."
@@ -61,6 +67,7 @@ export async function POST(request: Request, context: { params: Promise<{ thread
   try {
     const supabase = await createServerSupabaseClient()
     const user = await requireAuthUser(supabase)
+    const adminRole = await isAdminUser(supabase, user)
     const { threadId } = await context.params
     const normalizedThreadId = asString(threadId)
     const body = (await request.json()) as SendMessagePayload
@@ -69,21 +76,26 @@ export async function POST(request: Request, context: { params: Promise<{ thread
     if (!normalizedThreadId) return NextResponse.json({ error: "threadId is required." }, { status: 400 })
     if (!text) return NextResponse.json({ error: "Message text is required." }, { status: 400 })
 
-    await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    const client = adminRole ? createAdminSupabaseClient() : supabase
+    if (!adminRole) {
+      await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    }
     const senderRole = await getMySenderRole(supabase, user)
     const senderAvatarUrl = await resolveAvatarUrlForUser(supabase, user)
 
-    const avatarUpdateField =
-      senderRole === "creator" ? { creator_avatar_url: senderAvatarUrl } : { buyer_avatar_url: senderAvatarUrl }
-    const { error: threadUpdateError } = await supabase
-      .from("conversation_threads")
-      .update(avatarUpdateField)
-      .eq("id", normalizedThreadId)
-    if (threadUpdateError) {
-      return NextResponse.json({ error: "Unable to sync sender avatar.", details: threadUpdateError.message }, { status: 400 })
+    if (senderRole !== "admin") {
+      const avatarUpdateField =
+        senderRole === "creator" ? { creator_avatar_url: senderAvatarUrl } : { buyer_avatar_url: senderAvatarUrl }
+      const { error: threadUpdateError } = await client
+        .from("conversation_threads")
+        .update(avatarUpdateField)
+        .eq("id", normalizedThreadId)
+      if (threadUpdateError) {
+        return NextResponse.json({ error: "Unable to sync sender avatar.", details: threadUpdateError.message }, { status: 400 })
+      }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from("conversation_messages")
       .insert({
         thread_id: normalizedThreadId,
@@ -99,14 +111,14 @@ export async function POST(request: Request, context: { params: Promise<{ thread
       return NextResponse.json({ error: "Unable to send message.", details: error?.message, hint: error?.hint, code: error?.code }, { status: 400 })
     }
 
-    await markRead(supabase, normalizedThreadId, user.id, data.id)
+    await markRead(client, normalizedThreadId, user.id, data.id)
     return NextResponse.json({
       message: mapMessageRow(
         data as {
           id: string
           thread_id: string
           sender_id: string
-          sender_role: "creator" | "buyer"
+          sender_role: "creator" | "buyer" | "admin"
           body: string
           created_at: string
         }

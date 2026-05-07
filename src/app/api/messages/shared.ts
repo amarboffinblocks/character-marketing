@@ -1,5 +1,6 @@
 import type { SupabaseClient, User } from "@supabase/supabase-js"
 
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { resolvePersistedRole } from "@/lib/profile-role"
 import type { MessageItem, MessageSenderRole, MessageThread } from "@/features/messaging/types"
 
@@ -90,6 +91,8 @@ export function mapThreadRow(
     orderId: row.order_id,
     buyerName: row.buyer_name || "Buyer",
     creatorName: row.creator_name || "Creator",
+    buyerId: row.buyer_id,
+    creatorId: row.creator_id,
     counterpartName,
     counterpartAvatarUrl,
     status: unreadCount > 0 ? "needs_response" : "active",
@@ -101,8 +104,14 @@ export function mapThreadRow(
 
 export async function getMySenderRole(supabase: SupabaseClient, user: User): Promise<MessageSenderRole> {
   const role = await resolvePersistedRole(supabase, user)
+  if (role === "admin") return "admin"
   if (role === "creator") return "creator"
   return "buyer"
+}
+
+export async function isAdminUser(supabase: SupabaseClient, user: User) {
+  const role = await resolvePersistedRole(supabase, user)
+  return role === "admin"
 }
 
 export async function resolveAvatarUrlForUser(supabase: SupabaseClient, user: User) {
@@ -213,12 +222,106 @@ export async function buildThreadsForUser(supabase: SupabaseClient, userId: stri
     }
   }
 
-  return threads.map((thread) =>
-    mapThreadRow(
+  return threads.map((thread) => {
+    // If the user is a participant, use standard mapping.
+    // If it's a thread between others (admin oversight), map accordingly.
+    const isCreator = thread.creator_id === userId
+    const isBuyer = thread.buyer_id === userId
+    
+    if (isCreator || isBuyer) {
+      return mapThreadRow(
+        thread,
+        userId,
+        unreadByThread.get(thread.id) ?? 0,
+        firstMessageByThread.get(thread.id)?.body ?? "No messages yet."
+      )
+    }
+
+    // This case shouldn't normally happen for regular users unless they are admins.
+    return mapThreadRow(
       thread,
       userId,
       unreadByThread.get(thread.id) ?? 0,
       firstMessageByThread.get(thread.id)?.body ?? "No messages yet."
     )
-  )
+  })
+}
+
+export async function buildThreadsForAdmin(adminUserId: string, orderId?: string) {
+  const supabase = createAdminSupabaseClient()
+  let threadsQuery = supabase
+    .from("conversation_threads")
+    .select("id, order_id, creator_id, buyer_id, creator_name, buyer_name, creator_avatar_url, buyer_avatar_url, last_message_at")
+    .order("last_message_at", { ascending: false })
+
+  if (orderId) {
+    threadsQuery = threadsQuery.eq("order_id", orderId)
+  }
+
+  const { data: threadsData, error: threadsError } = await threadsQuery
+  if (threadsError) throw new Error("Unable to load message threads.")
+
+  const threads = (threadsData ?? []) as ThreadRow[]
+  if (threads.length === 0) return []
+
+  const threadIds = threads.map((thread) => thread.id)
+  const [{ data: messageRows, error: messageError }, { data: readRows, error: readError }] = await Promise.all([
+    supabase
+      .from("conversation_messages")
+      .select("id, thread_id, sender_id, sender_role, body, created_at")
+      .in("thread_id", threadIds)
+      .order("created_at", { ascending: false }),
+    supabase.from("conversation_reads").select("thread_id, last_read_at").eq("user_id", adminUserId).in("thread_id", threadIds),
+  ])
+
+  if (messageError) throw new Error("Unable to load latest messages.")
+  if (readError) throw new Error("Unable to load read state.")
+
+  const messages = (messageRows ?? []) as MessageRow[]
+  const reads = (readRows ?? []) as ReadRow[]
+  const readsByThread = new Map(reads.map((row) => [row.thread_id, row.last_read_at]))
+  const firstMessageByThread = new Map<string, MessageRow>()
+  const unreadByThread = new Map<string, number>()
+
+  for (const message of messages) {
+    if (!firstMessageByThread.has(message.thread_id)) {
+      firstMessageByThread.set(message.thread_id, message)
+    }
+    if (message.sender_id === adminUserId) continue
+    const lastReadAt = readsByThread.get(message.thread_id)
+    if (!lastReadAt || new Date(message.created_at).getTime() > new Date(lastReadAt).getTime()) {
+      unreadByThread.set(message.thread_id, (unreadByThread.get(message.thread_id) ?? 0) + 1)
+    }
+  }
+
+  return threads.map((thread) => {
+    const isCreator = thread.creator_id === adminUserId
+    const isBuyer = thread.buyer_id === adminUserId
+    
+    let counterpartName = `${thread.creator_name || "Creator"} / ${thread.buyer_name || "Buyer"}`
+    let counterpartAvatarUrl = thread.creator_avatar_url || thread.buyer_avatar_url || ""
+
+    if (isCreator) {
+      counterpartName = thread.buyer_name || "Buyer"
+      counterpartAvatarUrl = thread.buyer_avatar_url || ""
+    } else if (isBuyer) {
+      counterpartName = thread.creator_name || "Creator"
+      counterpartAvatarUrl = thread.creator_avatar_url || ""
+    }
+
+    return {
+      id: thread.id,
+      orderId: thread.order_id,
+      buyerName: thread.buyer_name || "Buyer",
+      creatorName: thread.creator_name || "Creator",
+      buyerId: thread.buyer_id,
+      creatorId: thread.creator_id,
+      counterpartName,
+      counterpartAvatarUrl,
+      status: (unreadByThread.get(thread.id) ?? 0) > 0 ? "needs_response" : "active",
+      unreadCount: unreadByThread.get(thread.id) ?? 0,
+      lastMessageAt: thread.last_message_at,
+      lastMessageText: firstMessageByThread.get(thread.id)?.body ?? "No messages yet.",
+    }
+  })
 }

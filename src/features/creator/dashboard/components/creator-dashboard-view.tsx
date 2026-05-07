@@ -64,11 +64,11 @@ type CreatorDashboardData = {
   creatorName: string
   orders: CreatorOrderRow[]
   workspaceCounts: {
-    characters: number
-    personas: number
-    lorebooks: number
-    avatars: number
-    backgrounds: number
+    characters: { count: number; imageUrl?: string }
+    personas: { count: number; imageUrl?: string }
+    lorebooks: { count: number; imageUrl?: string }
+    avatars: { count: number; imageUrl?: string }
+    backgrounds: { count: number; imageUrl?: string }
   }
   creatorProfile?: Record<string, any>
   draftCharacters: number
@@ -161,11 +161,11 @@ function buildQuickActions(data: CreatorDashboardData): CreatorQuickAction[] {
   }
 
   const totalAssets = 
-    data.workspaceCounts.characters + 
-    data.workspaceCounts.personas + 
-    data.workspaceCounts.lorebooks + 
-    data.workspaceCounts.avatars + 
-    data.workspaceCounts.backgrounds
+    data.workspaceCounts.characters.count + 
+    data.workspaceCounts.personas.count + 
+    data.workspaceCounts.lorebooks.count + 
+    data.workspaceCounts.avatars.count + 
+    data.workspaceCounts.backgrounds.count
 
   if (totalAssets === 0) {
     actions.push({ href: "/dashboard/creator/workspace/characters/new", label: "Create your first listing" })
@@ -207,31 +207,36 @@ function buildWorkspaceHealth(data: CreatorDashboardData): WorkspaceHealthItem[]
   return [
     {
       label: "Characters",
-      count: data.workspaceCounts.characters,
+      count: data.workspaceCounts.characters.count,
+      imageUrl: data.workspaceCounts.characters.imageUrl,
       href: "/dashboard/creator/workspace/characters",
       icon: "characters",
     },
     {
       label: "Personas",
-      count: data.workspaceCounts.personas,
+      count: data.workspaceCounts.personas.count,
+      imageUrl: data.workspaceCounts.personas.imageUrl,
       href: "/dashboard/creator/workspace/personas",
       icon: "personas",
     },
     {
       label: "Lorebooks",
-      count: data.workspaceCounts.lorebooks,
+      count: data.workspaceCounts.lorebooks.count,
+      imageUrl: data.workspaceCounts.lorebooks.imageUrl,
       href: "/dashboard/creator/workspace/lorebooks",
       icon: "lorebooks",
     },
     {
       label: "Avatars",
-      count: data.workspaceCounts.avatars,
+      count: data.workspaceCounts.avatars.count,
+      imageUrl: data.workspaceCounts.avatars.imageUrl,
       href: "/dashboard/creator/workspace/avatars",
       icon: "avatars",
     },
     {
       label: "Backgrounds",
-      count: data.workspaceCounts.backgrounds,
+      count: data.workspaceCounts.backgrounds.count,
+      imageUrl: data.workspaceCounts.backgrounds.imageUrl,
       href: "/dashboard/creator/workspace/backgrounds",
       icon: "backgrounds",
     },
@@ -264,11 +269,11 @@ function buildCompletionChecks(data: CreatorDashboardData): CompletionCheck[] {
   
   // Total assets from workspace tables
   const workspaceAssets = 
-    data.workspaceCounts.characters + 
-    data.workspaceCounts.personas + 
-    data.workspaceCounts.lorebooks + 
-    data.workspaceCounts.avatars + 
-    data.workspaceCounts.backgrounds
+    data.workspaceCounts.characters.count + 
+    data.workspaceCounts.personas.count + 
+    data.workspaceCounts.lorebooks.count + 
+    data.workspaceCounts.avatars.count + 
+    data.workspaceCounts.backgrounds.count
     
   // Manual portfolio items from profile data
   const manualPortfolio = Array.isArray(profile.portfolio) ? profile.portfolio : []

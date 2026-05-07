@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import Link from "next/link"
-import { BadgeCheck, CreditCard, Eye, LoaderCircle, MessageSquareText, MoreVertical, UserRound } from "lucide-react"
+import { BadgeCheck, CreditCard, Eye, LoaderCircle, MessageSquareText, MoreVertical, Star, UserRound } from "lucide-react"
 import { toast } from "sonner"
 
 import { Badge } from "@/components/ui/badge"
@@ -39,6 +39,7 @@ type OrderStatus =
   | "pending_payment"
   | "funded"
   | "in_progress"
+  | "on_hold"
   | "delivered"
   | "approved"
   | "completed"
@@ -80,6 +81,7 @@ const orderStatusLabel: Record<OrderStatus, string> = {
   pending_payment: "Pending payment",
   funded: "Work in progress",
   in_progress: "Work in progress",
+  on_hold: "On hold",
   delivered: "Review pending",
   approved: "Draft approved",
   completed: "Completed",
@@ -91,11 +93,19 @@ const orderStatusClass: Record<OrderStatus, string> = {
   pending_payment: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
   funded: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
   in_progress: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  on_hold: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
   delivered: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
   approved: "bg-teal-500/10 text-teal-700 dark:text-teal-300",
   completed: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   cancelled: "bg-rose-500/10 text-rose-700 dark:text-rose-300",
   refunded: "bg-orange-500/10 text-orange-700 dark:text-orange-300",
+}
+
+function buyerFacingOrderStatusClass(order: BuyerOrderRow): string {
+  if (order.status === "completed" && order.payment_status === "pending") {
+    return orderStatusClass.delivered
+  }
+  return orderStatusClass[order.status]
 }
 
 const paymentStatusLabel: Record<PaymentStatus, string> = {
@@ -112,6 +122,9 @@ function buyerFacingOrderStatusLabel(order: BuyerOrderRow): string {
   }
   if (order.status === "approved") {
     return "Draft approved"
+  }
+  if (order.status === "completed" && order.payment_status === "pending") {
+    return "Delivered"
   }
   return orderStatusLabel[order.status] || order.status
 }
@@ -372,10 +385,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             }
           : current
       )
-      if (action === "approve") {
-        window.location.href = `/creators/${order.creator_id}/review?orderId=${encodeURIComponent(order.id)}`
-      }
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong, contact creator")
     } finally {
       setActingOrderId(null)
@@ -404,17 +414,21 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
             const creatorHandle = creator.handle
             const creatorSlug = req.creator_id
             const canPay =
+              req.status === "pending_payment" &&
               (req.payment_status === "unpaid" || req.payment_status === "failed")
             const isPaying = payingOrderId === req.id
             const isActing = actingOrderId === req.id
-            const hasPreview = req.status === "delivered" || req.status === "approved" || req.status === "completed"
-            const canApprove = (req.status === "delivered" || req.status === "funded") && req.payment_status === "pending"
-            const canRequestUpdate = req.status === "delivered"
+            const hasDeliveryPreview =
+              req.status === "delivered" || req.status === "approved" || req.status === "completed"
+            const canApprove = req.status === "delivered" && req.payment_status === "pending"
+            const canRequestUpdate = req.status === "delivered" && req.payment_status === "pending"
+            const canLeaveReview = req.status === "delivered"
             return (
               <TableRow key={req.id} className="hover:bg-muted/10">
                 <TableCell className="py-5">
                   <div className="flex items-center gap-3">
                     {creator.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={creator.avatarUrl}
                           alt={creatorName}
@@ -456,7 +470,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                 <TableCell>
                   <Badge
                     variant="secondary"
-                    className={cn("font-medium px-2.5 py-0.5 rounded-md", orderStatusClass[req.status])}
+                    className={cn("font-medium px-2.5 py-0.5 rounded-md", buyerFacingOrderStatusClass(req))}
                   >
                     {buyerFacingOrderStatusLabel(req)}
                   </Badge>
@@ -479,12 +493,38 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                       />
                       <DropdownMenuContent align="end" className="w-44">
                         <DropdownMenuItem
-                          render={<Link href={`/orders/${req.id}/preview`} className={cn("cursor-pointer", !hasPreview && "pointer-events-none opacity-50")} />}
-                          disabled={!hasPreview}
+                          onClick={() => openDialog(req)}
                         >
                           <Eye className="size-4" />
-                          Preview
+                          Order detail
                         </DropdownMenuItem>
+                        <DropdownMenuItem
+                          render={<Link href={`/creators/${req.creator_id}`} className="cursor-pointer" />}
+                        >
+                          <UserRound className="size-4" />
+                          Creator profile
+                        </DropdownMenuItem>
+                        {hasDeliveryPreview ? (
+                          <DropdownMenuItem
+                            render={<Link href={`/orders/${req.id}/preview`} className="cursor-pointer" />}
+                          >
+                            <Eye className="size-4" />
+                            Preview
+                          </DropdownMenuItem>
+                        ) : null}
+                        {canLeaveReview ? (
+                          <DropdownMenuItem
+                            render={
+                              <Link
+                                href={`/creators/${req.creator_id}/review?orderId=${encodeURIComponent(req.id)}`}
+                                className="cursor-pointer"
+                              />
+                            }
+                          >
+                            <Star className="size-4" />
+                            Leave review
+                          </DropdownMenuItem>
+                        ) : null}
                         {canPay ? (
                           <DropdownMenuItem disabled={isPaying} onClick={() => void handlePayNow(req)}>
                             {isPaying ? <LoaderCircle className="size-4 animate-spin" /> : <CreditCard className="size-4" />}
@@ -497,14 +537,16 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                             New update
                           </DropdownMenuItem>
                         ) : null}
-                        <DropdownMenuItem
-                          className="text-emerald-700 font-semibold focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
-                          disabled={!canApprove || isActing}
-                          onClick={() => void handleOrderAction(req, "approve")}
-                        >
-                          {isActing ? <LoaderCircle className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
-                          Approve
-                        </DropdownMenuItem>
+                        {canApprove ? (
+                          <DropdownMenuItem
+                            className="text-emerald-700 font-semibold focus:bg-emerald-100 focus:text-emerald-800 dark:focus:bg-emerald-500/20 dark:focus:text-emerald-300"
+                            disabled={isActing}
+                            onClick={() => void handleOrderAction(req, "approve")}
+                          >
+                            {isActing ? <LoaderCircle className="size-4 animate-spin" /> : <BadgeCheck className="size-4" />}
+                            Approve
+                          </DropdownMenuItem>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -558,6 +600,7 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                 <DialogHeader className="border-b border-border/60 px-6 pt-6 pb-4">
                   <div className="flex items-center gap-3 mb-1">
                     {creator.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={creator.avatarUrl}
                         alt={creator.displayName || "Creator"}
@@ -592,12 +635,12 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-muted-foreground">Status</p>
-                      <Badge
-                        variant="secondary"
-                        className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", orderStatusClass[selectedOrder.status])}
-                      >
-                        {buyerFacingOrderStatusLabel(selectedOrder)}
-                      </Badge>
+                        <Badge
+                          variant="secondary"
+                          className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", buyerFacingOrderStatusClass(selectedOrder))}
+                        >
+                          {buyerFacingOrderStatusLabel(selectedOrder)}
+                        </Badge>
                     </div>
                   </div>
 

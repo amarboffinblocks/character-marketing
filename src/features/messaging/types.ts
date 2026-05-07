@@ -1,4 +1,4 @@
-export type MessageSenderRole = "creator" | "buyer"
+export type MessageSenderRole = "creator" | "buyer" | "admin"
 
 export type MessageThreadStatus = "needs_response" | "active"
 
@@ -7,6 +7,8 @@ export type MessageThread = {
   orderId: string
   buyerName: string
   creatorName: string
+  buyerId: string
+  creatorId: string
   counterpartName: string
   counterpartAvatarUrl: string
   status: MessageThreadStatus

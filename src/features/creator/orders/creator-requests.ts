@@ -158,11 +158,37 @@ export async function updateCreatorRequestStatus(input: {
     }
 
     if (input.status === "rejected") {
+      const existingOrderResult = await client.query(
+        `select id, status, payment_status
+         from public.orders
+         where request_id = $1
+         limit 1`,
+        [requestRow.id]
+      )
+      const existingOrder = existingOrderResult.rows[0] as
+        | {
+            id: string
+            status: string
+            payment_status: "unpaid" | "pending" | "paid" | "failed" | "refunded"
+          }
+        | undefined
+
+      if (existingOrder && (existingOrder.payment_status === "pending" || existingOrder.payment_status === "paid")) {
+        await client.query("rollback")
+        throw new Error("This request already has a funded order. Cancel it from the order workflow instead.")
+      }
+
+      if (existingOrder) {
+        await client.query(`delete from public.conversation_threads where order_id = $1`, [existingOrder.id])
+        await client.query(`delete from public.orders where id = $1`, [existingOrder.id])
+      }
+
       if (requestRow.status === "rejected") {
         await client.query("commit")
         return {
           id: requestRow.id,
           status: "rejected",
+          orderId: null,
         }
       }
       const result = await client.query(
@@ -183,7 +209,7 @@ export async function updateCreatorRequestStatus(input: {
       return result.rows[0] as {
         id: string
         status: "accepted" | "rejected"
-        orderId?: string
+        orderId?: string | null
       }
     }
 

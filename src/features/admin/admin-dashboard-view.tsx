@@ -23,7 +23,9 @@ import type { AdminDashboardLiveMetrics } from "@/features/admin/admin-metrics"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
+import { useInboxFeed } from "@/features/inbox/use-inbox-feed"
 import { cn } from "@/lib/utils"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const severityClass: Record<(typeof adminEscalations)[number]["severity"], string> = {
   high: "bg-destructive/15 text-destructive",
@@ -127,40 +129,50 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
 
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader className="flex-row items-center justify-between border-b pb-4">
-            <div>
-              <CardTitle>Recent activity</CardTitle>
-              <CardDescription>Latest order status changes (from the orders table).</CardDescription>
-            </div>
-            <Link
-              href="/dashboard/admin/reports"
-              className="text-xs font-medium text-primary hover:underline"
-            >
-              See all
-            </Link>
-          </CardHeader>
-          <CardContent className="p-0">
-            {liveMetrics.recentActivity.length === 0 ? (
-              <p className="px-4 py-10 text-center text-sm text-muted-foreground sm:px-6">
-                No order activity yet. Completed and in-flight orders will appear here as the marketplace grows.
-              </p>
-            ) : (
-              <ul className="divide-y divide-border">
-                {liveMetrics.recentActivity.map((row) => (
-                  <li
-                    key={row.id}
-                    className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 sm:px-6"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-foreground">{row.label}</p>
-                      <p className="text-xs text-muted-foreground">{row.meta}</p>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted-foreground">{row.time}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
+          <Tabs defaultValue="activity">
+            <CardHeader className="flex-row items-center justify-between border-b pb-4">
+              <div className="flex flex-col gap-1">
+                <CardTitle>Updates & Activity</CardTitle>
+                <TabsList className="h-8 w-fit justify-start bg-muted/50 p-1">
+                  <TabsTrigger value="activity" className="h-6 px-3 text-xs">Recent activity</TabsTrigger>
+                  <TabsTrigger value="notifications" className="h-6 px-3 text-xs">Notifications</TabsTrigger>
+                </TabsList>
+              </div>
+              <Link
+                href="/dashboard/admin/notifications"
+                className="text-xs font-medium text-primary hover:underline"
+              >
+                View all
+              </Link>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TabsContent value="activity" className="m-0 border-none p-0">
+                {liveMetrics.recentActivity.length === 0 ? (
+                  <p className="px-4 py-10 text-center text-sm text-muted-foreground sm:px-6">
+                    No order activity yet.
+                  </p>
+                ) : (
+                  <ul className="divide-y divide-border">
+                    {liveMetrics.recentActivity.map((row) => (
+                      <li
+                        key={row.id}
+                        className="flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 sm:px-6"
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-foreground">{row.label}</p>
+                          <p className="text-xs text-muted-foreground">{row.meta}</p>
+                        </div>
+                        <span className="shrink-0 text-xs text-muted-foreground">{row.time}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </TabsContent>
+              <TabsContent value="notifications" className="m-0 border-none p-0">
+                <AdminDashboardNotifications role="admin" />
+              </TabsContent>
+            </CardContent>
+          </Tabs>
         </Card>
 
         <QuickActionsCard actions={adminQuickActions} />
@@ -319,5 +331,36 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
         </Card>
       </section>
     </div>
+  )
+}
+
+function AdminDashboardNotifications({ role }: { role: "admin" }) {
+  const { filteredItems, isLoading, markItemRead } = useInboxFeed(role)
+
+  if (isLoading) return <p className="px-6 py-10 text-center text-sm text-muted-foreground">Loading notifications...</p>
+
+  if (filteredItems.length === 0) return <p className="px-6 py-10 text-center text-sm text-muted-foreground">No recent notifications.</p>
+
+  return (
+    <ul className="divide-y divide-border">
+      {filteredItems.slice(0, 5).map((item) => (
+        <li key={item.id} className="group relative">
+          <Link
+            href={item.actionUrl ?? "#"}
+            onClick={() => markItemRead(item.id)}
+            className={cn(
+              "flex items-start justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent/30 sm:px-6",
+              !item.isRead && "bg-primary/5"
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-foreground">{item.title}</p>
+              <p className="mt-0.5 truncate text-xs text-muted-foreground">{item.body}</p>
+            </div>
+            {!item.isRead && <span className="mt-2.5 size-1.5 shrink-0 rounded-full bg-primary" />}
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }

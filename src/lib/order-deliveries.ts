@@ -444,10 +444,9 @@ export async function fetchOrderDeliverableItemForViewer(input: {
   }
 }
 
-export async function transferOrderAssetsToBuyer(input: {
+export async function cloneOrderAssetsToBuyer(input: {
   orderId: string
   buyerId: string
-  creatorId: string
 }) {
   const client = getOrdersDbClient()
   try {
@@ -467,24 +466,76 @@ export async function transferOrderAssetsToBuyer(input: {
       
       if (!isAssetType(assetType) || !assetId) continue
 
-      const tableMap: Record<DeliverableAssetType, string> = {
-        character: "characters",
-        persona: "personas",
-        lorebook: "lorebooks",
-        avatar: "avatars",
-        background: "backgrounds",
+      if (assetType === "character") {
+        await client.query(
+          `insert into public.characters (
+             creator_id, owner_id, character_name, avatar_url, background_url,
+             visibility, safety, tags, description, scenario, personality_summary,
+             first_message, alternative_messages, example_dialogue, author_notes,
+             character_notes, status
+           )
+           select 
+             $2, $2, character_name, avatar_url, background_url,
+             visibility, safety, tags, description, scenario, personality_summary,
+             first_message, alternative_messages, example_dialogue, author_notes,
+             character_notes, status
+           from public.characters
+           where id = $1`,
+          [assetId, input.buyerId]
+        )
+      } else if (assetType === "persona") {
+        await client.query(
+          `insert into public.personas (
+             creator_id, persona_name, persona_details, avatar_url,
+             tags, safety, visibility
+           )
+           select 
+             $2, persona_name, persona_details, avatar_url,
+             tags, safety, visibility
+           from public.personas
+           where id = $1`,
+          [assetId, input.buyerId]
+        )
+      } else if (assetType === "lorebook") {
+        await client.query(
+          `insert into public.lorebooks (
+             creator_id, lorebook_name, description, avatar_url,
+             tags, safety, visibility, entries
+           )
+           select 
+             $2, lorebook_name, description, avatar_url,
+             tags, safety, visibility, entries
+           from public.lorebooks
+           where id = $1`,
+          [assetId, input.buyerId]
+        )
+      } else if (assetType === "avatar") {
+        await client.query(
+          `insert into public.avatars (
+             creator_id, avatar_name, image_url, tags, safety,
+             visibility, style, notes
+           )
+           select 
+             $2, avatar_name, image_url, tags, safety,
+             visibility, style, notes
+           from public.avatars
+           where id = $1`,
+          [assetId, input.buyerId]
+        )
+      } else if (assetType === "background") {
+        await client.query(
+          `insert into public.backgrounds (
+             creator_id, background_name, image_url, tags, safety,
+             visibility, type, notes
+           )
+           select 
+             $2, background_name, image_url, tags, safety,
+             visibility, type, notes
+           from public.backgrounds
+           where id = $1`,
+          [assetId, input.buyerId]
+        )
       }
-
-      const table = tableMap[assetType]
-      
-      // Update owner_id to buyer, and set visibility to private by default for the buyer
-      // unless it was already public, but usually commissions are private.
-      await client.query(
-        `update public.${table}
-         set owner_id = $2, updated_at = now()
-         where id = $1`,
-        [assetId, input.buyerId]
-      )
     }
 
     await client.query("commit")

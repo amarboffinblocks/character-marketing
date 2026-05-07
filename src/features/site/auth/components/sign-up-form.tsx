@@ -155,6 +155,7 @@ export default function SignUpForm({ role }: SignUpFormProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "sign-up",
           provider,
           role,
         }),

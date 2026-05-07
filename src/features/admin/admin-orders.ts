@@ -33,6 +33,22 @@ function buyerDisplayName(profileData: unknown) {
   )
 }
 
+function creatorDisplayName(profileData: unknown) {
+  const root = profileData && typeof profileData === "object" ? (profileData as Record<string, unknown>) : null
+  const nested = root?.creator && typeof root.creator === "object" ? (root.creator as Record<string, unknown>) : null
+  const user = root?.user && typeof root.user === "object" ? (root.user as Record<string, unknown>) : null
+  
+  return (
+    (typeof nested?.displayName === "string" && nested.displayName.trim()) ||
+    (typeof nested?.name === "string" && nested.name.trim()) ||
+    (typeof user?.displayName === "string" && user.displayName.trim()) ||
+    (typeof user?.name === "string" && user.name.trim()) ||
+    (typeof root?.displayName === "string" && root.displayName.trim()) ||
+    (typeof root?.name === "string" && root.name.trim()) ||
+    "Creator"
+  )
+}
+
 function mapStatus(input: CreatorOrderRow["status"]): CreatorOrder["status"] {
   if (input === "in_progress") return "in_progress"
   if (input === "on_hold" || input === "approved") return "waiting_on_buyer"
@@ -43,7 +59,8 @@ function mapStatus(input: CreatorOrderRow["status"]): CreatorOrder["status"] {
   return "new"
 }
 
-function mapPriority(input: CreatorOrderRow["status"]): CreatorOrder["priority"] {
+function mapPriority(input: CreatorOrderRow["status"], paymentStatus: CreatorOrderRow["payment_status"]): CreatorOrder["priority"] {
+  if (input === "completed" && paymentStatus === "pending") return "high"
   if (input === "pending_payment" || input === "on_hold" || input === "approved") return "high"
   if (input === "in_progress" || input === "delivered") return "medium"
   return "low"
@@ -52,7 +69,7 @@ function mapPriority(input: CreatorOrderRow["status"]): CreatorOrder["priority"]
 function toCreatorOrder(row: CreatorOrderRow): CreatorOrder {
   const createdAt = asDate(row.created_at)
   const updatedAt = asDate(row.updated_at)
-  const status = mapStatus(row.status)
+  const status = row.status === "completed" && row.payment_status === "pending" ? "delivered" : mapStatus(row.status)
   const dueAt =
     status === "completed"
       ? createdAt
@@ -66,6 +83,7 @@ function toCreatorOrder(row: CreatorOrderRow): CreatorOrder {
   return {
     id: orderId,
     customerName: buyerDisplayName(row.buyer_profile_data),
+    creatorName: creatorDisplayName(row.creator_profile_data),
     packageName: row.package_title || "Order package",
     amount: Number(row.package_price ?? 0),
     dueDate: formatDueDate(dueAt),
@@ -73,8 +91,17 @@ function toCreatorOrder(row: CreatorOrderRow): CreatorOrder {
     updatedAt: formatUpdated(updatedAt),
     updatedAtTime: updatedAt.toISOString(),
     status,
-    priority: mapPriority(row.status),
-    needsResponse: row.status === "pending_payment" || row.status === "on_hold" || row.status === "approved",
+    priority: mapPriority(row.status, row.payment_status),
+    needsResponse:
+      row.status === "pending_payment" ||
+      row.status === "on_hold" ||
+      row.status === "approved" ||
+      (row.status === "completed" && row.payment_status === "pending"),
+    rawOrderId: row.id,
+    rawStatus: row.status,
+    paymentStatus: row.payment_status,
+    creatorId: row.creator_id,
+    buyerId: row.buyer_id,
   }
 }
 
@@ -102,9 +129,11 @@ export async function fetchAdminOrders(): Promise<CreatorOrder[]> {
           o.created_at,
           o.updated_at,
           o.request_snapshot,
-          p.profile_data as buyer_profile_data
+          p.profile_data as buyer_profile_data,
+          cp.profile_data as creator_profile_data
         from public.orders o
         left join public.profiles p on p.id = o.buyer_id
+        left join public.profiles cp on cp.id = o.creator_id
         order by o.created_at desc`
       ),
       client.query(
@@ -132,9 +161,11 @@ export async function fetchAdminOrders(): Promise<CreatorOrder[]> {
             'bidId', b.id,
             'description', b.description
           ) as request_snapshot,
-          p.profile_data as buyer_profile_data
+          p.profile_data as buyer_profile_data,
+          cp.profile_data as creator_profile_data
         from public.bid_posts b
         left join public.profiles p on p.id = b.requester_id
+        left join public.profiles cp on cp.id = b.assigned_creator_id
         where b.assigned_creator_id is not null
         order by b.created_at desc`
       ),

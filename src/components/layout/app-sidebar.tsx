@@ -86,6 +86,7 @@ const sidebarIcons = {
     profile: Sparkles,
     reviews: Star,
     earnings: Wallet,
+    wallet: Wallet,
     settings: Settings,
     users: Users,
     store: Store,
@@ -158,7 +159,7 @@ export function AppSidebar({
     const [workspaceOpen, setWorkspaceOpen] = useState(Boolean(workspaceActiveHref))
     const accountBasePath = brandHref.startsWith("/dashboard/admin") ? "/dashboard/admin" : "/dashboard/creator"
     const isCreatorSidebar = brandHref.startsWith("/dashboard/creator")
-    const { items, unreadCount: inboxUnreadCount } = useInboxFeed("creator", { enabled: isCreatorSidebar })
+    const { unreadCount: inboxUnreadCount } = useInboxFeed("creator", { enabled: isCreatorSidebar })
 
     const handleSignOut = async () => {
         if (isSigningOut) return

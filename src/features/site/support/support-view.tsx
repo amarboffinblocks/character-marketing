@@ -135,7 +135,7 @@ export function SupportView() {
             </div>
             <Card className="border-border/50 shadow-sm">
               <CardContent className="p-0">
-                <Accordion type="single" collapsible className="w-full">
+                <Accordion className="w-full">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`item-${index}`} className="border-b border-border/50 last:border-0 px-6 py-1">
                       <AccordionTrigger className="text-left text-lg font-medium hover:no-underline hover:text-primary">

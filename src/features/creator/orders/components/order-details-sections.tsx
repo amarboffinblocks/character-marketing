@@ -3,11 +3,14 @@
 import { useState } from "react"
 import Link from "next/link"
 import {
+  AlertCircle,
   CalendarClock,
   CheckCheck,
   Clock3,
+  CreditCard,
   Flag,
   HandCoins,
+  HelpCircle,
   MessageSquare,
   Paperclip,
   RefreshCcw,
@@ -15,6 +18,9 @@ import {
   Upload,
   UserRound,
 } from "lucide-react"
+import { toast } from "sonner"
+
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -57,35 +63,52 @@ function buyerInitials(name: string) {
 
 type HeaderProps = {
   order: CreatorOrder
+  readOnly?: boolean
+  messageHref?: string
+  messageLabel?: string
 }
 
-export function OrderDetailsHeader({ order }: HeaderProps) {
+export function OrderDetailsHeader({
+  order,
+  readOnly = false,
+  messageHref,
+  messageLabel = "Message Buyer",
+}: HeaderProps) {
   const [isFinalizing, setIsFinalizing] = useState(false)
+  const [showFinalizeDialog, setShowFinalizeDialog] = useState(false)
 
   async function handleFinalize() {
-    if (!confirm("Are you sure you want to finalize this order? This will transfer the assets to the buyer and release your payment.")) {
-      return
-    }
-
     setIsFinalizing(true)
     try {
-      const response = await fetch(`/api/creator/orders/${encodeURIComponent(order.id)}/finalize`, {
+      const response = await fetch(`/api/creator/orders/${encodeURIComponent(order.rawOrderId ?? order.id)}/finalize`, {
         method: "POST",
       })
       if (!response.ok) {
         const json = await response.json()
         throw new Error(json.error || "Failed to finalize order.")
       }
+      toast.success("Order finalized successfully.")
       window.location.reload()
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Unable to finalize order.")
+      toast.error(error instanceof Error ? error.message : "Unable to finalize order.")
     } finally {
       setIsFinalizing(false)
     }
   }
 
   return (
-    <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
+    <>
+      <ConfirmationDialog
+        open={showFinalizeDialog}
+        onOpenChange={setShowFinalizeDialog}
+        onConfirm={handleFinalize}
+        isLoading={isFinalizing}
+        title="Finalize Delivery?"
+        description="Are you sure you want to finalize this order? This will transfer the assets to the buyer, and admin will release your payment shortly after review."
+        confirmText="Finalize Now"
+        variant="default"
+      />
+      <section className="rounded-2xl border border-border bg-linear-to-br from-primary/10 via-accent/30 to-background p-5 sm:p-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="space-y-1.5">
           <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -98,8 +121,8 @@ export function OrderDetailsHeader({ order }: HeaderProps) {
           <OrderStatusBadge status={order.status} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {order.status === "approved" && (
-            <Button className="h-9" onClick={handleFinalize} disabled={isFinalizing}>
+          {!readOnly && order.status === "approved" && (
+            <Button className="h-9" onClick={() => setShowFinalizeDialog(true)} disabled={isFinalizing}>
               {isFinalizing ? (
                 <RefreshCcw className="size-4 animate-spin" />
               ) : (
@@ -108,19 +131,29 @@ export function OrderDetailsHeader({ order }: HeaderProps) {
               Finalize Delivery
             </Button>
           )}
-          {order.status !== "approved" && order.status !== "completed" && (
+          {!readOnly && order.status !== "approved" && order.status !== "completed" && (
             <Button className="h-9" variant="outline" disabled>
               <Clock3 className="size-4" />
               In Progress
             </Button>
           )}
-          <Button variant="outline" className="h-9">
-            <MessageSquare className="size-4" />
-            Message Buyer
-          </Button>
+          {!readOnly && (
+            messageHref ? (
+              <Button variant="outline" className="h-9" render={<Link href={messageHref} />}>
+                <MessageSquare className="size-4" />
+                {messageLabel}
+              </Button>
+            ) : (
+              <Button variant="outline" className="h-9" disabled={readOnly}>
+                <MessageSquare className="size-4" />
+                {readOnly ? "Read only" : messageLabel}
+              </Button>
+            )
+          )}
         </div>
       </div>
     </section>
+    </>
   )
 }
 
@@ -426,7 +459,7 @@ export function ConversationCard({ details }: { details: OrderDetailsData }) {
                 message.sender === "creator" && "ml-8 border-primary/20 bg-primary/5",
                 message.sender === "buyer" && "mr-8 border-border/80 bg-muted/20",
                 message.sender === "system" &&
-                  "border-dashed border-border bg-background text-muted-foreground"
+                "border-dashed border-border bg-background text-muted-foreground"
               )}
             >
               <p className="text-xs font-medium capitalize text-muted-foreground">{message.sender}</p>
@@ -550,41 +583,120 @@ export function RevisionsCard({ details }: { details: OrderDetailsData }) {
   )
 }
 
-export function OrderQuickSidebar({ order }: { order: CreatorOrder }) {
+export function OrderQuickSidebar({ order, readOnly = false }: { order: CreatorOrder; readOnly?: boolean }) {
   const deadline = getDeadlineState(order)
+  const [isReleasing, setIsReleasing] = useState(false)
+  const [showReleaseDialog, setShowReleaseDialog] = useState(false)
+
+  async function handleReleasePayout() {
+    setIsReleasing(true)
+    try {
+      const response = await fetch(`/api/admin/orders/${encodeURIComponent(order.rawOrderId ?? order.id)}/release`, {
+        method: "POST",
+      })
+      if (!response.ok) {
+        const json = await response.json()
+        throw new Error(json.error || "Failed to release payout.")
+      }
+      toast.success("Payout released successfully.")
+      window.location.reload()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to release payout.")
+    } finally {
+      setIsReleasing(false)
+    }
+  }
 
   return (
-    <Card className="h-fit xl:sticky xl:top-20">
+    <>
+      <ConfirmationDialog
+        open={showReleaseDialog}
+        onOpenChange={setShowReleaseDialog}
+        onConfirm={handleReleasePayout}
+        isLoading={isReleasing}
+        title="Release Payout?"
+        description="Are you sure you want to release the payment to the creator? This will finalize the transaction and transfer funds from escrow."
+        confirmText="Release Funds"
+        variant="default"
+      />
+      <Card className="h-fit xl:sticky xl:top-20">
       <CardHeader className="border-b pb-4">
         <CardTitle>Quick actions</CardTitle>
         <CardDescription>Fast controls for this order.</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-2 py-4">
-        <Link href="/dashboard/creator/orders" className={cn(buttonVariants(), "h-9 justify-start")}>
-          <MessageSquare className="size-4" />
-          Message buyer
-        </Link>
-        <Button variant="outline" className="h-9 justify-start">
-          <Clock3 className="size-4" />
-          Update timeline
-        </Button>
-        <Button variant="outline" className="h-9 justify-start">
-          <HandCoins className="size-4" />
-          Request payout
-        </Button>
+        {readOnly ? (
+          <>
+            <Link
+              href={`/dashboard/admin/messages?userId=${order.buyerId}&order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
+              className={cn(buttonVariants(), "h-9 justify-start")}
+            >
+              <MessageSquare className="size-4" />
+              Chat with buyer
+            </Link>
+            <Link
+              href={`/dashboard/admin/messages?userId=${order.creatorId}&order=${encodeURIComponent(order.rawOrderId ?? order.id)}`}
+              className={cn(buttonVariants({ variant: "outline" }), "h-9 justify-start")}
+            >
+              <MessageSquare className="size-4" />
+              Chat with creator
+            </Link>
+            <Button
+              variant="secondary"
+              className="h-9 justify-start"
+              onClick={() => setShowReleaseDialog(true)}
+              disabled={isReleasing || (order.status !== "completed" && order.status !== "delivered") || order.paymentStatus !== "pending"}
+            >
+              <CreditCard className="size-4" />
+              {isReleasing ? "Releasing..." : "Pay to creator"}
+            </Button>
+          </>
+        ) : (
+          <>
+            <Link href="/dashboard/creator/orders" className={cn(buttonVariants(), "h-9 justify-start")}>
+              <MessageSquare className="size-4" />
+              Message buyer
+            </Link>
+            <Button variant="outline" className="h-9 justify-start">
+              <Clock3 className="size-4" />
+              Update timeline
+            </Button>
+            <Button variant="outline" className="h-9 justify-start">
+              <HandCoins className="size-4" />
+              Request payout
+            </Button>
+          </>
+        )}
+
         <div className={cn("mt-2 rounded-lg border p-3 text-xs", deadline.className)}>
           <p className="font-medium">{deadline.label}</p>
           <p className="mt-1">{deadline.detail}</p>
         </div>
+
         <div className="rounded-lg border border-border/80 bg-muted/20 p-3 text-xs text-muted-foreground">
-          <p className="font-medium text-foreground">Assignee</p>
-          <p className="mt-1 inline-flex items-center gap-1.5">
-            <UserRound className="size-3.5" />
-            You are assigned as creator
-          </p>
+          <p className="font-medium text-foreground">Assignee & Roles</p>
+          <div className="mt-2 space-y-2">
+            <p className="inline-flex items-center gap-1.5">
+              <UserRound className="size-3.5" />
+              {readOnly ? "Admin oversight" : "You are assigned as creator"}
+            </p>
+            {readOnly && (
+              <>
+                <p className="flex items-center gap-1.5">
+                  <span className="size-1 rounded-full bg-primary" />
+                  Buyer: {order.buyerId.slice(0, 8)}
+                </p>
+                <p className="flex items-center gap-1.5">
+                  <span className="size-1 rounded-full bg-accent" />
+                  Creator: {order.creatorId.slice(0, 8)}
+                </p>
+              </>
+            )}
+          </div>
         </div>
         <Input placeholder="Internal note..." className="h-8" />
       </CardContent>
     </Card>
+    </>
   )
 }

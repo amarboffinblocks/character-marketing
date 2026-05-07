@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { MultiSelect } from "@/components/ui/multi-select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import type { CreatorOrderRow, CreatorOrderStatus, CreatorPaymentStatus } from "@/features/creator/orders/creator-orders"
 import { buyerSummaryFromProfileData } from "@/lib/profile-buyer-display"
@@ -75,12 +76,12 @@ type CreatorPayoutProfile = {
 }
 
 /** Initial / cleared state for per-type asset dropdowns */
-const EMPTY_ASSET_PICKS: Record<ReviewPickKey, string> = {
-  character: "",
-  persona: "",
-  lorebook: "",
-  avatar: "",
-  background: "",
+const EMPTY_ASSET_PICKS: Record<ReviewPickKey, string[]> = {
+  character: [],
+  persona: [],
+  lorebook: [],
+  avatar: [],
+  background: [],
 }
 
 /** Options API returns keyed rows; map to picker keys used in payloads. */
@@ -100,18 +101,26 @@ const DELIVERY_PICK_ROWS: ReadonlyArray<{ pickKey: ReviewPickKey; optionsKey: st
   { pickKey: "background", optionsKey: "background", label: "Background" },
 ]
 
-function picksToDeliverableAssets(picks: Record<ReviewPickKey, string>): Array<{ assetType: string; assetId: string }> {
+function picksToDeliverableAssets(picks: Record<ReviewPickKey, string[]>): Array<{ assetType: string; assetId: string }> {
   const out: Array<{ assetType: string; assetId: string }> = []
   for (const t of REVIEW_REQUIRED_TYPES) {
-    const id = picks[t]?.trim()
-    if (id) out.push({ assetType: t, assetId: id })
+    const ids = picks[t]
+    if (ids && ids.length > 0) {
+      ids.forEach(id => {
+        if (id.trim()) out.push({ assetType: t, assetId: id.trim() })
+      })
+    }
   }
-  const bg = picks.background?.trim()
-  if (bg) out.push({ assetType: "background", assetId: bg })
+  const bgIds = picks.background
+  if (bgIds && bgIds.length > 0) {
+    bgIds.forEach(id => {
+      if (id.trim()) out.push({ assetType: "background", assetId: id.trim() })
+    })
+  }
   return out
 }
 
-function picksToReviewAssets(picks: Record<ReviewPickKey, string>): Array<{ assetType: string; assetId: string }> {
+function picksToReviewAssets(picks: Record<ReviewPickKey, string[]>): Array<{ assetType: string; assetId: string }> {
   return picksToDeliverableAssets(picks)
 }
 
@@ -169,10 +178,27 @@ const orderStatusClass: Record<CreatorOrderStatus, string> = {
 
 const paymentStatusLabel: Record<CreatorPaymentStatus, string> = {
   unpaid: "Unpaid",
-  pending: "In escrow",
+  pending: "Payment on hold",
   paid: "Paid",
   failed: "Failed",
   refunded: "Refunded",
+}
+
+function creatorFacingOrderStatusLabel(order: CreatorOrderRow): string {
+  if (order.status === "completed" && order.payment_status === "pending") {
+    return "Delivered"
+  }
+  if (order.status === "approved") {
+    return "Buyer approved"
+  }
+  return orderStatusLabel[order.status]
+}
+
+function creatorFacingOrderStatusClass(order: CreatorOrderRow): string {
+  if (order.status === "completed" && order.payment_status === "pending") {
+    return orderStatusClass.delivered
+  }
+  return orderStatusClass[order.status]
 }
 
 function formatCurrency(amount: number) {
@@ -325,14 +351,14 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const [deliveryOrder, setDeliveryOrder] = useState<CreatorOrderRow | null>(null)
   const [deliveryOptions, setDeliveryOptions] = useState<Record<string, Array<{ assetType: string; assetId: string; title: string; subtitle: string; thumbnailUrl: string | null }>>>({})
-  const [deliveryPick, setDeliveryPick] = useState<Record<ReviewPickKey, string>>(EMPTY_ASSET_PICKS)
+  const [deliveryPick, setDeliveryPick] = useState<Record<ReviewPickKey, string[]>>(EMPTY_ASSET_PICKS)
   const [deliveryNote, setDeliveryNote] = useState("")
   const [isLoadingDeliveryOptions, setIsLoadingDeliveryOptions] = useState(false)
   const [isSubmittingDelivery, setIsSubmittingDelivery] = useState(false)
   const [statusReviewOptions, setStatusReviewOptions] = useState<
     Record<string, Array<{ assetType: string; assetId: string; title: string; subtitle: string; thumbnailUrl: string | null }>>
   >({})
-  const [statusReviewPick, setStatusReviewPick] = useState<Record<ReviewPickKey, string>>(EMPTY_ASSET_PICKS)
+  const [statusReviewPick, setStatusReviewPick] = useState<Record<ReviewPickKey, string[]>>(EMPTY_ASSET_PICKS)
   const [statusReviewNote, setStatusReviewNote] = useState("")
   const [isLoadingStatusReviewOptions, setIsLoadingStatusReviewOptions] = useState(false)
   const [error, setError] = useState("")
@@ -343,7 +369,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
     switch (status) {
       case "pending_payment":
       case "pending":
-        return "pending"
+        return "processing"
       case "funded":
       case "in_progress":
         return "processing"
@@ -705,6 +731,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                     <TableCell className="py-4">
                       <div className="flex items-center gap-2.5">
                         {buyer.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img src={buyer.avatarUrl} alt={buyer.displayName} className="size-9 rounded-full object-cover shadow-xs" />
                         ) : (
                           <span className="inline-flex size-9 items-center justify-center rounded-full bg-muted/80 text-muted-foreground shadow-xs" aria-hidden>
@@ -726,8 +753,8 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                       </Badge>
                     </TableCell> */}
                     <TableCell>
-                      <Badge variant="secondary" className={cn("font-medium px-2.5 py-0.5 rounded-md", orderStatusClass[order.status])}>
-                        {orderStatusLabel[order.status]}
+                      <Badge variant="secondary" className={cn("font-medium px-2.5 py-0.5 rounded-md", creatorFacingOrderStatusClass(order))}>
+                        {creatorFacingOrderStatusLabel(order)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatCreatedAt(order.created_at)}</TableCell>
@@ -812,7 +839,6 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pending">Pending</SelectItem>
                   <SelectItem value="processing">Processing</SelectItem>
                   <SelectItem value="on_hold">On check Hold</SelectItem>
                   <SelectItem value="reviewing">Send for Review</SelectItem>
@@ -829,10 +855,9 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 ) : (
                   REVIEW_ROWS.map(({ pickKey, optionsKey, label, required }) => {
                     const items = statusReviewOptions[optionsKey] ?? []
-                    const current = statusReviewPick[pickKey]
-                    const selectValue = current || "Select an Asset"
+                    const current = statusReviewPick[pickKey] || []
                     const noneLabel =
-                      pickKey === "background" ? "No background" : required ? `Select ${label.toLowerCase()}…` : "None"
+                      pickKey === "background" ? "No background" : required ? `Select ${label.toLowerCase()}…` : "Select options"
 
                     return (
                       <div key={pickKey} className="space-y-2">
@@ -842,29 +867,21 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                         {items.length === 0 ? (
                           <p className="text-xs text-muted-foreground">No published {label.toLowerCase()} assets in workspace yet.</p>
                         ) : (
-                          <Select
-                            value={selectValue}
+                          <MultiSelect
+                            options={items.map((item) => ({
+                              label: item.subtitle ? `${item.title} · ${item.subtitle}` : item.title,
+                              value: item.assetId,
+                            }))}
                             onValueChange={(value) =>
                               setStatusReviewPick((prev) => ({
                                 ...prev,
-                                [pickKey]: value === "Select an Asset" ? "" : value,
+                                [pickKey]: value,
                               }))
                             }
-                          >
-                            <SelectTrigger id={`review-pick-${pickKey}`} className="w-full">
-                              <span className={cn("truncate", !current && "text-muted-foreground")}>
-                                {selectedOptionLabel(items, current, noneLabel)}
-                              </span>
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Select an Asset">{noneLabel}</SelectItem>
-                              {items.map((item) => (
-                                <SelectItem key={item.assetId} value={item.assetId}>
-                                  {item.subtitle ? `${item.title} · ${item.subtitle}` : item.title}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                            defaultValue={current}
+                            placeholder={noneLabel}
+                            maxCount={5}
+                          />
                         )}
                       </div>
                     )
@@ -914,6 +931,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 <DialogHeader className="border-b border-border/60 px-6 pt-6 pb-4">
                   <div className="flex items-center gap-3 mb-1">
                     {buyer.avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={buyer.avatarUrl}
                         alt={buyer.displayName || "Buyer"}
@@ -949,9 +967,9 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                         <p className="text-xs font-semibold text-muted-foreground">Status</p>
                         <Badge
                           variant="secondary"
-                          className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", orderStatusClass[orderToView.status])}
+                          className={cn("mt-1 font-medium px-2 py-0.5 rounded-md text-xs", creatorFacingOrderStatusClass(orderToView))}
                         >
-                          {orderStatusLabel[orderToView.status]}
+                          {creatorFacingOrderStatusLabel(orderToView)}
                         </Badge>
                       </div>
                     </div>
@@ -1046,9 +1064,8 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
             ) : (
               DELIVERY_PICK_ROWS.map(({ pickKey, optionsKey, label }) => {
                 const items = deliveryOptions[optionsKey] ?? []
-                const current = deliveryPick[pickKey]
-                const selectValue = current || "Select an Asset"
-                const noneLabel = "Leave empty"
+                const current = deliveryPick[pickKey] || []
+                const noneLabel = "Select options"
 
                 return (
                   <div key={`delivery-${pickKey}`} className="space-y-2">
@@ -1061,48 +1078,49 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        <Select
-                          value={selectValue}
+                        <MultiSelect
+                          options={items.map((item) => ({
+                            label: item.subtitle ? `${item.title} · ${item.subtitle}` : item.title,
+                            value: item.assetId,
+                          }))}
                           onValueChange={(value) =>
                             setDeliveryPick((prev) => ({
                               ...prev,
-                              [pickKey]: value === "Select an Asset" ? "" : value,
+                              [pickKey]: value,
                             }))
                           }
-                        >
-                          <SelectTrigger id={`delivery-pick-${pickKey}`} className="w-full">
-                            <span className={cn("truncate", !current && "text-muted-foreground")}>
-                              {selectedOptionLabel(items, current, noneLabel)}
-                            </span>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Select an Asset">{noneLabel}</SelectItem>
-                            {items.map((item) => (
-                              <SelectItem key={item.assetId} value={item.assetId}>
-                                {item.subtitle ? `${item.title} · ${item.subtitle}` : item.title}
-                              </SelectItem>
+                          defaultValue={current}
+                          placeholder={noneLabel}
+                          maxCount={5}
+                        />
+                        {current.length > 0 ? (
+                          <div className="flex flex-col gap-2 mt-2">
+                            {current.map((assetId) => (
+                              <div key={assetId} className="flex items-center justify-between gap-2 rounded-md border border-border/50 bg-muted/20 px-3 py-2">
+                                <span className="text-sm text-foreground truncate flex-1">
+                                  {selectedOptionLabel(items, assetId, "Asset")}
+                                </span>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <Link
+                                    href={creatorWorkspacePreviewHref(pickKey, assetId)}
+                                    target="_blank"
+                                    className={cn(buttonVariants({ variant: "outline", size: "icon" }), "h-7 w-7")}
+                                  >
+                                    <ExternalLink className="size-3.5" />
+                                    <span className="sr-only">Preview</span>
+                                  </Link>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    className="h-7 w-7"
+                                    onClick={() => void copyAssetSelection(pickKey, assetId)}
+                                  >
+                                    <Copy className="size-3.5" />
+                                    <span className="sr-only">Copy</span>
+                                  </Button>
+                                </div>
+                              </div>
                             ))}
-                          </SelectContent>
-                        </Select>
-                        {current ? (
-                          <div className="flex items-center gap-2">
-                            <Link
-                              href={creatorWorkspacePreviewHref(pickKey, current)}
-                              target="_blank"
-                              className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5")}
-                            >
-                              <ExternalLink className="size-3.5" />
-                              Preview
-                            </Link>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-2.5"
-                              onClick={() => void copyAssetSelection(pickKey, current)}
-                            >
-                              <Copy className="size-3.5" />
-                              Copy
-                            </Button>
                           </div>
                         ) : null}
                       </div>
@@ -1120,7 +1138,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 className="min-h-28"
               />
             </div>
-            <div
+            {/* <div
               className={cn(
                 "rounded-lg border p-3",
                 payoutReady
@@ -1135,7 +1153,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
               {isLoadingPayoutProfile ? (
                 <p className="mt-1 text-xs">Checking payout profile…</p>
               ) : payoutReady ? (
-                <p className="mt-1 text-xs">Payout account is ready. Delivery can release funds automatically.</p>
+                <p className="mt-1 text-xs">Payout account is ready. Admin will release funds manually after final delivery.</p>
               ) : (
                 <p className="mt-1 text-xs">
                   Missing: {missingPayoutFields.join(", ")}. Complete these in profile before delivering.
@@ -1150,7 +1168,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                   Open profile
                 </Link>
               </div>
-            </div>
+            </div> */}
             {error ? <p className="text-xs text-rose-600">{error}</p> : null}
           </div>
           <DialogFooter>

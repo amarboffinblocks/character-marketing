@@ -15,10 +15,20 @@ import type { CreatorOrder } from "@/features/creator/orders/types"
 
 type OrderRowActionsProps = {
   order: CreatorOrder
+  context?: "creator" | "admin"
 }
 
-export function OrderRowActions({ order }: OrderRowActionsProps) {
-  const orderHref = `/dashboard/creator/orders/${order.id.toLowerCase()}`
+export function OrderRowActions({ order, context = "creator" }: OrderRowActionsProps) {
+  const orderKey = encodeURIComponent(order.rawOrderId ?? order.id.toLowerCase())
+  const orderHref =
+    context === "admin" ? `/dashboard/admin/orders/${orderKey}` : `/dashboard/creator/orders/${order.id.toLowerCase()}`
+  const messagesHref =
+    context === "admin"
+      ? `/dashboard/admin/messages?order=${encodeURIComponent(order.rawOrderId ?? order.id)}`
+      : `/dashboard/creator/messages?order=${encodeURIComponent(order.id)}`
+
+  const customerChatHref = `/dashboard/admin/messages?order=${encodeURIComponent(order.rawOrderId ?? order.id)}&target=${order.buyerId}`
+  const creatorChatHref = `/dashboard/admin/messages?order=${encodeURIComponent(order.rawOrderId ?? order.id)}&target=${order.creatorId}`
 
   function copyOrderId() {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -40,17 +50,27 @@ export function OrderRowActions({ order }: OrderRowActionsProps) {
           <ExternalLink className="size-4" />
           Open order
         </DropdownMenuItem>
-        <DropdownMenuItem
-          render={
-            <Link
-              href={`/dashboard/creator/messages?order=${encodeURIComponent(order.id)}`}
-              className="cursor-pointer"
-            />
-          }
-        >
-          <MessageSquareText className="size-4" />
-          Open messages
-        </DropdownMenuItem>
+        {context === "admin" ? (
+          <>
+            <DropdownMenuItem render={<Link href={customerChatHref} className="cursor-pointer" />}>
+              <MessageSquareText className="size-4 text-primary" />
+              Chat with Customer
+            </DropdownMenuItem>
+            <DropdownMenuItem render={<Link href={creatorChatHref} className="cursor-pointer" />}>
+              <MessageSquareText className="size-4 text-emerald-500" />
+              Chat with Creator
+            </DropdownMenuItem>
+          </>
+        ) : (
+          <DropdownMenuItem
+            render={
+              <Link href={messagesHref} className="cursor-pointer" />
+            }
+          >
+            <MessageSquareText className="size-4" />
+            Open messages
+          </DropdownMenuItem>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={copyOrderId}>
           <Copy className="size-4" />

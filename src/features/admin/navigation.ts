@@ -2,10 +2,19 @@ import type { AppSidebarGroup } from "@/components/layout/app-sidebar"
 
 export const adminSidebarGroups: AppSidebarGroup[] = [
   {
-    label: "Overview",
+    label: "Communication",
     items: [
       { title: "Overview", href: "/dashboard/admin", icon: "dashboard" },
+      { title: "Notifications", href: "/dashboard/admin/notifications", icon: "bell" },
+      { title: "Messages", href: "/dashboard/admin/messages", icon: "messages" },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { title: "Orders", href: "/dashboard/admin/orders", icon: "orders" },
       { title: "Reports", href: "/dashboard/admin/reports", icon: "chart" },
+      { title: "Transactions", href: "/dashboard/admin/transactions", icon: "wallet" },
     ],
   },
   {

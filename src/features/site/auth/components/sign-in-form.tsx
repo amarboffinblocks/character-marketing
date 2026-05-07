@@ -145,11 +145,14 @@ export default function SignInForm() {
     setVerifyEmailHint(null)
 
     try {
+      const nextPath = searchParams.get("next")
       const response = await fetch("/api/auth/oauth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          mode: "sign-in",
           provider,
+          ...(nextPath && nextPath.startsWith("/") ? { next: nextPath } : {}),
         }),
       })
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type Stripe from "stripe"
 
 import { buildTransferGroup, getPaymentsDbClient } from "@/lib/payments/escrow"
+import { insertInboxNotification } from "@/lib/inbox-notifications"
 import { getStripeClient } from "@/lib/payments/stripe"
 
 export const runtime = "nodejs"
@@ -109,6 +110,27 @@ async function markCheckoutCompleted(session: Stripe.Checkout.Session) {
          where o.id = $1`,
         [orderId, paymentIntentId || session.id, session.id, paymentIntentId, chargeId, transferGroup]
       )
+    }
+
+    const orderNotificationResult = await client.query(
+      `select creator_id, package_title
+       from public.orders
+       where id = $1
+       limit 1`,
+      [orderId]
+    )
+    const orderNotificationRow = orderNotificationResult.rows[0] as
+      | { creator_id: string; package_title: string }
+      | undefined
+
+    if (orderNotificationRow) {
+      await insertInboxNotification(client, {
+        userId: orderNotificationRow.creator_id,
+        category: "payment",
+        title: "Order funded",
+        body: `The buyer paid for ${orderNotificationRow.package_title || `order #${orderId.slice(0, 8)}`}. You can start work now.`,
+        actionUrl: "/dashboard/creator/orders",
+      })
     }
 
     await client.query("commit")

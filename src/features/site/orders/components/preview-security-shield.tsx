@@ -1,8 +1,11 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
+import { ShieldAlert } from "lucide-react"
 
 export function PreviewSecurityShield({ watermark }: { watermark: string }) {
+  const [isFocused, setIsFocused] = useState(true)
+
   useEffect(() => {
     function blockContextMenu(event: MouseEvent) {
       event.preventDefault()
@@ -27,11 +30,24 @@ export function PreviewSecurityShield({ watermark }: { watermark: string }) {
       }
     }
 
+    function handleBlur() {
+      setIsFocused(false)
+    }
+
+    function handleFocus() {
+      setIsFocused(true)
+    }
+
+    // Double check initial state
+    setIsFocused(document.hasFocus())
+
     window.addEventListener("contextmenu", blockContextMenu)
     window.addEventListener("dragstart", blockDragStart)
     window.addEventListener("copy", blockCopy)
     window.addEventListener("cut", blockCopy)
     window.addEventListener("keydown", blockKeydown)
+    window.addEventListener("blur", handleBlur)
+    window.addEventListener("focus", handleFocus)
 
     return () => {
       window.removeEventListener("contextmenu", blockContextMenu)
@@ -39,22 +55,38 @@ export function PreviewSecurityShield({ watermark }: { watermark: string }) {
       window.removeEventListener("copy", blockCopy)
       window.removeEventListener("cut", blockCopy)
       window.removeEventListener("keydown", blockKeydown)
+      window.removeEventListener("blur", handleBlur)
+      window.removeEventListener("focus", handleFocus)
     }
   }, [])
 
   return (
-    <div
-      aria-hidden
-      className="pointer-events-none fixed inset-0 z-40 select-none overflow-hidden opacity-[0.06]"
-    >
-      <div className="absolute inset-0 [background-image:radial-gradient(circle_at_center,currentColor_1px,transparent_1px)] [background-size:28px_28px] text-foreground/30" />
-      <div className="absolute inset-0 flex flex-wrap content-start items-start gap-16 p-8 text-xs font-semibold uppercase tracking-[0.35em] text-foreground/50">
-        {Array.from({ length: 24 }).map((_, index) => (
-          <span key={`${watermark}-${index}`} className="rotate-[-24deg]">
-            Protected Preview · {watermark}
-          </span>
-        ))}
+    <>
+      {/* Watermark overlay */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed inset-0 z-40 select-none overflow-hidden opacity-[0.06]"
+      >
+        <div className="absolute inset-0 [background-image:radial-gradient(circle_at_center,currentColor_1px,transparent_1px)] [background-size:28px_28px] text-foreground/30" />
+        <div className="absolute inset-0 flex flex-wrap content-start items-start gap-16 p-8 text-xs font-semibold uppercase tracking-[0.35em] text-foreground/50">
+          {Array.from({ length: 24 }).map((_, index) => (
+            <span key={`${watermark}-${index}`} className="rotate-[-24deg]">
+              Protected Preview · {watermark}
+            </span>
+          ))}
+        </div>
       </div>
-    </div>
+
+      {/* Focus lock overlay */}
+      {!isFocused && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background/95 backdrop-blur-2xl">
+          <ShieldAlert className="mb-4 size-16 text-muted-foreground opacity-50" />
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">Content Hidden</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Please click on this window to resume viewing the protected preview.
+          </p>
+        </div>
+      )}
+    </>
   )
 }

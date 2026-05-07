@@ -862,9 +862,9 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 															getBadgeAnimationClass(),
 															multiSelectVariants({ variant }),
 															customStyle?.gradient &&
-																"text-white border-transparent",
+																"text-white border-transparent ",
 															responsiveSettings.compactMode &&
-																"text-xs px-1.5 py-0.5",
+																"text-xs px-1.5 !py-4",
 															screenSize === "mobile" &&
 																"max-w-[120px] truncate",
 															singleLine && "shrink-0 whitespace-nowrap",
@@ -914,7 +914,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 																}
 															}}
 															aria-label={`Remove ${option.label} from selection`}
-															className="ml-2 -m-0.5 h-4 w-4 cursor-pointer rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/50">
+															className="ml-2 -m-0.5 py-4 w-4 cursor-pointer rounded-sm p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground focus:outline-none focus:ring-1 focus:ring-ring/50">
 															<XCircle
 																className={cn(
 																	"h-3 w-3",
@@ -1008,13 +1008,13 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 							getPopoverAnimationClass(),
 							screenSize === "mobile" && "w-[85vw] max-w-[280px]",
 							screenSize === "tablet" && "w-[70vw] max-w-md",
-							screenSize === "desktop" && "min-w-[300px]",
+							screenSize === "desktop" && "w-[250px]",
 							popoverClassName
 						)}
 						style={{
 							animationDuration: `${animationConfig?.duration || animation}s`,
 							animationDelay: `${animationConfig?.delay || 0}s`,
-							maxWidth: `min(${widthConstraints.maxWidth}, 85vw)`,
+							maxWidth: `300px`,
 							maxHeight: screenSize === "mobile" ? "70vh" : "60vh",
 							touchAction: "manipulation",
 						}}
@@ -1044,7 +1044,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 								<CommandEmpty>
 									{emptyIndicator || "No results found."}
 								</CommandEmpty>{" "}
-								{!hideSelectAll && !searchValue && (
+								{/* {!hideSelectAll && !searchValue && (
 									<CommandGroup>
 										<CommandItem
 											key="all"
@@ -1057,7 +1057,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											aria-label={`Select all ${
 												getAllOptions().length
 											} options`}
-											className="cursor-pointer">
+											className="cursor-pointer ">
 											<div
 												className={cn(
 													"mr-2 flex h-4 w-4 items-center justify-center  rounded-sm border border-border",
@@ -1070,16 +1070,16 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 												aria-hidden="true">
 												<CheckIcon className="h-4 w-4" />
 											</div>
-											<span>
+											{/* <span className="bg-none">
 												(Select All
 												{getAllOptions().length > 20
 													? ` - ${getAllOptions().length} options`
 													: ""}
 												)
-											</span>
+											</span> 
 										</CommandItem>
 									</CommandGroup>
-								)}
+								*/}
 								{isGroupedOptions(filteredOptions) ? (
 									filteredOptions.map((group) => (
 										<CommandGroup key={group.heading} heading={group.heading} >
@@ -1172,7 +1172,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 											<>
 												<CommandItem
 													onSelect={handleClear}
-													className="flex-1 justify-center rounded-md border border-border bg-background font-medium text-foreground hover:bg-accent">
+													className="flex-1 justify-center items-center rounded-md border border-border bg-background font-medium text-foreground hover:bg-accent">
 													Clear
 												</CommandItem>
 												<Separator
@@ -1183,7 +1183,7 @@ export const MultiSelect = React.forwardRef<MultiSelectRef, MultiSelectProps>(
 										)}
 										<CommandItem
 											onSelect={() => setIsPopoverOpen(false)}
-											className="max-w-full flex-1 justify-center rounded-md border border-border bg-background font-medium text-foreground hover:bg-accent">
+											className="max-w-full flex-1 justify-center items-center rounded-md border border-border bg-background font-medium text-foreground hover:bg-accent">
 											Close
 										</CommandItem>
 									</div>

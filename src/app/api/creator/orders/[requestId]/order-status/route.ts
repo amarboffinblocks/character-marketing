@@ -21,6 +21,64 @@ function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : ""
 }
 
+function buildBuyerOrderNotification(input: {
+  orderId: string
+  packageTitle: string
+  status: "pending" | "processing" | "on_hold" | "reviewing" | "delivered" | "completed"
+}) {
+  const orderLabel = input.packageTitle || `order #${input.orderId.slice(0, 8)}`
+
+  if (input.status === "pending") {
+    return {
+      title: "Order update",
+      body: `Your creator updated ${orderLabel}. The order is currently pending.`,
+      actionUrl: "/orders",
+    }
+  }
+
+  if (input.status === "processing") {
+    return {
+      title: "Work has started",
+      body: `Your creator started working on ${orderLabel}.`,
+      actionUrl: "/orders",
+    }
+  }
+
+  if (input.status === "on_hold") {
+    return {
+      title: "Order update",
+      body: `Your creator paused ${orderLabel} for now. Open the order to review the latest status.`,
+      actionUrl: "/orders",
+    }
+  }
+
+  if (input.status === "completed") {
+    return {
+      title: "Order marked complete",
+      body: `Your creator marked ${orderLabel} as complete.`,
+      actionUrl: "/orders",
+    }
+  }
+
+  if (input.status === "reviewing") {
+    return {
+      title: "Order update",
+      body: `Your creator updated ${orderLabel}. Review is now the next step.`,
+      actionUrl: `/orders/${input.orderId}/preview`,
+    }
+  }
+
+  if (input.status === "delivered") {
+    return {
+      title: "Order delivered",
+      body: `Your creator delivered ${orderLabel}. Review it from your orders page.`,
+      actionUrl: `/orders/${input.orderId}/preview`,
+    }
+  }
+
+  return null
+}
+
 export async function PATCH(request: Request, context: { params: Promise<{ requestId: string }> }) {
   const supabase = await createServerSupabaseClient()
   const {
@@ -64,7 +122,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
           actionUrl: `/orders/${result.orderId}/preview`,
         })
       } finally {
-        await notificationClient.end().catch(() => {})
+        await notificationClient.end().catch(() => { })
       }
 
       return NextResponse.json({
@@ -81,6 +139,28 @@ export async function PATCH(request: Request, context: { params: Promise<{ reque
       creatorId: user.id,
       status: parsed.data.status,
     })
+
+    const notification = buildBuyerOrderNotification({
+      orderId: normalizedOrderId,
+      packageTitle: updated.packageTitle,
+      status: parsed.data.status,
+    })
+
+    if (notification) {
+      const notificationClient = getOrdersDbClient()
+      try {
+        await notificationClient.connect()
+        await insertInboxNotification(notificationClient, {
+          userId: updated.buyerId,
+          category: "order",
+          title: notification.title,
+          body: notification.body,
+          actionUrl: notification.actionUrl,
+        })
+      } finally {
+        await notificationClient.end().catch(() => { })
+      }
+    }
 
     return NextResponse.json({ order: updated })
   } catch (error) {

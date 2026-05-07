@@ -22,4 +22,10 @@ export type CreatorOrder = {
   status: CreatorOrderStatus
   priority: CreatorOrderPriority
   needsResponse?: boolean
+  rawOrderId?: string
+  rawStatus?: string
+  paymentStatus?: string
+  creatorId?: string
+  buyerId?: string
+  creatorName: string
 }

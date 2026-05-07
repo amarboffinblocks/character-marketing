@@ -3,17 +3,33 @@ import { fetchCreatorOrders } from "@/features/creator/orders/creator-orders"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 
-async function safeCount(
+async function getWorkspaceStatsWithImage(
   supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   table: string,
   creatorId: string,
-  column = "creator_id"
+  imageColumn: string
 ) {
   const { count } = await supabase
     .from(table)
     .select("*", { head: true, count: "exact" })
-    .eq(column, creatorId)
-  return count ?? 0
+    .eq("creator_id", creatorId)
+
+  let imageUrl = undefined
+  if (count && count > 0) {
+    const { data } = await supabase
+      .from(table)
+      .select(imageColumn)
+      .eq("creator_id", creatorId)
+      .neq(imageColumn, "")
+      .not(imageColumn, "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (data && (data as Record<string, any>)[imageColumn]) {
+      imageUrl = (data as Record<string, any>)[imageColumn]
+    }
+  }
+  return { count: count ?? 0, imageUrl }
 }
 
 export default async function CreatorDashboardPage() {
@@ -26,22 +42,15 @@ export default async function CreatorDashboardPage() {
     redirect("/sign-in")
   }
 
-  const [ordersResult, charactersCount, draftCharactersCount, personasCount, lorebooksCount, avatarsCount, backgroundsCount, profileResult, reviewsResult] =
+  const [ordersResult, charactersStats, draftCharactersCount, personasStats, lorebooksStats, avatarsStats, backgroundsStats, profileResult, reviewsResult] =
     await Promise.all([
       fetchCreatorOrders(user.id).catch(() => []),
-      safeCount(supabase, "characters", user.id),
-      safeCount(supabase, "characters", user.id).then(async () => {
-        const { count } = await supabase
-          .from("characters")
-          .select("*", { head: true, count: "exact" })
-          .eq("creator_id", user.id)
-          .eq("status", "draft")
-        return count ?? 0
-      }),
-      safeCount(supabase, "personas", user.id),
-      safeCount(supabase, "lorebooks", user.id),
-      safeCount(supabase, "avatars", user.id),
-      safeCount(supabase, "backgrounds", user.id),
+      getWorkspaceStatsWithImage(supabase, "characters", user.id, "avatar_url"),
+      supabase.from("characters").select("*", { head: true, count: "exact" }).eq("creator_id", user.id).eq("status", "draft").then(res => res.count ?? 0),
+      getWorkspaceStatsWithImage(supabase, "personas", user.id, "avatar_url"),
+      getWorkspaceStatsWithImage(supabase, "lorebooks", user.id, "avatar_url"),
+      getWorkspaceStatsWithImage(supabase, "avatars", user.id, "image_url"),
+      getWorkspaceStatsWithImage(supabase, "backgrounds", user.id, "image_url"),
       supabase.from("profiles").select("profile_data").eq("id", user.id).maybeSingle(),
       supabase.from("creator_reviews").select("rating").eq("creator_id", user.id),
     ])
@@ -78,11 +87,11 @@ export default async function CreatorDashboardPage() {
         creatorProfile: creatorProfile as any,
         orders: ordersResult,
         workspaceCounts: {
-          characters: charactersCount,
-          personas: personasCount,
-          lorebooks: lorebooksCount,
-          avatars: avatarsCount,
-          backgrounds: backgroundsCount,
+          characters: charactersStats,
+          personas: personasStats,
+          lorebooks: lorebooksStats,
+          avatars: avatarsStats,
+          backgrounds: backgroundsStats,
         },
         draftCharacters: draftCharactersCount,
         reviewCount: ratings.length,

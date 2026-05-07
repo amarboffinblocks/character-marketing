@@ -1,6 +1,6 @@
 import type { MessageThread } from "@/features/messaging/types"
 
-export type InboxRole = "creator" | "buyer"
+export type InboxRole = "creator" | "buyer" | "admin"
 export type InboxItemType = "chat" | "system"
 export type InboxCategory = "request" | "order" | "message" | "bid" | "payment" | "review"
 export type InboxTab = "all" | "messages" | "updates"

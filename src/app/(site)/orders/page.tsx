@@ -8,12 +8,13 @@ import { Card } from "@/components/ui/card"
 import { syncOrderEscrowAfterCheckoutReturn } from "@/lib/payments/escrow"
 import { cn } from "@/lib/utils"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { OrdersClientTable } from "./orders-client-table"
+import { OrdersLiveView } from "./orders-live-view"
 
 type OrderStatus =
   | "pending_payment"
   | "funded"
   | "in_progress"
+  | "on_hold"
   | "delivered"
   | "approved"
   | "completed"
@@ -102,7 +103,7 @@ export default async function OrdersPage(props: {
 
   const orders = await fetchBuyerOrders(user.id)
   const openCount = orders.filter((order) =>
-    ["pending_payment", "funded", "in_progress", "delivered", "approved"].includes(order.status)
+    ["pending_payment", "funded", "in_progress", "on_hold", "delivered", "approved"].includes(order.status)
   ).length
   const completedCount = orders.filter((order) => order.status === "completed").length
   const summaryCards = [
@@ -220,7 +221,7 @@ export default async function OrdersPage(props: {
             </div>
           </div>
         ) : (
-          <OrdersClientTable orders={orders} />
+          <OrdersLiveView initialOrders={orders} userId={user.id} />
         )}
       </section>
 

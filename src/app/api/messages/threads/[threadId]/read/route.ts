@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { assertThreadParticipant, markRead, requireAuthUser } from "@/app/api/messages/shared"
+import { assertThreadParticipant, isAdminUser, markRead, requireAuthUser } from "@/app/api/messages/shared"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 function asString(value: unknown) {
@@ -15,9 +16,14 @@ export async function POST(_: Request, context: { params: Promise<{ threadId: st
     const normalizedThreadId = asString(threadId)
     if (!normalizedThreadId) return NextResponse.json({ error: "threadId is required." }, { status: 400 })
 
-    await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    const adminRole = await isAdminUser(supabase, user)
+    const client = adminRole ? createAdminSupabaseClient() : supabase
 
-    const { data: messagesData, error: messagesError } = await supabase
+    if (!adminRole) {
+      await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    }
+
+    const { data: messagesData, error: messagesError } = await client
       .from("conversation_messages")
       .select("id")
       .eq("thread_id", normalizedThreadId)
@@ -29,11 +35,22 @@ export async function POST(_: Request, context: { params: Promise<{ threadId: st
     }
 
     const lastMessageId = messagesData?.[0]?.id as string | undefined
-    await markRead(supabase, normalizedThreadId, user.id, lastMessageId)
+    await markRead(client, normalizedThreadId, user.id, lastMessageId)
     return NextResponse.json({ success: true })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unable to update read state."
+  } catch (error: any) {
+    console.error("MARK READ ERROR:", error)
+    const message = error?.message || "Unable to update read state."
     const status = message === "Unauthorized" ? 401 : 400
-    return NextResponse.json({ error: message }, { status })
+    return NextResponse.json(
+      { 
+        error: message,
+        success: false,
+        debug: {
+          threadId: (await context.params).threadId,
+          timestamp: new Date().toISOString()
+        }
+      }, 
+      { status }
+    )
   }
 }

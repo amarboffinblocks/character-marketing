@@ -106,7 +106,7 @@ export function mapBidRowsToItems(params: {
       isPriceNegotiable: row.is_price_negotiable,
       visibility: row.status === "global_bid" ? "open" : "closed",
       status: row.status,
-      requestPayload: row.request_payload,
+      requestPayload: row.request_payload ?? {},
       createdAt: row.created_at,
       updatedAt: row.updated_at,
       interestedCount: interested.length,

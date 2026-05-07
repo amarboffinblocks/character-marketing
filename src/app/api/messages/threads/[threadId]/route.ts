@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 
-import { assertThreadParticipant, requireAuthUser } from "@/app/api/messages/shared"
+import { assertThreadParticipant, isAdminUser, requireAuthUser } from "@/app/api/messages/shared"
+import { createAdminSupabaseClient } from "@/lib/supabase/admin"
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 
 function asString(value: unknown) {
@@ -15,13 +16,18 @@ export async function DELETE(request: Request, context: { params: Promise<{ thre
     const normalizedThreadId = asString(threadId)
     if (!normalizedThreadId) return NextResponse.json({ error: "threadId is required." }, { status: 400 })
 
-    await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    const adminRole = await isAdminUser(supabase, user)
+    const client = adminRole ? createAdminSupabaseClient() : supabase
+
+    if (!adminRole) {
+      await assertThreadParticipant(supabase, normalizedThreadId, user.id)
+    }
     const mode = asString(new URL(request.url).searchParams.get("mode"))
 
     if (mode === "clear") {
       const [{ error: messagesError }, { error: readsError }] = await Promise.all([
-        supabase.from("conversation_messages").delete().eq("thread_id", normalizedThreadId),
-        supabase.from("conversation_reads").delete().eq("thread_id", normalizedThreadId),
+        client.from("conversation_messages").delete().eq("thread_id", normalizedThreadId),
+        client.from("conversation_reads").delete().eq("thread_id", normalizedThreadId),
       ])
       if (messagesError || readsError) {
         return NextResponse.json(
@@ -33,7 +39,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ thre
         )
       }
 
-      const { error: threadError } = await supabase
+      const { error: threadError } = await client
         .from("conversation_threads")
         .update({ last_message_at: new Date().toISOString() })
         .eq("id", normalizedThreadId)
@@ -44,7 +50,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ thre
     }
 
     if (mode === "delete") {
-      const { error } = await supabase.from("conversation_threads").delete().eq("id", normalizedThreadId)
+      const { error } = await client.from("conversation_threads").delete().eq("id", normalizedThreadId)
       if (error) {
         return NextResponse.json({ error: "Unable to delete chat.", details: error.message }, { status: 400 })
       }
