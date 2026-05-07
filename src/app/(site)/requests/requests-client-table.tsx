@@ -187,30 +187,32 @@ export function RequestsClientTable({ requests }: { requests: BuyerRequestRow[] 
         </TableBody>
       </Table>
       {requests.length > ROWS_PER_PAGE ? (
-        <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3">
-          <p className="text-xs text-muted-foreground">
-            Showing {(currentPage - 1) * ROWS_PER_PAGE + 1}-{Math.min(currentPage * ROWS_PER_PAGE, requests.length)} of {requests.length}
-          </p>
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious disabled={currentPage <= 1} onClick={() => setCurrentPage((current) => Math.max(1, current - 1))} />
-              </PaginationItem>
-              {Array.from({ length: totalPages }).map((_, index) => {
-                const page = index + 1
-                return (
-                  <PaginationItem key={`buyer-requests-page-${page}`}>
-                    <PaginationLink isActive={page === currentPage} onClick={() => setCurrentPage(page)}>
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-              <PaginationItem>
-                <PaginationNext disabled={currentPage >= totalPages} onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))} />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        <div className="flex items-center justify-between border-t border-border/70 px-4 py-3">
+          <div className="flex flex-1 items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-medium">{(currentPage - 1) * ROWS_PER_PAGE + 1}</span> to{" "}
+              <span className="font-medium">
+                {Math.min(currentPage * ROWS_PER_PAGE, requests.length)}
+              </span>{" "}
+              of <span className="font-medium">{requests.length}</span> requests
+            </p>
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    disabled={currentPage <= 1}
+                    onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
       ) : null}
 

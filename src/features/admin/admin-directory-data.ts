@@ -1,5 +1,10 @@
 import type { Creator } from "@/features/site/marketplace/types"
 import { createAdminSupabaseClient } from "@/lib/supabase/admin"
+import pg from "pg"
+
+function getConnectionString() {
+  return process.env.DIRECT_URL || process.env.DATABASE_URL
+}
 
 export type AdminDirectoryUser = {
   id: string
@@ -161,16 +166,50 @@ function mapCreator(row: ProfileRow): Creator {
 }
 
 export async function getAdminDirectoryUsers(options?: { excludeCreators?: boolean }): Promise<AdminDirectoryUser[]> {
-  const supabase = createAdminSupabaseClient()
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, role, profile_data")
-    .returns<ProfileRow[]>()
+  const connectionString = getConnectionString()
+  if (!connectionString) throw new Error("Missing DIRECT_URL or DATABASE_URL")
 
-  if (error || !data) return []
-  const users = data.map(mapUser)
-  const filtered = options?.excludeCreators ? users.filter((user) => user.role !== "creator") : users
-  return filtered.sort((a, b) => a.displayName.localeCompare(b.displayName))
+  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
+  try {
+    await client.connect()
+    const result = await client.query(`
+      SELECT 
+        p.id, 
+        p.role, 
+        p.profile_data,
+        COALESCE(oc.total_orders, 0)::int as live_orders_count,
+        COALESCE(pt.total_spend, 0)::float as live_lifetime_spend
+      FROM public.profiles p
+      LEFT JOIN (
+        SELECT buyer_id, COUNT(*) as total_orders 
+        FROM public.orders 
+        GROUP BY buyer_id
+      ) oc ON oc.buyer_id = p.id
+      LEFT JOIN (
+        SELECT buyer_id, SUM(amount) as total_spend 
+        FROM public.payment_transactions 
+        WHERE status = 'succeeded' 
+        GROUP BY buyer_id
+      ) pt ON pt.buyer_id = p.id
+    `)
+
+    const users = (result.rows ?? []).map((row: any) => {
+      const user = mapUser(row)
+      return {
+        ...user,
+        ordersCount: row.live_orders_count,
+        lifetimeSpendUsd: row.live_lifetime_spend,
+      }
+    })
+
+    const filtered = options?.excludeCreators ? users.filter((user) => user.role !== "creator") : users
+    return filtered.sort((a, b) => a.displayName.localeCompare(b.displayName))
+  } catch (error) {
+    console.error("[getAdminDirectoryUsers] Error:", error)
+    return []
+  } finally {
+    await client.end().catch(() => {})
+  }
 }
 
 export async function getAdminDirectoryUserById(userId: string): Promise<AdminDirectoryUser | null> {

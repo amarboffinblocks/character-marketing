@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -24,6 +24,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import {
   creatorEarningsSeries,
   formatUsd,
@@ -78,6 +85,18 @@ export function CreatorEarningsView() {
       const matchesStatus = statusFilter === "all" ? true : txn.status === statusFilter
       return matchesSearch && matchesStatus
     })
+  }, [search, statusFilter])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const paginatedFiltered = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filtered.slice(start, start + itemsPerPage)
+  }, [filtered, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
   }, [search, statusFilter])
 
   return (
@@ -202,7 +221,7 @@ export function CreatorEarningsView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((txn) => (
+                {paginatedFiltered.map((txn) => (
                   <TableRow key={txn.id}>
                     <TableCell className="font-medium">{txn.orderId}</TableCell>
                     <TableCell>{txn.buyerName}</TableCell>
@@ -227,7 +246,7 @@ export function CreatorEarningsView() {
           </div>
 
           <ul className="divide-y divide-border md:hidden">
-            {filtered.map((txn) => (
+            {paginatedFiltered.map((txn) => (
               <li key={txn.id} className="space-y-2 px-4 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -257,6 +276,36 @@ export function CreatorEarningsView() {
               No transactions match your filters.
             </div>
           ) : null}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-primary/10 px-4 py-4 sm:px-6">
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filtered.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filtered.length}</span> transactions
+                </p>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

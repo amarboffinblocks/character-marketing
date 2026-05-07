@@ -20,6 +20,12 @@ export default async function AdminDashboardLayout({
   } = await supabase.auth.getUser()
 
   const userRole = user ? await resolvePersistedRole(supabase, user) : null
+
+  if (userRole === "suspended") {
+    await supabase.auth.signOut()
+    redirect("/sign-in?error=account_suspended")
+  }
+
   if (!user || userRole !== "admin") {
     redirect("/sign-in")
   }

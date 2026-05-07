@@ -78,6 +78,11 @@ export async function GET(request: NextRequest) {
 
   if (isSignInFlow) {
     const existingRole = isAuthRole(existingProfileRow?.role) ? existingProfileRow.role : null
+    
+    if (existingRole === "suspended") {
+      await supabase.auth.signOut()
+      return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=account_suspended", request.url))
+    }
 
     if (!existingRole) {
       if (isRecentlyCreated) {
@@ -143,8 +148,13 @@ export async function GET(request: NextRequest) {
     userRole = metadataRole
   }
 
-  const isAllowed = isAuthRole(userRole)
+  const isAllowed = isAuthRole(userRole) && userRole !== "suspended"
   const roleMatches = !isSelectedRoleAllowed || userRole === selectedRole
+
+  if (userRole === "suspended") {
+    await supabase.auth.signOut()
+    return redirectWithCookies(applyAuthCookiesTo, new URL("/sign-in?error=account_suspended", request.url))
+  }
 
   if (!isAllowed || !roleMatches) {
     await supabase.auth.signOut()

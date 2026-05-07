@@ -1,6 +1,6 @@
 "use client"
 
-import { useId, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react"
 import {
   ArrowDownRight,
   ArrowUpRight,
@@ -35,6 +35,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import {
   adminConversionFunnel,
   adminExportHistory,
@@ -110,16 +117,29 @@ export function AdminReportsView({ liveMetrics }: { liveMetrics: AdminReportsLiv
   }, [liveMetrics.topCreators])
 
   const filteredExports = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return adminExportHistory.filter((row) => {
+    const query = search.trim().toLowerCase()
+    return adminExportHistory.filter((run) => {
       const matchesSearch =
-        q.length === 0 ||
-        row.name.toLowerCase().includes(q) ||
-        row.id.toLowerCase().includes(q) ||
-        row.owner.toLowerCase().includes(q)
-      const matchesFormat = formatFilter === "all" ? true : row.format === formatFilter
+        query.length === 0 ||
+        run.id.toLowerCase().includes(query) ||
+        run.name.toLowerCase().includes(query) ||
+        run.owner.toLowerCase().includes(query)
+      const matchesFormat = formatFilter === "all" || run.format === formatFilter
       return matchesSearch && matchesFormat
     })
+  }, [search, formatFilter])
+
+  const [exportPage, setExportPage] = useState(1)
+  const exportsPerPage = 5
+
+  const totalExportPages = Math.ceil(filteredExports.length / exportsPerPage)
+  const paginatedExports = useMemo(() => {
+    const start = (exportPage - 1) * exportsPerPage
+    return filteredExports.slice(start, start + exportsPerPage)
+  }, [filteredExports, exportPage])
+
+  useEffect(() => {
+    setExportPage(1)
   }, [search, formatFilter])
 
   return (
@@ -239,7 +259,7 @@ export function AdminReportsView({ liveMetrics }: { liveMetrics: AdminReportsLiv
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredExports.map((row) => (
+                {paginatedExports.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell>
                       <div className="flex flex-col">
@@ -267,7 +287,7 @@ export function AdminReportsView({ liveMetrics }: { liveMetrics: AdminReportsLiv
             </Table>
           </div>
           <ul className="divide-y divide-border lg:hidden">
-            {filteredExports.map((row) => (
+            {paginatedExports.map((row) => (
               <li key={row.id} className="space-y-2 px-4 py-4">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -288,6 +308,35 @@ export function AdminReportsView({ liveMetrics }: { liveMetrics: AdminReportsLiv
               </li>
             ))}
           </ul>
+          {totalExportPages > 1 && (
+            <div className="flex items-center justify-between border-t border-primary/10 px-4 py-3 sm:px-6">
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium">{(exportPage - 1) * exportsPerPage + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(exportPage * exportsPerPage, filteredExports.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filteredExports.length}</span> results
+                </p>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={exportPage <= 1}
+                        onClick={() => setExportPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={exportPage >= totalExportPages}
+                        onClick={() => setExportPage((p) => Math.min(totalExportPages, p + 1))}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
+          )}
           {filteredExports.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
               No exports match your filters.

@@ -16,6 +16,13 @@ import {
   Timer,
   UserRound,
 } from "lucide-react"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -365,6 +372,15 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
   const [creatorPayoutProfile, setCreatorPayoutProfile] = useState<CreatorPayoutProfile | null>(null)
   const [isLoadingPayoutProfile, setIsLoadingPayoutProfile] = useState(false)
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const totalPages = Math.ceil(orders.length / itemsPerPage)
+  const paginatedOrders = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return orders.slice(start, start + itemsPerPage)
+  }, [orders, currentPage])
+
   function toStatusOption(status: CreatorOrderStatus): OrderStatusPatch {
     switch (status) {
       case "pending_payment":
@@ -711,7 +727,8 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
             </p>
           </div>
         ) : (
-          <Table>
+          <>
+            <Table>
             <TableHeader>
               <TableRow className="bg-muted/30 hover:bg-muted/30">
                 <TableHead>Buyer</TableHead>
@@ -724,7 +741,7 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
               </TableRow>
             </TableHeader>
             <TableBody>
-              {orders.map((order) => {
+              {paginatedOrders.map((order) => {
                 const buyer = safeBuyerSummary(order.buyer_profile_data)
                 return (
                   <TableRow key={order.id}>
@@ -795,7 +812,38 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 )
               })}
             </TableBody>
-          </Table>
+            </Table>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-primary/10 px-4 py-4 sm:px-6">
+                <div className="flex flex-1 items-center justify-between gap-4">
+                  <p className="text-xs text-muted-foreground">
+                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                    <span className="font-medium">
+                      {Math.min(currentPage * itemsPerPage, orders.length)}
+                    </span>{" "}
+                    of <span className="font-medium">{orders.length}</span> orders
+                  </p>
+                  <Pagination className="mx-0 w-auto justify-end">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          disabled={currentPage <= 1}
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          disabled={currentPage >= totalPages}
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </section>
       <Dialog

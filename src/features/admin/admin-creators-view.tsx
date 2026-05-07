@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
 import { Download, Eye, Search, ShieldBan, Store, Trash2 } from "lucide-react"
@@ -32,6 +32,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { AdminPageHero } from "@/features/admin/components/admin-page-hero"
 import { formatUsd } from "@/features/creator/earnings/earnings-data"
 import type { Creator } from "@/features/site/marketplace/types"
@@ -72,22 +80,35 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
   const [pendingAction, setPendingAction] = useState<PendingCreatorAction>(null)
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return rows.filter((c) => {
+    const query = search.trim().toLowerCase()
+    return rows.filter((creator) => {
       const matchesSearch =
-        q.length === 0 ||
-        c.name.toLowerCase().includes(q) ||
-        c.handle.toLowerCase().includes(q) ||
-        c.id.toLowerCase().includes(q)
-      const matchesAvail =
-        availability === "all"
-          ? true
-          : availability === "available"
-            ? c.isAvailable
-            : !c.isAvailable
-      return matchesSearch && matchesAvail
+        query.length === 0 ||
+        creator.name.toLowerCase().includes(query) ||
+        creator.handle.toLowerCase().includes(query) ||
+        creator.id.toLowerCase().includes(query) ||
+        (creator.email ?? "").toLowerCase().includes(query)
+
+      const matchesAvailability =
+        availability === "all" ||
+        (availability === "available" ? creator.isAvailable : !creator.isAvailable)
+
+      return matchesSearch && matchesAvailability
     })
-  }, [rows, search, availability])
+  }, [availability, rows, search])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage)
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filtered.slice(start, start + itemsPerPage)
+  }, [filtered, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, availability])
 
   async function handleDeleteCreator(creatorId: string) {
     setDeletingCreatorId(creatorId)
@@ -228,7 +249,7 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => (
+                {paginated.map((c) => (
                   <TableRow key={c.id} className="hover:bg-muted/40">
                     <TableCell className="align-middle font-mono text-xs text-muted-foreground">
                       {c.id}
@@ -311,7 +332,7 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
             </Table>
 
           <ul className="divide-y divide-border md:hidden">
-            {filtered.map((c) => (
+            {paginated.map((c) => (
               <li key={c.id} className="flex gap-3 px-4 py-4">
                 <CreatorAvatar creator={c} />
                 <div className="min-w-0 flex-1 space-y-2">
@@ -381,6 +402,36 @@ export function AdminCreatorsView({ creators }: { creators: Creator[] }) {
               </li>
             ))}
           </ul>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-primary/10 px-4 py-4 sm:px-6">
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filtered.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filtered.length}</span> results
+                </p>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 

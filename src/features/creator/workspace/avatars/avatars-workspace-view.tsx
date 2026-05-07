@@ -24,6 +24,13 @@ import {
   AvatarSafety,
   AvatarVisibility,
 } from "@/features/creator/workspace/avatars/avatars-data"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 
 export function AvatarsWorkspaceView() {
@@ -63,15 +70,27 @@ export function AvatarsWorkspaceView() {
       const matchesSearch =
         query.length === 0 ||
         avatar.avatarName.toLowerCase().includes(query) ||
+        avatar.style.toLowerCase().includes(query) ||
         avatar.notes.toLowerCase().includes(query) ||
         avatar.tags.some((tag) => tag.toLowerCase().includes(query))
-
       const matchesVisibility = visibilityFilter === "all" || avatar.visibility === visibilityFilter
       const matchesSafety = safetyFilter === "all" || avatar.safety === safetyFilter
-
       return matchesSearch && matchesVisibility && matchesSafety
     })
   }, [avatars, safetyFilter, search, visibilityFilter])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
+
+  const totalPages = Math.ceil(filteredAvatars.length / itemsPerPage)
+  const paginatedAvatars = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredAvatars.slice(start, start + itemsPerPage)
+  }, [filteredAvatars, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, visibilityFilter, safetyFilter])
 
   function handleEdit(avatarId: string) {
     router.push(`/dashboard/creator/workspace/avatars/edit?edit=${avatarId}`)
@@ -197,7 +216,7 @@ export function AvatarsWorkspaceView() {
             </div>
           ) : (
             <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {filteredAvatars.map((avatar) => (
+              {paginatedAvatars.map((avatar) => (
                 <AvatarCard
                   key={avatar.id}
                   avatar={avatar}
@@ -207,6 +226,36 @@ export function AvatarsWorkspaceView() {
                 />
               ))}
             </ul>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-primary/10 pt-4">
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filteredAvatars.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filteredAvatars.length}</span> avatars
+                </p>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

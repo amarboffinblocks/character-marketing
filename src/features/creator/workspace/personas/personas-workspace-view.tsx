@@ -25,6 +25,13 @@ import {
   PersonaSafety,
   PersonaVisibility,
 } from "@/features/creator/workspace/personas/personas-data"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 
 export function PersonasWorkspaceView() {
@@ -66,14 +73,24 @@ export function PersonasWorkspaceView() {
         persona.personaName.toLowerCase().includes(query) ||
         persona.personaDetails.toLowerCase().includes(query) ||
         persona.tags.some((tag) => tag.toLowerCase().includes(query))
-
-      const matchesVisibility =
-        visibilityFilter === "all" ? true : persona.visibility === visibilityFilter
-      const matchesSafety = safetyFilter === "all" ? true : persona.safety === safetyFilter
-
+      const matchesVisibility = visibilityFilter === "all" || persona.visibility === visibilityFilter
+      const matchesSafety = safetyFilter === "all" || persona.safety === safetyFilter
       return matchesSearch && matchesVisibility && matchesSafety
     })
   }, [personas, safetyFilter, search, visibilityFilter])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
+
+  const totalPages = Math.ceil(filteredPersonas.length / itemsPerPage)
+  const paginatedPersonas = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredPersonas.slice(start, start + itemsPerPage)
+  }, [filteredPersonas, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, visibilityFilter, safetyFilter])
 
   function handleEdit(personaId: string) {
     router.push(`/dashboard/creator/workspace/personas/edit?edit=${personaId}`)
@@ -199,7 +216,7 @@ export function PersonasWorkspaceView() {
             </div>
           ) : (
             <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {filteredPersonas.map((persona) => (
+              {paginatedPersonas.map((persona) => (
                 <PersonaCard
                   key={persona.id}
                   persona={persona}
@@ -209,6 +226,36 @@ export function PersonasWorkspaceView() {
                 />
               ))}
             </ul>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-primary/10 pt-4">
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filteredPersonas.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filteredPersonas.length}</span> personas
+                </p>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

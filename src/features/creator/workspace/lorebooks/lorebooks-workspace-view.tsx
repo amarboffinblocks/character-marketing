@@ -24,6 +24,13 @@ import {
   LorebookSafety,
   LorebookVisibility,
 } from "@/features/creator/workspace/lorebooks/lorebooks-data"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 
 export function LorebooksWorkspaceView() {
@@ -59,25 +66,34 @@ export function LorebooksWorkspaceView() {
 
   const filteredLorebooks = useMemo(() => {
     const query = search.trim().toLowerCase()
-
     return lorebooks.filter((lorebook) => {
       const matchesSearch =
         query.length === 0 ||
         lorebook.lorebookName.toLowerCase().includes(query) ||
-        lorebook.description.toLowerCase().includes(query) ||
         lorebook.tags.some((tag) => tag.toLowerCase().includes(query)) ||
         lorebook.entries.some(
           (entry) =>
-            entry.keywords.toLowerCase().includes(query) || entry.context.toLowerCase().includes(query)
+            entry.keywords.toLowerCase().includes(query) ||
+            entry.context.toLowerCase().includes(query)
         )
-
-      const matchesVisibility =
-        visibilityFilter === "all" ? true : lorebook.visibility === visibilityFilter
-      const matchesSafety = safetyFilter === "all" ? true : lorebook.safety === safetyFilter
-
+      const matchesVisibility = visibilityFilter === "all" || lorebook.visibility === visibilityFilter
+      const matchesSafety = safetyFilter === "all" || lorebook.safety === safetyFilter
       return matchesSearch && matchesVisibility && matchesSafety
     })
   }, [lorebooks, safetyFilter, search, visibilityFilter])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
+
+  const totalPages = Math.ceil(filteredLorebooks.length / itemsPerPage)
+  const paginatedLorebooks = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredLorebooks.slice(start, start + itemsPerPage)
+  }, [filteredLorebooks, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, visibilityFilter, safetyFilter])
 
   function handleEdit(lorebookId: string) {
     router.push(`/dashboard/creator/workspace/lorebooks/edit?edit=${lorebookId}`)
@@ -203,7 +219,7 @@ export function LorebooksWorkspaceView() {
             </div>
           ) : (
             <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {filteredLorebooks.map((lorebook) => (
+              {paginatedLorebooks.map((lorebook) => (
                 <LorebookCard
                   key={lorebook.id}
                   lorebook={lorebook}
@@ -213,6 +229,36 @@ export function LorebooksWorkspaceView() {
                 />
               ))}
             </ul>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-primary/10 pt-4">
+              <div className="flex flex-1 items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                  <span className="font-medium">
+                    {Math.min(currentPage * itemsPerPage, filteredLorebooks.length)}
+                  </span>{" "}
+                  of <span className="font-medium">{filteredLorebooks.length}</span> lorebooks
+                </p>
+                <Pagination className="mx-0 w-auto justify-end">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      />
+                    </PaginationItem>
+                    <PaginationItem>
+                      <PaginationNext
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -39,17 +39,33 @@ const transactionTypeLabel = {
 
 function safeCounterparty(profileData: unknown) {
   const root = profileData && typeof profileData === "object" ? (profileData as Record<string, unknown>) : null
+  const buyer = root?.buyer && typeof root.buyer === "object" ? (root.buyer as Record<string, unknown>) : null
+  const creator = root?.creator && typeof root.creator === "object" ? (root.creator as Record<string, unknown>) : null
   const user = root?.user && typeof root.user === "object" ? (root.user as Record<string, unknown>) : null
+
   const displayName =
+    (typeof buyer?.displayName === "string" && buyer.displayName.trim()) ||
+    (typeof creator?.displayName === "string" && creator.displayName.trim()) ||
     (typeof user?.displayName === "string" && user.displayName.trim()) ||
     (typeof root?.displayName === "string" && root.displayName.trim()) ||
     ""
+
+  const email =
+    (typeof buyer?.email === "string" && buyer.email.trim()) ||
+    (typeof creator?.email === "string" && creator.email.trim()) ||
+    (typeof user?.email === "string" && user.email.trim()) ||
+    ""
+
   const avatarUrl =
+    (typeof buyer?.avatarUrl === "string" && buyer.avatarUrl.trim()) ||
+    (typeof creator?.avatarUrl === "string" && creator.avatarUrl.trim()) ||
     (typeof user?.avatarUrl === "string" && user.avatarUrl.trim()) ||
     (typeof root?.avatarUrl === "string" && root.avatarUrl.trim()) ||
     ""
+
   return {
     displayName: displayName || "User",
+    email: email || "",
     avatarUrl: avatarUrl || null,
   }
 }
@@ -200,7 +216,16 @@ export function TransactionsView({ role, initialTransactions }: TransactionsView
                               <UserRound className="size-4.5" />
                             </span>
                           )}
-                          <span className="text-sm font-semibold tracking-tight text-foreground">{counterparty.displayName}</span>
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-semibold tracking-tight text-foreground truncate">
+                              {counterparty.displayName}
+                            </span>
+                            {counterparty.email && (
+                              <span className="text-xs text-muted-foreground truncate">
+                                {counterparty.email}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell className="py-4">

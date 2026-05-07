@@ -558,37 +558,32 @@ export function OrdersClientTable({ orders }: OrdersClientTableProps) {
         </Table>
       </div>
       {rows.length > ORDERS_PER_PAGE ? (
-        <div className="flex items-center justify-between gap-3 border-t border-border/70 px-4 py-3">
-          <p className="text-xs text-muted-foreground">
-            Showing {(safeCurrentPage - 1) * ORDERS_PER_PAGE + 1}-
-            {Math.min(safeCurrentPage * ORDERS_PER_PAGE, rows.length)} of {rows.length}
-          </p>
-          <Pagination className="mx-0 w-auto justify-end">
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious
-                  disabled={safeCurrentPage <= 1}
-                  onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
-                />
-              </PaginationItem>
-              {Array.from({ length: totalPages }).map((_, index) => {
-                const page = index + 1
-                return (
-                  <PaginationItem key={`buyer-orders-page-${page}`}>
-                    <PaginationLink isActive={page === safeCurrentPage} onClick={() => setCurrentPage(page)}>
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                )
-              })}
-              <PaginationItem>
-                <PaginationNext
-                  disabled={safeCurrentPage >= totalPages}
-                  onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
+        <div className="flex items-center justify-between border-t border-border/70 px-4 py-3">
+          <div className="flex flex-1 items-center justify-between gap-4">
+            <p className="text-xs text-muted-foreground">
+              Showing <span className="font-medium">{(safeCurrentPage - 1) * ORDERS_PER_PAGE + 1}</span> to{" "}
+              <span className="font-medium">
+                {Math.min(safeCurrentPage * ORDERS_PER_PAGE, rows.length)}
+              </span>{" "}
+              of <span className="font-medium">{rows.length}</span> orders
+            </p>
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    disabled={safeCurrentPage <= 1}
+                    onClick={() => setCurrentPage((current) => Math.max(1, current - 1))}
+                  />
+                </PaginationItem>
+                <PaginationItem>
+                  <PaginationNext
+                    disabled={safeCurrentPage >= totalPages}
+                    onClick={() => setCurrentPage((current) => Math.min(totalPages, current + 1))}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
         </div>
       ) : null}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>

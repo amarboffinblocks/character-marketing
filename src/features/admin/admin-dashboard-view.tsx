@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { ArrowRight, FolderKanban, Megaphone, Shield, Store, TrendingUp, Users } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -26,6 +26,13 @@ import { formatUsd } from "@/features/creator/earnings/earnings-data"
 import { useInboxFeed } from "@/features/inbox/use-inbox-feed"
 import { cn } from "@/lib/utils"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 const severityClass: Record<(typeof adminEscalations)[number]["severity"], string> = {
   high: "bg-destructive/15 text-destructive",
@@ -58,6 +65,9 @@ function gmvTrendHint(current: number, prev: number): { text: string; trend: "up
 }
 
 export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboardLiveMetrics }) {
+  const [modPage, setModPage] = useState(1)
+  const modPerPage = 5
+
   const stats = useMemo((): CreatorDashboardStat[] => {
     const buyersW = weekDeltaHint(liveMetrics.buyersJoined7d, liveMetrics.buyersJoinedPrior7d)
     const creatorsW = weekDeltaHint(liveMetrics.creatorsJoined7d, liveMetrics.creatorsJoinedPrior7d)
@@ -100,6 +110,12 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
     ]
   }, [liveMetrics])
 
+  const modTotalPages = Math.ceil(adminModerationQueue.length / modPerPage)
+  const modPaginated = adminModerationQueue.slice(
+    (modPage - 1) * modPerPage,
+    modPage * modPerPage
+  )
+
   return (
     <div className="flex flex-col gap-6">
       <AdminPageHero
@@ -129,21 +145,24 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
 
       <section className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <Tabs defaultValue="activity">
-            <CardHeader className="flex-row items-center justify-between border-b pb-4">
-              <div className="flex flex-col gap-1">
+          <Tabs defaultValue="activity" className="flex flex-col">
+            <CardHeader className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
                 <CardTitle>Updates & Activity</CardTitle>
-                <TabsList className="h-8 w-fit justify-start bg-muted/50 p-1">
+                <CardDescription>Live platform activity and system notifications.</CardDescription>
+              </div>
+              <div className="flex items-center gap-4">
+                <TabsList className="h-8 bg-muted/50 p-1">
                   <TabsTrigger value="activity" className="h-6 px-3 text-xs">Recent activity</TabsTrigger>
                   <TabsTrigger value="notifications" className="h-6 px-3 text-xs">Notifications</TabsTrigger>
                 </TabsList>
+                <Link
+                  href="/dashboard/admin/notifications"
+                  className="hidden text-xs font-medium text-primary hover:underline sm:block"
+                >
+                  View all
+                </Link>
               </div>
-              <Link
-                href="/dashboard/admin/notifications"
-                className="text-xs font-medium text-primary hover:underline"
-              >
-                View all
-              </Link>
             </CardHeader>
             <CardContent className="p-0">
               <TabsContent value="activity" className="m-0 border-none p-0">
@@ -239,7 +258,7 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {adminModerationQueue.map((row) => (
+                  {modPaginated.map((row) => (
                     <TableRow key={row.id} className="hover:bg-accent/20">
                       <TableCell className="px-4 py-3 font-mono text-xs text-muted-foreground">{row.id}</TableCell>
                       <TableCell className="px-4 py-3">
@@ -254,6 +273,36 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
                   ))}
                 </TableBody>
               </Table>
+
+              {modTotalPages > 1 && (
+                <div className="flex items-center justify-between border-t border-border/50 px-4 py-3 sm:px-6">
+                  <div className="flex flex-1 items-center justify-between gap-4">
+                    <p className="text-xs text-muted-foreground">
+                      Showing <span className="font-medium">{(modPage - 1) * modPerPage + 1}</span> to{" "}
+                      <span className="font-medium">
+                        {Math.min(modPage * modPerPage, adminModerationQueue.length)}
+                      </span>{" "}
+                      of <span className="font-medium">{adminModerationQueue.length}</span>
+                    </p>
+                    <Pagination className="mx-0 w-auto justify-end">
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            disabled={modPage <= 1}
+                            onClick={() => setModPage((p) => Math.max(1, p - 1))}
+                          />
+                        </PaginationItem>
+                        <PaginationItem>
+                          <PaginationNext
+                            disabled={modPage >= modTotalPages}
+                            onClick={() => setModPage((p) => Math.min(modTotalPages, p + 1))}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  </div>
+                </div>
+              )}
           </CardContent>
         </Card>
 

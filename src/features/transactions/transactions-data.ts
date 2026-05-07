@@ -138,7 +138,7 @@ export async function fetchAdminTransactions(): Promise<TransactionRow[]> {
         p.profile_data as counterpart_profile_data
        from public.payment_transactions t
        join public.orders o on o.id = t.order_id
-       left join public.profiles p on p.id = t.creator_id
+       left join public.profiles p on p.id = t.buyer_id
        order by t.created_at desc`
     )
     return (result.rows ?? []) as TransactionRow[]

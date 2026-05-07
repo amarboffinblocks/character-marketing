@@ -9,6 +9,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 import { formatCurrency, type CreatorServicePackage } from "@/features/creator/services/services-data"
 
 export function CreatorServicesView() {
@@ -59,25 +66,37 @@ export function CreatorServicesView() {
   }
 
   const filteredServices = useMemo(() => {
+    const query = nameFilter.trim().toLowerCase()
+    const createdAfter = createdAfterFilter ? new Date(createdAfterFilter).getTime() : null
+    const updatedAfter = updatedAfterFilter ? new Date(updatedAfterFilter).getTime() : null
+
     return services.filter((service) => {
-      const nameMatches = service.serviceName.toLowerCase().includes(nameFilter.trim().toLowerCase())
-      const recommendationMatches =
-        recommendedFilter === "all"
-          ? true
-          : recommendedFilter === "recommended"
-            ? service.isRecommended
-            : !service.isRecommended
-
-      const createdMatches = createdAfterFilter
-        ? new Date(service.createdAt).getTime() >= new Date(createdAfterFilter).getTime()
-        : true
-      const updatedMatches = updatedAfterFilter
-        ? new Date(service.updatedAt).getTime() >= new Date(updatedAfterFilter).getTime()
-        : true
-
-      return nameMatches && recommendationMatches && createdMatches && updatedMatches
+      const matchesName = query.length === 0 || service.serviceName.toLowerCase().includes(query)
+      const matchesRecommended =
+        recommendedFilter === "all" ||
+        (recommendedFilter === "recommended" ? service.isRecommended : !service.isRecommended)
+      const createdAt = new Date(service.createdAt).getTime()
+      const updatedAt = new Date(service.updatedAt).getTime()
+      const matchesCreatedAfter =
+        createdAfter === null || (Number.isFinite(createdAt) && createdAt >= createdAfter)
+      const matchesUpdatedAfter =
+        updatedAfter === null || (Number.isFinite(updatedAt) && updatedAt >= updatedAfter)
+      return matchesName && matchesRecommended && matchesCreatedAfter && matchesUpdatedAfter
     })
   }, [createdAfterFilter, nameFilter, recommendedFilter, services, updatedAfterFilter])
+
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 8
+
+  const totalPages = Math.ceil(filteredServices.length / itemsPerPage)
+  const paginatedServices = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredServices.slice(start, start + itemsPerPage)
+  }, [filteredServices, currentPage])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [nameFilter, recommendedFilter, createdAfterFilter, updatedAfterFilter])
 
   return (
     <div className="flex flex-col gap-6">
@@ -157,7 +176,7 @@ export function CreatorServicesView() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredServices.map((service) => (
+                    paginatedServices.map((service) => (
                       <TableRow key={service.id}>
                         <TableCell className="font-medium">
                           <span className="inline-flex items-center gap-2">
@@ -210,6 +229,36 @@ export function CreatorServicesView() {
                   )}
                 </TableBody>
               </Table>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-primary/10 px-4 py-4 sm:px-6">
+                <div className="flex flex-1 items-center justify-between gap-4">
+                  <p className="text-xs text-muted-foreground">
+                    Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{" "}
+                    <span className="font-medium">
+                      {Math.min(currentPage * itemsPerPage, filteredServices.length)}
+                    </span>{" "}
+                    of <span className="font-medium">{filteredServices.length}</span> results
+                  </p>
+                  <Pagination className="mx-0 w-auto justify-end">
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          disabled={currentPage <= 1}
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          disabled={currentPage >= totalPages}
+                          onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
