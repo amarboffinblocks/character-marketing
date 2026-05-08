@@ -27,7 +27,7 @@ export const creatorSidebarGroups: AppSidebarGroup[] = [
       { title: "Requests", href: "/dashboard/creator/requests", icon: "orders" },
       { title: "Orders", href: "/dashboard/creator/orders", icon: "orders" },
       { title: "Transactions", href: "/dashboard/creator/transactions", icon: "earnings" },
-      { title: "Global Bids", href: "/dashboard/creator/global-bids", icon: "store" },
+      { title: "My Bids", href: "/dashboard/creator/global-bids", icon: "store" },
 
     ],
   },

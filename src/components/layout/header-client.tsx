@@ -31,15 +31,13 @@ import { cn } from "@/lib/utils"
 
 const marketplaceLinks = [
   { href: "/creators", label: "All Creators", icon: Users },
-  { href: "/creators?sort=rating", label: "Top Creators", icon: Star },
   { href: "/saved-creators", label: "Saved Creators", icon: Boxes },
-  { href: "/creators", label: "Hired Creators", icon: UserRound },
 ] as const
 
 const activityLinks = [
   { href: "/orders", label: "Orders", icon: PackageSearch },
   { href:"/requests", label: "Requests", icon: ClipboardList },
-  { href: "/post-a-bid", label: "Global Bids", icon: LayoutGrid },
+  { href: "/post-a-bid", label: "My Bids", icon: LayoutGrid },
   { href: "/transactions", label: "Transactions", icon: ReceiptText },
   { href: "/inventory", label: "Inventory", icon: Boxes },
 ] as const

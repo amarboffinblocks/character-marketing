@@ -46,7 +46,7 @@ type TrustFeature = {
 
 function TrustFeatureCard({ icon: Icon, title, description }: TrustFeature) {
   return (
-    <article className="rounded-xl border border-border/70 bg-background p-5 shadow-sm transition-colors hover:border-primary/30">
+    <article className="h-full rounded-xl border border-border/70 bg-background p-5 shadow-sm transition-colors hover:border-primary/30">
       <div className="flex size-10 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20">
         <Icon className="size-5" aria-hidden />
       </div>

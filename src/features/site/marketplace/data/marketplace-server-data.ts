@@ -123,7 +123,7 @@ function toCreator(row: ProfilesRow): Creator | null {
   if (completion.percent < 80) return null
 
   const skills = asStringArray(creatorData.skills)
-  const languages = asStringArray(creatorData.languages)
+  const languages = Array.from(new Set(asStringArray(creatorData.languages).map(l => l.charAt(0).toUpperCase() + l.slice(1).toLowerCase())))
   const niche = asString(creatorData.niche)
   const specialties = Array.from(new Set([...skills, ...(niche ? [niche] : [])]))
 
@@ -241,20 +241,26 @@ export async function getMarketplaceCreators(): Promise<Creator[]> {
 }
 
 export function buildTags(creators: Creator[]): CreatorMarketplaceCategory[] {
-  const tagCounts = new Map<string, number>()
+  const tagCounts = new Map<string, { count: number; name: string }>()
   for (const creator of creators) {
     for (const tag of creator.specialties) {
       const normalized = tag.trim()
       if (!normalized) continue
-      tagCounts.set(normalized, (tagCounts.get(normalized) ?? 0) + 1)
+      const id = toTagId(normalized) || normalized.toLowerCase()
+      const existing = tagCounts.get(id)
+      if (existing) {
+        existing.count += 1
+      } else {
+        tagCounts.set(id, { count: 1, name: normalized })
+      }
     }
   }
 
   return [...tagCounts.entries()]
-    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .sort((a, b) => b[1].count - a[1].count || a[1].name.localeCompare(b[1].name))
     .slice(0, 20)
-    .map(([name, count]) => ({
-      id: toTagId(name) || name.toLowerCase(),
+    .map(([id, { name, count }]) => ({
+      id,
       name,
       description: `Creators tagged with ${name}`,
       count,
@@ -308,7 +314,7 @@ export async function getMarketplaceCreatorProfileById(creatorId: string): Promi
   const profile = buildCreatorProfile(creator)
   // Merge DB FAQs if they exist
   if (dbFaqs.length > 0) {
-    profile.faqItems = dbFaqs.map((f) => ({
+    profile.faqItems = dbFaqs.map((f: { id: string; question: string; answer: string }) => ({
       id: f.id,
       question: f.question,
       answer: f.answer,

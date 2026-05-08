@@ -243,12 +243,12 @@ export function GlobalBidsView() {
                   className="pl-9"
               />
               </div>
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value ?? "relevance")}>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value ?? "Relevance")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="relevance">relevance</SelectItem>
+                  <SelectItem value="Relevance">Relevance</SelectItem>
                   <SelectItem value="latest">latest</SelectItem>
                 </SelectContent>
               </Select>

@@ -37,7 +37,7 @@ export function CreatorMarketplaceView({
   sortOptions,
 }: CreatorMarketplaceViewProps) {
   const [query, setQuery] = useState("")
-  const [sort, setSort] = useState(sortOptions[0]?.id ?? "relevance")
+  const [sort, setSort] = useState(sortOptions[0]?.id ?? "Relevance")
   const [maxPrice, setMaxPrice] = useState(DEFAULT_MAX_PRICE)
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([])
   const [selectedLanguages, setSelectedLanguages] = useState<string[]>([])
@@ -118,7 +118,7 @@ export function CreatorMarketplaceView({
 
   const handleClearFilters = () => {
     setQuery("")
-    setSort(sortOptions[0]?.id ?? "relevance")
+    setSort(sortOptions[0]?.id ?? "Relevance")
     setMaxPrice(DEFAULT_MAX_PRICE)
     setSelectedTagIds([])
     setSelectedLanguages([])

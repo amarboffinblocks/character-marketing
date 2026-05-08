@@ -17,7 +17,7 @@ const trustSignals = [
     {
         icon: Star,
         label: "Verified creators",
-        iconClassName: "text-accent",
+        iconClassName: "text-primary",
     },
     {
         icon: Zap,

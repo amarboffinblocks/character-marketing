@@ -47,7 +47,7 @@ export function sortCreators(creators: Creator[], sort: string) {
       return sortable.sort((a, b) => a.responseTime.localeCompare(b.responseTime))
     case "most-experienced":
       return sortable.sort((a, b) => b.completedOrders - a.completedOrders)
-    case "relevance":
+    case "Relevance":
     default:
       return sortable.sort((a, b) => {
         const scoreA = a.rating * 100 + a.reviewCount

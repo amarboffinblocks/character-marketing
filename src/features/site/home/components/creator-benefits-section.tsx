@@ -74,9 +74,9 @@ export function CreatorBenefitsSection() {
             <SectionHeader
               titleId={SECTION_TITLE_ID}
               title="Turn your character expertise into income"
-              description="Join a marketplace built for niche creators. Sell to buyers who value your style and pay for quality."
-              className="gap-0 "
+              className="gap-0 text-white! "
             />
+            <p className="mt-3 text-lg text-primary-foreground/75">Join a marketplace built for niche creators. Sell to buyers who value your style and pay for quality.</p>
 
             <div className="mt-10 grid gap-6 sm:grid-cols-2">
               {benefits.map((benefit) => (
