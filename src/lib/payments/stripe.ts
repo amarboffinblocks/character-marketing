@@ -12,7 +12,9 @@ function getSecretKey() {
 
 export function getStripeClient() {
   if (!stripeClient) {
-    stripeClient = new Stripe(getSecretKey())
+    stripeClient = new Stripe(getSecretKey(), {
+      apiVersion: "2023-10-16",
+    } as any)
   }
   return stripeClient
 }

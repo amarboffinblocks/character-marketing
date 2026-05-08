@@ -38,7 +38,7 @@ export function CreatorMarketplaceFilterSidebar({
   )
 
   return (
-    <aside className="rounded-xl border border-border/70 bg-card p-5">
+    <aside className="rounded-xl border border-border/70 bg-card p-5 relative z-20 max-md:z-[90]">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold">Filters</h2>
         <button

@@ -38,15 +38,26 @@ export async function POST(request: Request) {
     )
   }
 
-  const baseUrl = resolveAppUrl(request)
-  const stripe = getStripeClient()
+  try {
+    const baseUrl = resolveAppUrl(request)
+    const stripe = getStripeClient()
 
-  const accountLink = await stripe.accountLinks.create({
-    account: stripeAccountId,
-    refresh_url: `${baseUrl}/dashboard/creator/settings?stripe=refresh`,
-    return_url: `${baseUrl}/dashboard/creator/settings?stripe=success`,
-    type: "account_onboarding",
-  })
+    const accountLink = await stripe.accountLinks.create({
+      account: stripeAccountId,
+      refresh_url: `${baseUrl}/dashboard/creator/settings?stripe=refresh`,
+      return_url: `${baseUrl}/dashboard/creator/settings?stripe=success`,
+      type: "account_onboarding",
+    })
 
-  return NextResponse.json({ url: accountLink.url })
+    return NextResponse.json({ url: accountLink.url })
+  } catch (err: any) {
+    console.error("[STRIPE_ONBOARDING_LINK_ERROR]", err)
+    return NextResponse.json(
+      {
+        error: "Internal server error during Stripe onboarding link generation.",
+        details: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 }
+    )
+  }
 }

@@ -190,9 +190,14 @@ export async function POST(request: Request) {
     })
   } catch (err: any) {
     console.error("[STRIPE_CONNECT_POST_ERROR]", err)
+    
+    const isConnectSignupError = err?.message?.includes("signed up for Connect")
+
     return NextResponse.json(
       {
-        error: "Internal server error during Stripe Connect.",
+        error: isConnectSignupError 
+          ? "Your Stripe account is not yet fully configured for Connect. Please complete your Platform Profile in the Stripe Dashboard." 
+          : "Internal server error during Stripe Connect.",
         details: err instanceof Error ? err.message : String(err),
       },
       { status: 500 }

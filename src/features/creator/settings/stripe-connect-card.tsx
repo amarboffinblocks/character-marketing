@@ -86,8 +86,15 @@ export function StripeConnectCard() {
       await fetchStatus()
       // Now generate and redirect to onboarding link
       await handleOpenOnboarding()
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create Stripe account.")
+    } catch (error: any) {
+      const message = error instanceof Error ? error.message : "Failed to create Stripe account."
+      toast.error(message, {
+        duration: 10000,
+        action: message.includes("Stripe Dashboard") ? {
+          label: "Open Dashboard",
+          onClick: () => window.open("https://dashboard.stripe.com/test/settings/connect", "_blank")
+        } : undefined
+      })
     } finally {
       setIsCreating(false)
     }

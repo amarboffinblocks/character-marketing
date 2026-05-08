@@ -27,6 +27,7 @@ import { HeaderNotifications } from "@/components/layout/header-notifications"
 import { buttonVariants } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useUnreadMessages } from "@/features/messaging/hooks/use-unread-messages"
 import { cn } from "@/lib/utils"
 
 const marketplaceLinks = [
@@ -70,6 +71,7 @@ function ProfileWarningBadge() {
 }
 
 export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, userRole }: HeaderClientProps) {
+  const { unreadCount } = useUnreadMessages()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const router = useRouter()
@@ -147,7 +149,12 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Link href="/messages" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Messages</Link>
+            <Link href="/messages" className="relative px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
+              Messages
+              {unreadCount > 0 && (
+                <span className="absolute right-1 top-2 size-2 rounded-full bg-rose-500 ring-2 ring-background" />
+              )}
+            </Link>
             <Link href="/faq" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">FAQ</Link>
             <Link href="/support" className="px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">Help</Link>
           </nav>

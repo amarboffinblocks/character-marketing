@@ -48,7 +48,7 @@ export function CreatorMarketplaceResultsToolbar({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 relative z-10">
       <div className="grid gap-3 grid-cols-6">
         <div className="relative col-span-4">
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />

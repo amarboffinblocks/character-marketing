@@ -39,48 +39,65 @@ export async function POST() {
     return NextResponse.json({ stripeAccountId: existingAccountId, alreadyExists: true })
   }
 
-  // Create a new Stripe Express account
-  const stripe = getStripeClient()
-  const { data: authUser } = await admin.auth.admin.getUserById(user.id)
-  const email = authUser.user?.email ?? ""
+  try {
+    // Create a new Stripe Express account
+    const stripe = getStripeClient()
+    const { data: authUser } = await admin.auth.admin.getUserById(user.id)
+    const email = authUser.user?.email ?? ""
 
-  const account = await stripe.accounts.create({
-    type: "express",
-    email: email || undefined,
-    capabilities: {
-      card_payments: { requested: true },
-      transfers: { requested: true },
-    },
-    metadata: {
-      userId: user.id,
-      platform: "character-market",
-    },
-  })
-
-  // Persist the Stripe account ID into profile_data.creator
-  const updatedCreatorData = {
-    ...creatorData,
-    stripeConnectAccountId: account.id,
-    stripeOnboardingCompleted: false,
-    stripePayoutsEnabled: false,
-    stripeChargesEnabled: false,
-  }
-
-  const { error: updateError } = await admin
-    .from("profiles")
-    .update({
-      profile_data: {
-        ...profileData,
-        creator: updatedCreatorData,
+    const account = await stripe.accounts.create({
+      type: "express",
+      email: email || undefined,
+      capabilities: {
+        card_payments: { requested: true },
+        transfers: { requested: true },
+      },
+      metadata: {
+        userId: user.id,
+        platform: "character-market",
       },
     })
-    .eq("id", user.id)
 
-  if (updateError) {
-    // Best-effort: try to delete the Stripe account if profile save fails
-    await stripe.accounts.del(account.id).catch(() => {})
-    return NextResponse.json({ error: "Failed to save Stripe account to profile." }, { status: 500 })
+    // Persist the Stripe account ID into profile_data.creator
+    const updatedCreatorData = {
+      ...creatorData,
+      stripeConnectAccountId: account.id,
+      stripeOnboardingCompleted: false,
+      stripePayoutsEnabled: false,
+      stripeChargesEnabled: false,
+    }
+
+    const { error: updateError } = await admin
+      .from("profiles")
+      .update({
+        profile_data: {
+          ...profileData,
+          creator: updatedCreatorData,
+        },
+      })
+      .eq("id", user.id)
+
+    if (updateError) {
+      // Best-effort: try to delete the Stripe account if profile save fails
+      await stripe.accounts.del(account.id).catch(() => {})
+      return NextResponse.json({ error: "Failed to save Stripe account to profile." }, { status: 500 })
+    }
+
+    return NextResponse.json({ stripeAccountId: account.id, alreadyExists: false })
+  } catch (err: any) {
+    console.error("[STRIPE_CREATE_ACCOUNT_ERROR]", err)
+    
+    const isConnectSignupError = err?.message?.includes("signed up for Connect")
+    
+    return NextResponse.json(
+      {
+        error: isConnectSignupError 
+          ? "Your Stripe account is not yet fully configured for Connect. Please complete your Platform Profile in the Stripe Dashboard." 
+          : "Internal server error during Stripe Connect account creation.",
+        details: err instanceof Error ? err.message : String(err),
+        actionUrl: isConnectSignupError ? "https://dashboard.stripe.com/test/settings/connect" : null
+      },
+      { status: 500 }
+    )
   }
-
-  return NextResponse.json({ stripeAccountId: account.id, alreadyExists: false })
 }
