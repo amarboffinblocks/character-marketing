@@ -65,7 +65,7 @@ export default async function FAQPage() {
                 Our support team can help with account access, payment concerns, trust checks, and policy guidance.
               </p>
               <Link
-                href="mailto:support@charactermarket.example"
+                href="/support"
                 className={cn(buttonVariants({ variant: "outline", size: "sm" }), "mt-4")}
               >
                 Contact support

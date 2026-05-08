@@ -24,15 +24,15 @@ export function Stepper({ steps, className, itemClassName }: StepperProps) {
           {index < steps.length - 1 && (
             <>
               {/* Desktop Horizontal Line */}
-              <div className="absolute left-[64%] top-12 hidden h-[2px] w-[calc(100%-20%)] bg-gradient-to-r from-primary/40 via-primary/10 to-transparent lg:block" />
+              <div className="absolute left-[64%] top-12 hidden h-[2px] w-[calc(100%-20%)] bg-gradient-to-r from-primary/10 via-primary/40 to-transparent lg:block" />
               {/* Mobile Vertical Line */}
-              <div className="absolute left-1/2 top-24 mx-auto h-12 w-[2px] -translate-x-1/2 bg-gradient-to-b from-primary/40 via-primary/10 to-transparent lg:hidden" />
+              <div className="absolute left-1/2 top-24 mx-auto h-12 w-[2px] -translate-x-1/2 bg-gradient-to-b from-primary/10 via-primary/40 to-transparent lg:hidden" />
             </>
           )}
 
           <div
             className={cn(
-              "relative flex flex-col items-center text-center transition-transform duration-300 group-hover:-translate-y-1",
+              "relative flex flex-col items-center text-center transition-transform duration-300",
               itemClassName
             )}
           >
