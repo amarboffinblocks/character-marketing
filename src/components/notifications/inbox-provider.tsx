@@ -98,15 +98,6 @@ export function InboxProvider({ children }: { children: React.ReactNode }) {
             seenToastIdsRef.current.add(item.id)
             toast(item.title, {
               description: item.body,
-              action:
-                item.actionUrl
-                  ? {
-                      label: "Open",
-                      onClick: () => {
-                        window.location.href = item.actionUrl as string
-                      },
-                    }
-                  : undefined,
             })
           }
         }
@@ -214,15 +205,6 @@ export function InboxProvider({ children }: { children: React.ReactNode }) {
             seenToastIdsRef.current.add(nextItem.id)
             toast(nextItem.title, {
               description: nextItem.body,
-              action:
-                nextItem.actionUrl
-                  ? {
-                      label: "Open",
-                      onClick: () => {
-                        window.location.href = nextItem.actionUrl as string
-                      },
-                    }
-                  : undefined,
             })
           }
         }
