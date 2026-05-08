@@ -238,15 +238,15 @@ export function AdminOrdersView({ initialOrders }: { initialOrders: CreatorOrder
         hasActiveFilters={hasActiveFilters}
         context="admin"
       />
-       <Card className="overflow-hidden border-primary/20 bg-linear-to-br from-primary/5 to-transparent shadow-md">
-        <CardHeader className="flex flex-row items-center justify-between border-b border-primary/10 bg-primary/5 pb-4">
+       <Card className="overflow-hidden  border-primary/20 bg-linear-to-br from-primary/5 to-transparent shadow-md">
+        <CardHeader className="flex !mt-0 !pt-2 flex-row  items-center justify-between border-b border-primary/10 bg-primary/5 ">
           <div>
             <CardTitle className="text-lg">Manual Payout Queue</CardTitle>
             <CardDescription className="text-primary/70">
               {releaseQueue.length} order{releaseQueue.length === 1 ? "" : "s"} waiting for manual escrow release.
             </CardDescription>
           </div>
-          <HandCoins className="size-5 text-primary/40" />
+          <HandCoins className="size-7 text-primary/40" />
         </CardHeader>
         <CardContent className="divide-y divide-primary/5 p-0">
           {releaseQueue.length === 0 ? (

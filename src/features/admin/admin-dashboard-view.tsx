@@ -124,21 +124,21 @@ export function AdminDashboardView({ liveMetrics }: { liveMetrics: AdminDashboar
         badge="Admin console"
         title="Platform overview"
         description="Live counts from profiles and marketplace orders. Supplemental cards below remain illustrative until wired."
-        actions={
-          <>
-            <Button render={<Link href="/dashboard/admin/users" />}>Review users</Button>
-            <Link
-              href="/dashboard/admin/reports"
-              className={cn(buttonVariants({ variant: "outline" }), "h-8")}
-            >
-              Open reports
-            </Link>
-            <Link href="/dashboard/admin/orders" className={cn(buttonVariants({ variant: "ghost" }), "h-8")}>
-              Order queue
-              <ArrowRight className="size-4" />
-            </Link>
-          </>
-        }
+        // actions={
+        //   <>
+        //     <Button render={<Link href="/dashboard/admin/users" />}>Review users</Button>
+        //     <Link
+        //       href="/dashboard/admin/reports"
+        //       className={cn(buttonVariants({ variant: "outline" }), "h-8")}
+        //     >
+        //       Open reports
+        //     </Link>
+        //     <Link href="/dashboard/admin/orders" className={cn(buttonVariants({ variant: "ghost" }), "h-8")}>
+        //       Order queue
+        //       <ArrowRight className="size-4" />
+        //     </Link>
+        //   </>
+        // }
       />
 
       <DashboardStatsGrid stats={stats} />

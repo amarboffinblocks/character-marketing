@@ -177,15 +177,15 @@ export function OrdersSummaryCards({
                   <CardDescription className="text-[11px] uppercase tracking-wide">
                     {card.title}
                   </CardDescription>
-                  <CardTitle className="text-3xl leading-none font-semibold tracking-tight text-foreground">
+                  <CardTitle className="!text-lg leading-none font-semibold tracking-tight text-foreground">
                     {card.value}
                   </CardTitle>
                 </div>
                 <span
-                  className="inline-flex size-8 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20"
+                  className="absolute right-4 inline-flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/20"
                   aria-hidden
                 >
-                  <Icon className="size-4" />
+                  <Icon className="size-8 text-primary/80" />
                 </span>
               </CardHeader>
               <CardContent className="space-y-2">
