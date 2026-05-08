@@ -1177,9 +1177,10 @@ function StripeConnectSection() {
       const response = await fetch("/api/payments/stripe/connect", {
         method: "POST",
       })
-      const data = (await response.json()) as { url?: string; error?: string }
+      const data = (await response.json()) as { url?: string; error?: string; details?: string }
       if (!response.ok || !data.url) {
-        throw new Error(data.error || "Unable to start Stripe onboarding.")
+        const msg = data.details ? `${data.error} (${data.details})` : (data.error || "Unable to start Stripe onboarding.")
+        throw new Error(msg)
       }
       window.location.href = data.url
     } catch (error) {

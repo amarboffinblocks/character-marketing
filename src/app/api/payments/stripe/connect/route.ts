@@ -19,7 +19,8 @@ function resolveBaseUrl(request: Request) {
 }
 
 export async function GET() {
-  const supabase = await createServerSupabaseClient()
+  try {
+    const supabase = await createServerSupabaseClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -64,21 +65,32 @@ export async function GET() {
       payoutsEnabled: account.payouts_enabled ?? false,
       detailsSubmitted: account.details_submitted ?? false,
     })
-  } catch {
-    // Account may have been deleted or invalid
-    return NextResponse.json({
-      connected: false,
-      accountId: stripeAccountId,
-      chargesEnabled: false,
-      payoutsEnabled: false,
-      detailsSubmitted: false,
-      error: "Unable to verify Stripe account. It may be invalid.",
-    })
+    } catch {
+      // Account may have been deleted or invalid
+      return NextResponse.json({
+        connected: false,
+        accountId: stripeAccountId,
+        chargesEnabled: false,
+        payoutsEnabled: false,
+        detailsSubmitted: false,
+        error: "Unable to verify Stripe account. It may be invalid.",
+      })
+    }
+  } catch (err: any) {
+    console.error("[STRIPE_CONNECT_GET_ERROR]", err)
+    return NextResponse.json(
+      {
+        error: "Internal server error while fetching Stripe status.",
+        details: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 }
+    )
   }
 }
 
 export async function POST(request: Request) {
-  const supabase = await createServerSupabaseClient()
+  try {
+    const supabase = await createServerSupabaseClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
@@ -172,8 +184,18 @@ export async function POST(request: Request) {
     refresh_url: `${baseUrl}/api/payments/stripe/connect/refresh`,
   })
 
-  return NextResponse.json({
-    url: accountLink.url,
-    accountId: stripeAccountId,
-  })
+    return NextResponse.json({
+      url: accountLink.url,
+      accountId: stripeAccountId,
+    })
+  } catch (err: any) {
+    console.error("[STRIPE_CONNECT_POST_ERROR]", err)
+    return NextResponse.json(
+      {
+        error: "Internal server error during Stripe Connect.",
+        details: err instanceof Error ? err.message : String(err),
+      },
+      { status: 500 }
+    )
+  }
 }
