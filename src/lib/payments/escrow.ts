@@ -378,11 +378,17 @@ export async function releaseCreatorOrderEscrow(input: {
       throw new Error("Stripe charge is missing for this order.")
     }
 
+    // Calculate platform fee (dynamic from env)
+    const platformFeePercent = Number(process.env.PLATFORM_FEE_PERCENT) || 10
+    const totalAmount = order.package_price
+    const feeAmount = totalAmount * (platformFeePercent / 100)
+    const creatorAmount = totalAmount - feeAmount
+
     let transferId = `dev_transfer_${Math.random().toString(36).substring(7)}`
 
     if (destinationAccount && chargeId) {
       const transfer = await stripe.transfers.create({
-        amount: toStripeAmount(order.package_price),
+        amount: toStripeAmount(creatorAmount),
         currency: "usd",
         destination: destinationAccount,
         source_transaction: chargeId,
@@ -391,6 +397,8 @@ export async function releaseCreatorOrderEscrow(input: {
           orderId: order.id,
           creatorId: order.creator_id,
           buyerId: order.buyer_id,
+          platformFee: feeAmount.toString(),
+          feePercentage: `${platformFeePercent}%`,
         },
       })
       transferId = transfer.id
@@ -438,7 +446,7 @@ export async function releaseCreatorOrderEscrow(input: {
         order.id,
         order.buyer_id,
         order.creator_id,
-        order.package_price,
+        creatorAmount, // Recording actual amount creator received
         "USD",
         "stripe_connect",
         "stripe",
@@ -449,7 +457,7 @@ export async function releaseCreatorOrderEscrow(input: {
         chargeId,
         transferId,
         normalizeText(order.transfer_group) || buildTransferGroup(order.id),
-        "Escrow released to creator after order completion.",
+        `Escrow released to creator. (Platform cut: ${platformFeePercent}% / $${feeAmount.toFixed(2)})`,
       ]
     )
     await client.query("commit")
