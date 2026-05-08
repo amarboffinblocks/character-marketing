@@ -18,7 +18,7 @@ import {
   Users,
   X,
 } from "lucide-react"
-import { useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -72,6 +72,8 @@ function ProfileWarningBadge() {
 export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, userRole }: HeaderClientProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
+  const [isHeaderVisible, setIsHeaderVisible] = useState(true)
+  const lastScrollY = useRef(0)
   const router = useRouter()
   const pathname = usePathname()
   const showCreatorWarning = Boolean(
@@ -81,6 +83,23 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
   )
 
   const closeMenu = () => setIsMenuOpen(false)
+
+  const handleScroll = useCallback(() => {
+    const currentScrollY = window.scrollY
+    if (currentScrollY < 64) {
+      setIsHeaderVisible(true)
+    } else if (currentScrollY > lastScrollY.current) {
+      setIsHeaderVisible(false)
+    } else {
+      setIsHeaderVisible(true)
+    }
+    lastScrollY.current = currentScrollY
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener("scroll", handleScroll, { passive: true })
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [handleScroll])
 
   const handleSignOut = async () => {
     if (isSigningOut) return
@@ -102,7 +121,7 @@ export function HeaderClient({ isAuthenticated, showProfileWarning, avatarUrl, u
   }
 
   return (
-    <header className="absolute rounded-b-2xl top-0 z-50 left-1/2 -translate-x-1/2 max-w-7xl shadow-sm px-4 sm:px-6 lg:px-8 w-full bg-background/90 backdrop-blur supports-backdrop-filter:bg-background/70">
+    <header className={cn("fixed rounded-b-2xl top-0 z-50 left-1/2 -translate-x-1/2 max-w-7xl shadow-sm px-4 sm:px-6 lg:px-8 w-full bg-background/90 backdrop-blur supports-backdrop-filter:bg-background/70 transition-transform duration-300", isHeaderVisible ? "translate-y-0" : "-translate-y-full")}>
       <div className="flex h-16 items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2.5" onClick={closeMenu}>
           <Logo className="h-8 w-auto shrink-0" />

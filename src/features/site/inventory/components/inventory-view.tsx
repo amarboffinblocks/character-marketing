@@ -13,7 +13,6 @@ import {
 
 import { SectionTabs, type SectionTabItem } from "@/features/creator/shared/section-tabs"
 import type { InventoryCategory, InventoryListEntry } from "@/features/site/inventory/inventory-data"
-import { getInventoryListFiltered } from "@/features/site/inventory/inventory-data"
 import { InventoryAssetCard } from "@/features/site/inventory/components/inventory-asset-card"
 
 type InventoryTab = "all" | InventoryCategory
@@ -71,7 +70,7 @@ export function InventoryView() {
             </h1>
             <p className="max-w-2xl text-sm text-muted-foreground">
               Characters, personas, lorebooks, avatars, and backgrounds you have purchased from the
-              marketplace—same card shapes as creator workspace, ready to open or reference in
+              marketplace same card shapes as creator workspace, ready to open or reference in
               orders.
             </p>
           </div>
