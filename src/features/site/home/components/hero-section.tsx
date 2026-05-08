@@ -47,7 +47,7 @@ export function HeroSection() {
                     </h1>
 
                     <p className="mt-6 text-pretty text-lg text-muted-foreground sm:text-xl">
-                        Character cards, personas, lorebooks, and more—from people who already
+                        Character cards, personas, lorebooks, and more from people who already
                         speak your niche. Skip the back-and-forth with generic freelancers.
                     </p>
 
