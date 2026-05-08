@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import {
   Activity,
+  AlertTriangle,
   CheckCircle2,
   CreditCard,
   Copy,
@@ -76,10 +77,11 @@ const REVIEW_REQUIRED_TYPES = ["character", "persona", "lorebook", "avatar"] as 
 type ReviewPickKey = (typeof REVIEW_REQUIRED_TYPES)[number] | "background"
 
 type CreatorPayoutProfile = {
-  stripeConnectAccountId: string
-  payoutAccountHolderName: string
-  payoutCountry: string
-  payoutCurrency: string
+  connected: boolean
+  accountId: string | null
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  detailsSubmitted: boolean
 }
 
 /** Initial / cleared state for per-type asset dropdowns */
@@ -463,18 +465,10 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
     setIsLoadingPayoutProfile(true)
     void (async () => {
       try {
-        const response = await fetch("/api/profile/me?role=creator")
-        const json = (await response.json()) as { data?: Record<string, unknown> }
+        const response = await fetch("/api/payments/stripe/connect")
+        const json = (await response.json()) as CreatorPayoutProfile
         if (!response.ok || !mounted) return
-        const data = json.data ?? {}
-        setCreatorPayoutProfile({
-          stripeConnectAccountId:
-            typeof data.stripeConnectAccountId === "string" ? data.stripeConnectAccountId : "",
-          payoutAccountHolderName:
-            typeof data.payoutAccountHolderName === "string" ? data.payoutAccountHolderName : "",
-          payoutCountry: typeof data.payoutCountry === "string" ? data.payoutCountry : "",
-          payoutCurrency: typeof data.payoutCurrency === "string" ? data.payoutCurrency : "",
-        })
+        setCreatorPayoutProfile(json)
       } finally {
         if (mounted) setIsLoadingPayoutProfile(false)
       }
@@ -630,16 +624,15 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
     () => orders.filter((o) => o.status === "completed").length,
     [orders]
   )
+  const payoutReady = !!(creatorPayoutProfile?.chargesEnabled && creatorPayoutProfile?.payoutsEnabled)
   const missingPayoutFields = useMemo(() => {
-    if (!creatorPayoutProfile) return ["Stripe account ID"]
+    if (!creatorPayoutProfile) return ["Stripe account connection"]
     const missing: string[] = []
-    if (!creatorPayoutProfile.stripeConnectAccountId.trim()) missing.push("Stripe account ID")
-    if (!creatorPayoutProfile.payoutAccountHolderName.trim()) missing.push("Account holder name")
-    if (!creatorPayoutProfile.payoutCountry.trim()) missing.push("Payout country")
-    if (!creatorPayoutProfile.payoutCurrency.trim()) missing.push("Payout currency")
+    if (!creatorPayoutProfile.connected) missing.push("Stripe account connection")
+    else if (!creatorPayoutProfile.detailsSubmitted) missing.push("Identity verification")
+    else if (!creatorPayoutProfile.chargesEnabled || !creatorPayoutProfile.payoutsEnabled) missing.push("Account activation")
     return missing
   }, [creatorPayoutProfile])
-  const payoutReady = missingPayoutFields.length === 0
   const summaryCards = [
     {
       key: "total",
@@ -1186,12 +1179,12 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 className="min-h-28"
               />
             </div>
-            {/* <div
+            <div
               className={cn(
                 "rounded-lg border p-3",
                 payoutReady
                   ? "border-emerald-300/60 bg-emerald-50 text-emerald-800 dark:border-emerald-600/40 dark:bg-emerald-950/30 dark:text-emerald-200"
-                  : "border-rose-300/70 bg-rose-50 text-rose-700 dark:border-rose-600/40 dark:bg-rose-950/30 dark:text-rose-300"
+                  : "border-amber-300/70 bg-amber-50 text-amber-700 dark:border-amber-600/40 dark:bg-amber-950/30 dark:text-amber-300"
               )}
             >
               <p className="inline-flex items-center gap-1.5 text-sm font-semibold">
@@ -1199,12 +1192,22 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                 Stripe payout setup
               </p>
               {isLoadingPayoutProfile ? (
-                <p className="mt-1 text-xs">Checking payout profile…</p>
+                <p className="mt-1 text-xs">Checking payout status…</p>
               ) : payoutReady ? (
-                <p className="mt-1 text-xs">Payout account is ready. Admin will release funds manually after final delivery.</p>
+                <p className="mt-1 text-xs">Payout account is ready. Funds will be released automatically after buyer approval.</p>
+              ) : creatorPayoutProfile?.connected ? (
+                <div className="mt-1 space-y-2">
+                  <p className="text-xs">
+                    <span className="font-semibold">Status:</span>{" "}
+                    {!creatorPayoutProfile.detailsSubmitted ? "Onboarding incomplete" : "Verification pending"}
+                  </p>
+                  <p className="text-[11px] leading-relaxed">
+                    Finish your Stripe setup in profile to enable payouts for this delivery.
+                  </p>
+                </div>
               ) : (
                 <p className="mt-1 text-xs">
-                  Missing: {missingPayoutFields.join(", ")}. Complete these in profile before delivering.
+                  Stripe account not connected. You must connect Stripe before delivering orders.
                 </p>
               )}
               <div className="mt-2">
@@ -1213,10 +1216,10 @@ export function CreatorAcceptedOrdersView({ initialOrders }: { initialOrders: Cr
                   className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8 px-2.5")}
                 >
                   <ExternalLink className="size-3.5" />
-                  Open profile
+                  {creatorPayoutProfile?.connected ? "Complete setup" : "Connect Stripe"}
                 </Link>
               </div>
-            </div> */}
+            </div>
             {error ? <p className="text-xs text-rose-600">{error}</p> : null}
           </div>
           <DialogFooter>

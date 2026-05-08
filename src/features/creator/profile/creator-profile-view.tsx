@@ -7,12 +7,14 @@ import {
   BadgeCheck,
   Camera,
   CheckCircle2,
+  ExternalLink,
   Globe2,
   HelpCircle,
   Image as ImageLucide,
   Images,
   Languages,
   Link as LinkIcon,
+  LoaderCircle,
   Pencil,
   Plus,
   Save,
@@ -1106,46 +1108,7 @@ function ProfessionalSection({
           </div>
         </div>
 
-        <div className="space-y-3 rounded-lg border border-border/70 p-3 md:col-span-2">
-          <p className="text-sm font-medium text-foreground">Stripe payout setup</p>
-          <p className="text-xs text-muted-foreground">
-            Fill these details so admins can release payouts smoothly after your final deliveries.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Stripe account ID</label>
-              <Input
-                value={form.stripeConnectAccountId}
-                onChange={(event) => updateField("stripeConnectAccountId", event.target.value)}
-                placeholder="acct_..."
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Account holder name</label>
-              <Input
-                value={form.payoutAccountHolderName}
-                onChange={(event) => updateField("payoutAccountHolderName", event.target.value)}
-                placeholder="John Doe"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Payout country</label>
-              <Input
-                value={form.payoutCountry}
-                onChange={(event) => updateField("payoutCountry", event.target.value)}
-                placeholder="US"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">Payout currency</label>
-              <Input
-                value={form.payoutCurrency}
-                onChange={(event) => updateField("payoutCurrency", event.target.value)}
-                placeholder="USD"
-              />
-            </div>
-          </div>
-        </div>
+        <StripeConnectSection />
       </CardContent>
 
       <CardContent className="grid gap-4 border-t py-4 md:grid-cols-3">
@@ -1162,6 +1125,209 @@ function MetricTile({ label, value }: { label: string; value: string }) {
     <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p className="mt-1 text-lg font-semibold text-foreground">{value}</p>
+    </div>
+  )
+}
+
+type StripeConnectStatus = {
+  connected: boolean
+  accountId: string | null
+  chargesEnabled: boolean
+  payoutsEnabled: boolean
+  detailsSubmitted: boolean
+  error?: string
+}
+
+function StripeConnectSection() {
+  const [status, setStatus] = useState<StripeConnectStatus | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [connectError, setConnectError] = useState("")
+
+  useEffect(() => {
+    let mounted = true
+    async function fetchStatus() {
+      try {
+        const response = await fetch("/api/payments/stripe/connect")
+        const data = (await response.json()) as StripeConnectStatus
+        if (mounted) setStatus(data)
+      } catch {
+        if (mounted)
+          setStatus({
+            connected: false,
+            accountId: null,
+            chargesEnabled: false,
+            payoutsEnabled: false,
+            detailsSubmitted: false,
+          })
+      } finally {
+        if (mounted) setIsLoading(false)
+      }
+    }
+    void fetchStatus()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  async function startConnect() {
+    setIsConnecting(true)
+    setConnectError("")
+    try {
+      const response = await fetch("/api/payments/stripe/connect", {
+        method: "POST",
+      })
+      const data = (await response.json()) as { url?: string; error?: string }
+      if (!response.ok || !data.url) {
+        throw new Error(data.error || "Unable to start Stripe onboarding.")
+      }
+      window.location.href = data.url
+    } catch (error) {
+      setConnectError(
+        error instanceof Error ? error.message : "Unable to start Stripe onboarding."
+      )
+      setIsConnecting(false)
+    }
+  }
+
+  const isFullyOnboarded = status?.chargesEnabled && status?.payoutsEnabled
+
+  return (
+    <div className="space-y-3 rounded-lg border border-border/70 p-4 md:col-span-2">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-medium text-foreground">Stripe payout setup</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Connect your Stripe account to receive payouts when buyers approve your deliveries.
+          </p>
+        </div>
+        {/* Stripe wordmark */}
+        <span className="shrink-0 rounded-md bg-[#635BFF]/10 px-2.5 py-1 text-xs font-bold tracking-tight text-[#635BFF]">
+          stripe
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+          <LoaderCircle className="size-4 animate-spin" />
+          Checking connection status...
+        </div>
+      ) : isFullyOnboarded ? (
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50/50 p-3 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="size-4 text-emerald-600 dark:text-emerald-400" />
+            <span className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+              Connected
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-emerald-700/80 dark:text-emerald-400/70">
+            Your Stripe account ({status?.accountId?.slice(0, 12)}...) is fully set up.
+            Payouts and charges are enabled.
+          </p>
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              onClick={startConnect}
+              disabled={isConnecting}
+            >
+              <ExternalLink className="size-3" />
+              {isConnecting ? "Loading..." : "Open Stripe Dashboard"}
+            </Button>
+          </div>
+        </div>
+      ) : status?.detailsSubmitted ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              Verification pending
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-400/70">
+            Your details have been submitted. Stripe is verifying your account —
+            this usually takes a few minutes.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2 h-8 gap-1.5 text-xs"
+            onClick={() => {
+              setIsLoading(true)
+              void (async () => {
+                const response = await fetch("/api/payments/stripe/connect")
+                const data = (await response.json()) as StripeConnectStatus
+                setStatus(data)
+                setIsLoading(false)
+              })()
+            }}
+          >
+            Refresh status
+          </Button>
+        </div>
+      ) : status?.connected ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-sm font-medium text-amber-800 dark:text-amber-300">
+              Onboarding incomplete
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-amber-700/80 dark:text-amber-400/70">
+            Your Stripe account was created but onboarding wasn&apos;t completed.
+            Please finish setting it up to receive payouts.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            className="mt-2 h-8 gap-1.5 text-xs"
+            onClick={startConnect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? (
+              <>
+                <LoaderCircle className="size-3 animate-spin" />
+                Redirecting...
+              </>
+            ) : (
+              "Continue setup"
+            )}
+          </Button>
+        </div>
+      ) : (
+        <div>
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 gap-2 bg-[#635BFF] text-white hover:bg-[#5851DB]"
+            onClick={startConnect}
+            disabled={isConnecting}
+          >
+            {isConnecting ? (
+              <>
+                <LoaderCircle className="size-3.5 animate-spin" />
+                Setting up...
+              </>
+            ) : (
+              <>
+                <ExternalLink className="size-3.5" />
+                Connect with Stripe
+              </>
+            )}
+          </Button>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            You&apos;ll be redirected to Stripe to securely set up your payout account.
+            No sensitive information is stored on our platform.
+          </p>
+        </div>
+      )}
+
+      {connectError ? (
+        <p className="text-xs text-destructive">{connectError}</p>
+      ) : null}
     </div>
   )
 }
